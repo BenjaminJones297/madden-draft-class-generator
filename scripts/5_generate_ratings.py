@@ -46,7 +46,11 @@ CHECKPOINT_FILE = os.path.join(DATA_DIR, "prospects_rated_checkpoint.json")
 
 # ── Position fallback mapping (for positions with no calibration examples) ───
 POSITION_FALLBACKS = {
-    "EDGE": ["DE", "OLB"],
+    # DE/edge rushers often flip between DE and OLB scheme-to-scheme;
+    # the calibration 'DE' group is misaligned (contains OL), so always
+    # blend with OLB + MLB where the real pass-rushers actually live.
+    "DE":   ["OLB", "MLB"],
+    "EDGE": ["OLB", "MLB", "DE"],
     "S":    ["FS", "SS"],
     "DB":   ["CB", "FS"],
     "OT":   ["T"],
@@ -58,6 +62,7 @@ POSITION_FALLBACKS = {
     "NT":   ["DT"],
     "ILB":  ["MLB", "OLB"],
     "LB":   ["OLB", "MLB"],
+    "OLB":  ["MLB", "DE"],
     "RB":   ["HB"],
     "PK":   ["K"],
 }
@@ -109,7 +114,7 @@ def get_calibration_examples(pos: str, prospect: dict, calibration: dict, max_ex
     candidates = []
     positions_to_try = [pos] + POSITION_FALLBACKS.get(pos, [])
 
-    # Gather unique examples from primary + fallback positions
+    # Gather unique examples from primary + fallback positions (always try all)
     seen_names = set()
     for p in positions_to_try:
         for entry in calibration.get(p, []):
@@ -117,8 +122,6 @@ def get_calibration_examples(pos: str, prospect: dict, calibration: dict, max_ex
             if name not in seen_names:
                 seen_names.add(name)
                 candidates.append(entry)
-        if candidates:
-            break  # stop once we find at least some examples for a position
 
     # If still empty, pool all positions
     if not candidates:
