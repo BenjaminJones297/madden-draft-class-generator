@@ -549,7 +549,7 @@ HARDCODED_PROSPECTS = [
     ("Chris Johnson",              "CB",  "San Diego State",    "5-10",185, 4.42,  None,  None, None,  None,  None,   "B-"),
     ("Isaiah Bond",                "WR",  "Texas",              "6-0", 185, 4.40,  None,  None, None,  None,  None,   "B-"),
     # ---- Tier 6 / Round 3-4 ----
-    ("Jaylin Noel",                "WR",  "Iowa State",         "5-11",185, 4.38,  None,  None, None,  None,  None,   "C+"),
+
     ("Amare Jones",                "CB",  "Troy",               "6-1", 192, 4.45,  None,  None, None,  None,  None,   "C+"),
     ("Devontez Walker",            "WR",  "North Carolina",     "6-1", 190, 4.38,  None,  None, None,  None,  None,   "C+"),
     ("Pierce Quick",               "T",   "Alabama",            "6-5", 310, 5.22,  None,  None, None,  None,  None,   "C+"),
@@ -562,13 +562,13 @@ HARDCODED_PROSPECTS = [
     ("Braedon Bowman",             "G",   "Clemson",            "6-5", 310, 5.25,  None,  None, None,  None,  None,   "C"),
     ("Jaylen McCollough",          "FS",  "Tennessee",          "6-0", 192, 4.48,  None,  None, None,  None,  None,   "C"),
     ("Walter Nolen",               "DT",  "Ole Miss",           "6-4", 310, 5.12,  None,  None, None,  None,  None,   "C"),
-    ("Ollie Gordon II",            "HB",  "Oklahoma State",     "6-1", 225, 4.55,  None,  None, None,  None,  None,   "C"),
+
     ("Michael Pratt",              "QB",  "Tulane",             "6-1", 225, 4.70,  None,  None, None,  None,  None,   "C"),
     ("Kameron Johnson",            "WR",  "USC",                "6-4", 205, 4.48,  None,  None, None,  None,  None,   "C"),
     ("Isaiah Iton",                "DE",  "Washington",         "6-4", 255, 4.68,  None,  None, None,  None,  None,   "C"),
     ("Caden Sterns",               "SS",  "Texas",              "6-0", 195, 4.48,  None,  None, None,  None,  None,   "C"),
     ("Dylan Laube",                "HB",  "New Hampshire",      "5-10",200, 4.50,  None,  None, None,  None,  None,   "C"),
-    ("Jalen Milroe",               "QB",  "Alabama",            "6-2", 215, 4.42,  None,  None, None,  None,  None,   "C"),
+
 ]
 # fmt: on
 
