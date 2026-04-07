@@ -1,0 +1,149 @@
+{
+  "genericHeadName": "gen_7_B_G_005",
+  "loadouts": [
+    {
+      "loadoutType": "PlayerOnField",
+      "loadoutElements": [
+        {
+          "itemAssetName": "GearFaceMask_Speedflex2Bar"
+        },
+        {
+          "itemAssetName": "GearVisor_visorOakley_clear",
+          "slotType": "Visor"
+        },
+        {
+          "itemAssetName": "Gear_JerseyStyle_SleeveTight",
+          "slotType": "OuterShirt"
+        },
+        {
+          "itemAssetName": "GearMouthpiece_None",
+          "slotType": "MouthWear"
+        },
+        {
+          "itemAssetName": "Gear_Socks_Low",
+          "slotType": "InnerSocks"
+        },
+        {
+          "itemAssetName": "GearSpats_none",
+          "slotType": "LeftSpat"
+        },
+        {
+          "itemAssetName": "GearFootwear_shoe_low_UnderArmourSpotlightSuedeRevamp2025",
+          "slotType": "LeftShoe"
+        },
+        {
+          "itemAssetName": "GearFootwear_shoe_low_UnderArmourSpotlightSuedeRevamp2025",
+          "slotType": "RightShoe"
+        },
+        {
+          "itemAssetName": "GearArmSleeve_Full_sleeveLongUnderarmor_normal_White",
+          "slotType": "LeftArmWear"
+        },
+        {
+          "itemAssetName": "ArmSleeve_None",
+          "slotType": "RightArmWear"
+        },
+        {
+          "itemAssetName": "ElbowGear_None",
+          "slotType": "RightElbowWear"
+        },
+        {
+          "itemAssetName": "ElbowGear_None",
+          "slotType": "LeftElbowWear"
+        },
+        {
+          "itemAssetName": "GearWrist_None",
+          "slotType": "LeftWristWear"
+        },
+        {
+          "itemAssetName": "GearHand_None",
+          "slotType": "LeftHandWear"
+        },
+        {
+          "itemAssetName": "GearHand_None",
+          "slotType": "RightHandWear"
+        },
+        {
+          "itemAssetName": "Small_Pads",
+          "slotType": "Shoulderpads"
+        },
+        {
+          "itemAssetName": "Towel_East",
+          "slotType": "Towel"
+        },
+        {
+          "itemAssetName": "Handwarmer_Standard",
+          "slotType": "WaistWear"
+        },
+        {
+          "itemAssetName": "HandwarmerStyle_Back",
+          "slotType": "WaistWearOverride"
+        },
+        {
+          "itemAssetName": "GearNeckpad_None",
+          "slotType": "Neckpad"
+        },
+        {
+          "blends": [
+            {
+              "barycentricBlend": 0.5,
+              "baseBlend": 0.5
+            }
+          ],
+          "itemAssetName": "Flakjacket_On",
+          "slotType": "FlakJacket"
+        },
+        {
+          "itemAssetName": "G_CompressionT_Crew_ShortSleeve_Basic_WHI",
+          "slotType": "InnerShirt"
+        },
+        {
+          "itemAssetName": "FaceMarks_None",
+          "slotType": "FacePaint"
+        },
+        {
+          "itemAssetName": "GearWrist_None",
+          "slotType": "RightWristWear"
+        },
+        {
+          "itemAssetName": "GearSpats_none",
+          "slotType": "RightSpat"
+        },
+        {
+          "itemAssetName": "KneePad_Regular",
+          "slotType": "KneeWear"
+        },
+        {
+          "itemAssetName": "GearHelmet_Speed_Flex",
+          "slotType": "HeadWear"
+        },
+        {
+          "itemAssetName": "ThighPad_Nike",
+          "slotType": "LeftThighWear"
+        },
+        {
+          "itemAssetName": "ThighPad_Nike",
+          "slotType": "RightThighWear"
+        },
+        {
+          "itemAssetName": "U_GENERIC_SHOESX_WHISEC",
+          "slotType": "LeftShoeOverride"
+        },
+        {
+          "itemAssetName": "U_GENERIC_SHOESX_WHISEC",
+          "slotType": "RightShoeOverride"
+        }
+      ]
+    },
+    {
+      "loadoutCategory": "Base",
+      "loadoutElements": [
+        {
+          "itemAssetName": "Standard_BodyType",
+          "slotType": "CharacterBodyType"
+        }
+      ]
+    }
+  ],
+  "skinTone": 8
+}

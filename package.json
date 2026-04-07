@@ -1,0 +1,15 @@
+{
+  "name": "madden-add-draft-class",
+  "version": "1.0.0",
+  "description": "Generate a real 2026 NFL draft class and write it to a Madden 26 .draftclass file",
+  "type": "commonjs",
+  "scripts": {
+    "extract-calibration": "node scripts/2_extract_calibration.js",
+    "extract-roster": "node scripts/3_extract_roster_ratings.js",
+    "create-draft-class": "node scripts/6_create_draft_class.js"
+  },
+  "dependencies": {
+    "madden-draft-class-tools": "^1.2.0",
+    "madden-franchise": "^3.8.0"
+  }
+}

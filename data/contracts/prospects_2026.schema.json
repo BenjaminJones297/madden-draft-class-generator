@@ -1,0 +1,23 @@
+{
+  "_description": "Output of script 4. 2026 NFL draft prospects with measurables and scouting grades.",
+  "_items": [
+    {
+      "name": "Travis Hunter",
+      "firstName": "Travis",
+      "lastName": "Hunter",
+      "pos": "CB",
+      "school": "Colorado",
+      "ht": "6-1",
+      "wt": 185,
+      "forty": 4.38,
+      "bench": null,
+      "vertical": 38.5,
+      "broad_jump": 125,
+      "cone": 6.72,
+      "shuttle": 4.12,
+      "rank": 1,
+      "grade": "A+",
+      "notes": "Two-way player, elite athlete"
+    }
+  ]
+}

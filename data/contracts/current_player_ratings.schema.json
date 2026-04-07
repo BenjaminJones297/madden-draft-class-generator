@@ -1,0 +1,23 @@
+{
+  "_description": "Output of script 3. Current Madden 26 NFL player ratings grouped by position. Optional — used as rating anchors in LLM prompts.",
+  "QB": [
+    {
+      "name": "Josh Allen",
+      "overall": 99,
+      "speed": 88,
+      "acceleration": 90,
+      "agility": 87,
+      "strength": 81,
+      "awareness": 97,
+      "throwPower": 97,
+      "throwAccuracy": 92,
+      "throwAccuracyShort": 94,
+      "throwAccuracyMid": 93,
+      "throwAccuracyDeep": 89,
+      "throwOnTheRun": 92,
+      "throwUnderPressure": 90,
+      "playAction": 90,
+      "devTrait": 3
+    }
+  ]
+}
