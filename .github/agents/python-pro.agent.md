@@ -5,9 +5,10 @@
 # For format details, see: https://gh.io/customagents/config
 
 name: python-pro
-description: An agent that is knowledgable in llms, python and finding APIs. Does whatever coding is asked of it.
+description: An agent that is knowledgeable in llms, python and finding APIs. Does whatever coding is asked of it.
+tools: ["*"]
 ---
 
 # python-pro
 
-An agent that is knowledgable in llms, python and finding APIs. Does whatever coding is asked of it.
+An agent that is knowledgeable in llms, python and finding APIs. Does whatever coding is asked of it.
