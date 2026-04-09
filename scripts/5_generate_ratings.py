@@ -465,6 +465,24 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
         if r.get("zoneCoverage", 0) < 55:
             r["zoneCoverage"] = max(r.get("zoneCoverage", 0), 60)
 
+    # Acceleration floor: calibration shows accel is almost always >= speed for
+    # skill positions. For all non-OL/K/P/LS, never allow accel to be more than
+    # 5 points below speed. For pure skill positions, accel should be >= speed.
+    SKILL_POSITIONS = {"QB", "HB", "FB", "WR", "TE", "CB", "FS", "SS", "MLB", "OLB", "DE"}
+    HEAVY_POSITIONS = {"DT", "DE"}  # slightly more lenient
+    NON_SKILL = {"T", "G", "C", "K", "P", "LS"}
+    spd = r.get("speed", 0)
+    acc = r.get("acceleration", 0)
+    if spd > 0 and acc > 0 and pos not in NON_SKILL:
+        if pos in SKILL_POSITIONS:
+            # Skill players: accel should be >= speed (calibration shows accel >= spd)
+            if acc < spd:
+                r["acceleration"] = spd
+        else:
+            # DT and others: accel never more than 5 below speed
+            if acc < spd - 5:
+                r["acceleration"] = spd - 5
+
     return r
 
 
