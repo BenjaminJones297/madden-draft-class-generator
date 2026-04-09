@@ -647,7 +647,26 @@ class OpenAIProvider(LLMProvider):
         )
         return resp.choices[0].message.content
 
-    # stream() and list_models() analogous…
+    async def stream(self, prompt, *, model="gpt-4o", temperature=0.2):
+        async with self.client.chat.completions.stream(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+        ) as stream:
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+    async def list_models(self):
+        models = await self.client.models.list()
+        return [m.id for m in models.data if "gpt" in m.id]
+
+    async def health_check(self):
+        try:
+            await self.client.models.list()
+            return True
+        except Exception:
+            return False
 ```
 
 ### Provider factory
@@ -882,6 +901,11 @@ CREATE TABLE mut_squads (
 
 ### On-premises: Docker Compose
 
+> **PostgreSQL image note:** Use `postgres:16` (Debian) rather than `postgres:16-alpine` if you
+> plan to add extensions such as `pgvector` (semantic prospect search) or `pg_trgm` (fuzzy player
+> name matching). Alpine saves ~80 MB but lacks the build dependencies some extensions require.
+> For a plain install without extensions, either image works fine.
+
 ```yaml
 # docker-compose.yml (production-like on-prem)
 version: "3.9"
@@ -933,10 +957,6 @@ services:
       - file-store:/data/files
 
   postgres:
-    # Use postgres:16 (Debian) rather than postgres:16-alpine if you plan to
-    # add PostgreSQL extensions (e.g., pgvector for semantic search, pg_trgm
-    # for fuzzy player name matching). Alpine saves ~80MB but lacks some
-    # extension build dependencies. For a plain install, either image works.
     image: postgres:16
     environment:
       - POSTGRES_DB=madden
