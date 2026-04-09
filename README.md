@@ -1,6 +1,8 @@
 # Madden 26 — 2026 Draft Class Generator
 
-Generate a **real-world 2026 NFL draft class** and import it directly into Madden NFL 26. The pipeline downloads real combine measurables and scouting data, uses the actual Madden 26 launch ratings for the 2025 class as calibration ground truth, then calls a local Ollama LLM to generate every Madden attribute for each 2026 prospect — no manual editing required.
+Generate a **real-world 2026 NFL draft class** and import it directly into Madden NFL 26. The pipeline downloads real combine measurables and scouting data, uses the actual Madden 26 launch ratings for the 2025 class as calibration ground truth, then calls an LLM to generate every Madden attribute for each 2026 prospect — no manual editing required.
+
+Supports multiple LLM providers via [LangChain](https://www.langchain.com/): run locally with **Ollama** (no API key needed) or switch to **OpenAI** with a single config change.
 
 ---
 
@@ -20,11 +22,13 @@ Generate a **real-world 2026 NFL draft class** and import it directly into Madde
 |---|---|---|
 | [Node.js](https://nodejs.org/) | ≥ 18 | Used for Madden file I/O |
 | [Python](https://www.python.org/) | ≥ 3.9 | Used for data fetching and LLM calls |
-| [Ollama](https://ollama.com/) | latest | Runs the LLM locally |
+| **Ollama** *(default)* | latest | Runs the LLM locally — [install](https://ollama.com/) |
 | Model: `llama3:8b` | — | Pull with `ollama pull llama3:8b` |
 
-> **Ollama must be running** before you start the pipeline.  
+> **Ollama must be running** before you start the pipeline (default provider).  
 > Start it with: `ollama serve`
+
+See [LangChain / Multi-Provider Support](#langchain--multi-provider-support) if you prefer to use OpenAI or another cloud provider instead.
 
 ---
 
@@ -74,7 +78,11 @@ python3 run.py [options]
 Options:
   --ros PATH          Path to Madden 26 .ros roster file
                       (optional — improves rating calibration)
-  --model MODEL       Ollama model (default: llama3:8b)
+  --provider PROVIDER LLM provider for step 5 (default: ollama)
+                      ollama           — direct Ollama call (no extra deps)
+                      ollama-langchain — Ollama via LangChain
+                      openai           — OpenAI API via LangChain
+  --model MODEL       LLM model (default: llama3:8b / gpt-4o-mini for openai)
   --out DIR           Output directory (default: data/output)
   --prospects N       Max prospects to generate (default: all)
   --skip-fetch        Skip steps 1 & 4 — reuse existing downloaded data
@@ -93,8 +101,14 @@ python3 run.py
 # With a roster file for better calibration
 python3 run.py --ros ~/Documents/"Madden NFL 26"/saves/ROSTER_FILE.ros
 
-# Use a larger model for higher-quality ratings
+# Use a larger Ollama model for higher-quality ratings
 python3 run.py --model llama3:70b
+
+# Use OpenAI GPT-4o-mini instead of Ollama (requires OPENAI_API_KEY in .env)
+python3 run.py --provider openai
+
+# Use Ollama via the LangChain abstraction layer
+python3 run.py --provider ollama-langchain
 
 # Fast test run — only generate 30 prospects
 python3 run.py --prospects 30
@@ -186,7 +200,7 @@ Any row with a valid `name` and `position` will be included in the pipeline even
 | 2 | `2_extract_calibration.js` | Node | `CAREERDRAFT-2025_M26` (downloaded) | `data/calibration_set.json` |
 | 3 *(optional)* | `3_extract_roster_ratings.js` | Node | Your `.ros` file | `data/current_player_ratings.json` |
 | 4 | `4_fetch_2026_prospects.py` | Python | Web scrape + nflverse combine | `data/prospects_2026.json` |
-| 5 | `5_generate_ratings.py` | Python | `calibration_set.json` + `prospects_2026.json` + Ollama | `data/prospects_rated.json` |
+| 5 | `5_generate_ratings.py` | Python | `calibration_set.json` + `prospects_2026.json` + LLM | `data/prospects_rated.json` |
 | 6 | `6_create_draft_class.js` | Node | `prospects_rated.json` | `data/output/2026_draft_class.draftclass` |
 
 ---
@@ -199,11 +213,18 @@ Copy `.env.example` to `.env` to set persistent defaults:
 # Path to your Madden 26 .ros roster file (optional)
 ROSTER_FILE=
 
+# LLM provider: ollama | ollama-langchain | openai  (default: ollama)
+LLM_PROVIDER=ollama
+
 # Ollama host (default: http://localhost:11434)
 OLLAMA_HOST=http://localhost:11434
 
-# Ollama model to use
+# Ollama model to use (for ollama / ollama-langchain providers)
 OLLAMA_MODEL=llama3:8b
+
+# OpenAI API key and model (only needed when LLM_PROVIDER=openai)
+# OPENAI_API_KEY=sk-...
+# OPENAI_MODEL=gpt-4o-mini
 
 # Max prospects to generate (default: all)
 NUM_PROSPECTS=250
@@ -213,6 +234,56 @@ OUTPUT_DIR=./data/output
 ```
 
 CLI flags always override `.env` values.
+
+---
+
+## LangChain / Multi-Provider Support
+
+Step 5 uses [LangChain](https://www.langchain.com/) to abstract the LLM backend. This means you can switch providers by changing a single flag — no code changes required.
+
+### Available providers
+
+| `--provider` | Backend | Notes |
+|---|---|---|
+| `ollama` | Direct Ollama call | **Default.** No extra deps; fastest for local use |
+| `ollama-langchain` | Ollama via LangChain (`langchain-ollama`) | Same local model, routed through LangChain's chain abstraction |
+| `openai` | OpenAI API via LangChain (`langchain-openai`) | Requires `OPENAI_API_KEY` in `.env`; no local GPU needed |
+
+### How LangChain is used
+
+For the `ollama-langchain` and `openai` providers, the rating-generation chain in `scripts/5_generate_ratings.py` is composed with LangChain's **LCEL (LangChain Expression Language)**:
+
+```python
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+chain = ChatPromptTemplate.from_messages([("human", "{input}")]) | llm | StrOutputParser()
+response_text = chain.invoke({"input": prompt})
+```
+
+This makes it straightforward to extend the pipeline with additional LangChain features in the future, such as structured output parsers, memory, or retrieval-augmented generation.
+
+### Using OpenAI
+
+1. Add your key to `.env`:
+
+   ```dotenv
+   LLM_PROVIDER=openai
+   OPENAI_API_KEY=sk-...
+   OPENAI_MODEL=gpt-4o-mini   # or gpt-4o, o1-mini, etc.
+   ```
+
+2. Run the pipeline:
+
+   ```bash
+   python3 run.py
+   ```
+
+   Or specify the provider on the command line:
+
+   ```bash
+   python3 run.py --provider openai --model gpt-4o
+   ```
 
 ---
 

@@ -1,12 +1,19 @@
 """
-Script 5: Generate Madden 26 ratings for 2026 NFL Draft prospects using Ollama.
+Script 5: Generate Madden 26 ratings for 2026 NFL Draft prospects.
 
 For each prospect, builds a calibrated prompt using 2025 calibration examples + optional current
-player benchmarks, calls Ollama llama3:8b locally to generate all Madden 26 rating fields,
-validates the output, and saves data/prospects_rated.json.
+player benchmarks, then calls an LLM to generate all Madden 26 rating fields, validates the
+output, and saves data/prospects_rated.json.
+
+Supported LLM providers (set via --provider or LLM_PROVIDER in .env):
+  ollama           — Direct Ollama call (default, no extra deps)
+  ollama-langchain — Ollama via LangChain (requires langchain-ollama)
+  openai           — OpenAI API via LangChain (requires langchain-openai + OPENAI_API_KEY)
 
 Usage:
     python scripts/5_generate_ratings.py [--model llama3:8b] [--resume]
+    python scripts/5_generate_ratings.py --provider openai [--model gpt-4o-mini]
+    python scripts/5_generate_ratings.py --provider ollama-langchain
 """
 
 import argparse
@@ -32,6 +39,8 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3:8b")
+DEFAULT_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 # Set OLLAMA_HOST so the ollama package picks it up
 os.environ["OLLAMA_HOST"] = OLLAMA_HOST
@@ -393,6 +402,77 @@ def call_ollama(model: str, prompt: str) -> str:
     return response["message"]["content"]
 
 
+# ── LangChain helpers ─────────────────────────────────────────────────────────
+
+def build_langchain_llm(provider: str, model: str):
+    """
+    Build and return a LangChain chat model for *provider*.
+
+    Supported providers:
+      - ``ollama-langchain``: ChatOllama (requires langchain-ollama)
+      - ``openai``:           ChatOpenAI (requires langchain-openai + OPENAI_API_KEY)
+
+    The returned object exposes a ``.invoke(messages)`` method compatible with
+    LangChain's LCEL (LangChain Expression Language) chain syntax.
+    """
+    if provider == "ollama-langchain":
+        try:
+            from langchain_ollama import ChatOllama
+        except ImportError as exc:
+            raise ImportError(
+                "langchain-ollama is required for the 'ollama-langchain' provider.\n"
+                "  Install it with:  pip install langchain-ollama"
+            ) from exc
+        return ChatOllama(
+            model=model,
+            base_url=OLLAMA_HOST,
+            temperature=0.2,
+            num_predict=1024,
+        )
+
+    if provider == "openai":
+        try:
+            from langchain_openai import ChatOpenAI
+        except ImportError as exc:
+            raise ImportError(
+                "langchain-openai is required for the 'openai' provider.\n"
+                "  Install it with:  pip install langchain-openai"
+            ) from exc
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY is not set.\n"
+                "  Add it to your .env file or set it as an environment variable."
+            )
+        return ChatOpenAI(
+            model=model,
+            temperature=0.2,
+            max_tokens=1024,
+            api_key=api_key,
+        )
+
+    raise ValueError(
+        f"Unknown LangChain provider: {provider!r}. "
+        "Valid options: 'ollama-langchain', 'openai'."
+    )
+
+
+def call_llm_langchain(llm, prompt: str) -> str:
+    """
+    Invoke a LangChain chat model with *prompt* and return the response text.
+
+    Uses LangChain's LCEL (LangChain Expression Language) chain:
+        ChatPromptTemplate | llm | StrOutputParser
+    This makes it trivial to swap LLM providers without changing calling code.
+    """
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+
+    chat_prompt = ChatPromptTemplate.from_messages([("human", "{input}")])
+    chain = chat_prompt | llm | StrOutputParser()
+    return chain.invoke({"input": prompt})
+
+
 def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> dict:
     """
     Apply rule-based post-processing to fix known LLM systematic errors:
@@ -475,10 +555,17 @@ def rate_prospect(
     calibration: dict,
     current_ratings: dict,
     verbose: bool = False,
+    provider: str = "ollama",
+    langchain_llm=None,
 ) -> dict:
     """
     Generate Madden 26 ratings for a single prospect.
     Returns the ratings dict (fully validated).
+
+    When *provider* is ``"ollama"`` (the default) the existing direct Ollama
+    call path is used.  For any LangChain-backed provider pass *langchain_llm*
+    (built with :func:`build_langchain_llm`) and the appropriate *provider*
+    string; the call is then routed through LangChain.
     """
     pos = prospect["pos"]
     canon = canonical_pos(pos)
@@ -497,14 +584,17 @@ def rate_prospect(
 
     # ── First attempt ──
     try:
-        text = call_ollama(model, prompt)
+        if provider == "ollama":
+            text = call_ollama(model, prompt)
+        else:
+            text = call_llm_langchain(langchain_llm, prompt)
     except Exception as e:
         if "Connection" in type(e).__name__ or "ConnectionRefused" in str(e) or "connect" in str(e).lower():
             raise ConnectionError(
                 f"Cannot reach Ollama at {OLLAMA_HOST}. "
                 "Please start Ollama with: ollama serve"
             ) from e
-        print(f"  ⚠ Ollama error on first attempt: {e}")
+        print(f"  ⚠ LLM error on first attempt: {e}")
 
     if text:
         ratings_raw = extract_json(text)
@@ -518,7 +608,10 @@ def rate_prospect(
     if ratings_raw is None or missing_count > 10:
         correction_prompt = build_correction_prompt(all_fields_str, text)
         try:
-            text2 = call_ollama(model, correction_prompt)
+            if provider == "ollama":
+                text2 = call_ollama(model, correction_prompt)
+            else:
+                text2 = call_llm_langchain(langchain_llm, correction_prompt)
             ratings_raw2 = extract_json(text2)
             if ratings_raw2 is not None:
                 ratings_raw = ratings_raw2
@@ -526,7 +619,7 @@ def rate_prospect(
         except ConnectionError:
             raise
         except Exception as e:
-            print(f"  ⚠ Ollama error on retry: {e}")
+            print(f"  ⚠ LLM error on retry: {e}")
 
     # ── Final fallback: use defaults entirely ──
     if ratings_raw is None:
@@ -560,13 +653,33 @@ def save_checkpoint(rated: list) -> None:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Generate Madden 26 ratings for 2026 prospects via Ollama.")
-    parser.add_argument("--model", default=None, help="Ollama model name (default: from .env or llama3:8b)")
+    parser = argparse.ArgumentParser(description="Generate Madden 26 ratings for 2026 prospects.")
+    parser.add_argument("--model", default=None, help="LLM model name (default: from .env or llama3:8b / gpt-4o-mini)")
+    parser.add_argument(
+        "--provider",
+        default=None,
+        choices=["ollama", "ollama-langchain", "openai"],
+        help=(
+            "LLM provider to use (default: from LLM_PROVIDER in .env, or 'ollama').\n"
+            "  ollama           — Direct Ollama call (no extra deps)\n"
+            "  ollama-langchain — Ollama via LangChain (requires langchain-ollama)\n"
+            "  openai           — OpenAI API via LangChain (requires langchain-openai + OPENAI_API_KEY)"
+        ),
+    )
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint if available")
     parser.add_argument("--verbose", action="store_true", help="Print field-fix details")
+    parser.add_argument("--prospects", metavar="N", type=int, default=None, help="Max prospects to process")
     args = parser.parse_args()
 
-    model = args.model or DEFAULT_MODEL
+    provider = args.provider or DEFAULT_PROVIDER
+
+    # Resolve the model default based on provider
+    if args.model:
+        model = args.model
+    elif provider == "openai":
+        model = OPENAI_MODEL
+    else:
+        model = DEFAULT_MODEL
 
     # ── Load input data ──
     print(f"Loading prospects from {PROSPECTS_FILE} ...")
@@ -586,23 +699,49 @@ def main():
     else:
         print("  (No current_player_ratings.json found — skipping anchors)")
 
-    # ── Check Ollama connectivity early ──
-    try:
-        import ollama
-        # Quick connectivity test — list models
-        ollama.list()
-    except Exception as e:
-        err_str = str(e).lower()
-        if "connection" in err_str or "refused" in err_str or "connect" in err_str:
-            print(
-                f"\n❌  Cannot connect to Ollama at {OLLAMA_HOST}.\n"
-                "    Please start Ollama first:\n"
-                "        ollama serve\n"
-                "    Or set OLLAMA_HOST in your .env file.\n"
-            )
+    # ── Provider-specific setup and connectivity check ────────────────────────
+    langchain_llm = None
+
+    if provider == "ollama":
+        # Check Ollama connectivity early
+        try:
+            import ollama
+            ollama.list()
+        except Exception as e:
+            err_str = str(e).lower()
+            if "connection" in err_str or "refused" in err_str or "connect" in err_str:
+                print(
+                    f"\n❌  Cannot connect to Ollama at {OLLAMA_HOST}.\n"
+                    "    Please start Ollama first:\n"
+                    "        ollama serve\n"
+                    "    Or set OLLAMA_HOST in your .env file.\n"
+                )
+                sys.exit(1)
+            print(f"  ⚠ Ollama connectivity check warning: {e}")
+
+    elif provider in ("ollama-langchain", "openai"):
+        try:
+            langchain_llm = build_langchain_llm(provider, model)
+            print(f"  LangChain provider '{provider}' initialised with model '{model}'.")
+        except (ImportError, ValueError) as exc:
+            print(f"\n❌  {exc}")
             sys.exit(1)
-        # Non-connection error (e.g. API version mismatch) — warn but continue
-        print(f"  ⚠ Ollama connectivity check warning: {e}")
+
+        # Quick connectivity check via a minimal invoke
+        if provider == "ollama-langchain":
+            try:
+                from langchain_core.messages import HumanMessage
+                langchain_llm.invoke([HumanMessage(content="ping")])
+            except Exception as e:
+                err_str = str(e).lower()
+                if "connection" in err_str or "refused" in err_str or "connect" in err_str:
+                    print(
+                        f"\n❌  Cannot connect to Ollama at {OLLAMA_HOST} (LangChain path).\n"
+                        "    Please start Ollama first:\n"
+                        "        ollama serve\n"
+                    )
+                    sys.exit(1)
+                print(f"  ⚠ LangChain/Ollama connectivity check warning: {e}")
 
     # ── Resume / checkpoint logic ──
     rated_list: list[dict] = []
@@ -614,8 +753,11 @@ def main():
         print(f"  ↳ Resuming from checkpoint: {len(rated_list)} prospects already rated.")
 
     remaining = [p for p in prospects if p.get("name", "") not in completed_names]
-    print(f"\nGenerating ratings for {len(remaining)} prospect(s) using model '{model}' ...")
-    print(f"  Ollama host: {OLLAMA_HOST}\n")
+    if args.prospects:
+        remaining = remaining[:args.prospects]
+    print(f"\nGenerating ratings for {len(remaining)} prospect(s) using provider '{provider}', model '{model}' ...")
+    if provider == "ollama":
+        print(f"  Ollama host: {OLLAMA_HOST}\n")
 
     # ── Process each prospect ──
     with tqdm(total=len(remaining), desc="Generating ratings", unit="prospect") as pbar:
@@ -630,6 +772,8 @@ def main():
                     calibration=calibration,
                     current_ratings=current_ratings,
                     verbose=args.verbose,
+                    provider=provider,
+                    langchain_llm=langchain_llm,
                 )
             except ConnectionError as ce:
                 print(f"\n❌  {ce}")
