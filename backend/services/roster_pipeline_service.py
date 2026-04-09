@@ -161,7 +161,7 @@ async def run_roster_pipeline(job_id: str, config: dict) -> None:
                     continue
                 try:
                     result = await _call_sidecar(
-                        "/scripts/extract-roster-ratings", {"ros_path": ros_path}
+                        "/read-roster", {"file_path": ros_path}
                     )
                     rc, out = 0, json.dumps(result)
                 except httpx.HTTPError:

@@ -188,15 +188,11 @@ async def run_pipeline(job_id: str, config: dict) -> None:
                 rc, out = await _run_subprocess(cmd)
 
             elif step_num == 2:
-                try:
-                    result = await _call_sidecar("/scripts/extract-calibration", {})
-                    rc, out = 0, json.dumps(result)
-                except httpx.HTTPError as exc:
-                    # Fallback: run node directly
-                    import shutil
-                    node = shutil.which("node") or "node"
-                    cmd = [node, os.path.join(scripts, "2_extract_calibration.js")]
-                    rc, out = await _run_subprocess(cmd)
+                # Script 2 has no sidecar endpoint — run node directly
+                import shutil
+                node = shutil.which("node") or "node"
+                cmd = [node, os.path.join(scripts, "2_extract_calibration.js")]
+                rc, out = await _run_subprocess(cmd)
 
             elif step_num == 3:
                 if not ros_path:
@@ -204,7 +200,7 @@ async def run_pipeline(job_id: str, config: dict) -> None:
                     continue
                 try:
                     result = await _call_sidecar(
-                        "/scripts/extract-roster-ratings", {"ros_path": ros_path}
+                        "/read-roster", {"file_path": ros_path}
                     )
                     rc, out = 0, json.dumps(result)
                 except httpx.HTTPError:
@@ -230,12 +226,16 @@ async def run_pipeline(job_id: str, config: dict) -> None:
                 output_dir = os.path.join(PROJECT_ROOT, "data", "output")
                 os.makedirs(output_dir, exist_ok=True)
                 out_file = os.path.join(output_dir, "2026_draft_class.draftclass")
+                # Read the rated prospects JSON to pass to the sidecar
+                rated_path = os.path.join(PROJECT_ROOT, "data", "prospects_rated.json")
                 try:
+                    with open(rated_path) as _f:
+                        prospects_data = json.load(_f)
                     result = await _call_sidecar(
-                        "/scripts/create-draft-class", {"out": out_file}
+                        "/write-draftclass", {"prospects": prospects_data, "output_path": out_file}
                     )
                     rc, out = 0, json.dumps(result)
-                except httpx.HTTPError:
+                except (httpx.HTTPError, FileNotFoundError):
                     import shutil
                     node = shutil.which("node") or "node"
                     cmd = [

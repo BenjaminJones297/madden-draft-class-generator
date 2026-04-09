@@ -3,6 +3,8 @@ backend/routers/draft_classes.py — Draft-class CRUD + export endpoints.
 """
 from __future__ import annotations
 
+import json
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import List
@@ -136,11 +138,23 @@ async def export_draft_class(
     if dc is None:
         raise HTTPException(status_code=404, detail="Draft class not found")
 
+    output_dir = os.path.join(settings.STORAGE_LOCAL_PATH, "draftclasses")
+    os.makedirs(output_dir, exist_ok=True)
+    out_file = os.path.join(output_dir, f"{draft_class_id}.draftclass")
+
+    # Gather rated prospects from prospects_rated.json (pipeline output)
+    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+    rated_path = os.path.join(data_dir, "prospects_rated.json")
+    prospects_payload: list = []
+    if os.path.isfile(rated_path):
+        with open(rated_path) as _f:
+            prospects_payload = json.load(_f)
+
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
-                f"{settings.NODE_SIDECAR_URL}/export",
-                json={"draft_class_id": draft_class_id},
+                f"{settings.NODE_SIDECAR_URL}/write-draftclass",
+                json={"prospects": prospects_payload, "output_path": out_file},
             )
             resp.raise_for_status()
             sidecar_result = resp.json()
@@ -153,7 +167,7 @@ async def export_draft_class(
     dc.status = "exported"
     dc.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    return {"detail": "Export triggered", "sidecar_response": sidecar_result}
+    return {"detail": "Export triggered", "output_path": out_file, "sidecar_response": sidecar_result}
 
 
 # ---------------------------------------------------------------------------
