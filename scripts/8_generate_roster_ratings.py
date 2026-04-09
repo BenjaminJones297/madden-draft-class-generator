@@ -222,18 +222,17 @@ def main() -> None:
         print("  Run script 7 first: python scripts/7_fetch_nfl_roster_and_contracts.py")
         sys.exit(1)
 
-    if not os.path.isfile(MADDEN_RATINGS_FILE):
-        print(f"\n✗ Madden ratings file not found: {MADDEN_RATINGS_FILE}", file=sys.stderr)
-        print("  Run script 3 first:")
-        print("    node scripts/3_extract_roster_ratings.js --ros /path/to/file.ros")
-        print("  Without a .ros file, player ratings cannot be sourced from Madden.")
-        sys.exit(1)
-
     with open(ROSTER_FILE, encoding="utf-8") as fh:
         roster_players = json.load(fh)
 
-    with open(MADDEN_RATINGS_FILE, encoding="utf-8") as fh:
-        madden_ratings_raw: dict = json.load(fh)
+    if not os.path.isfile(MADDEN_RATINGS_FILE):
+        print(f"  ⚠  Madden ratings file not found: {MADDEN_RATINGS_FILE}")
+        print("  Continuing with position-default ratings for all players.")
+        print("  Tip: run step 3 with a .ros file for official Madden ratings.")
+        madden_ratings_raw = {}
+    else:
+        with open(MADDEN_RATINGS_FILE, encoding="utf-8") as fh:
+            madden_ratings_raw = json.load(fh)
 
     print(f"\n  Roster players : {len(roster_players):,}")
     print(f"  Madden ratings : {len(madden_ratings_raw):,} players in file")
