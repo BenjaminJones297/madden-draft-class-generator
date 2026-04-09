@@ -270,7 +270,7 @@ This makes it straightforward to extend the pipeline with additional LangChain f
    ```dotenv
    LLM_PROVIDER=openai
    OPENAI_API_KEY=sk-...
-   OPENAI_MODEL=gpt-4o-mini   # or gpt-4o, o1-mini, etc.
+   OPENAI_MODEL=gpt-4o-mini   # or gpt-4o, gpt-4o-2024-11-20, etc.
    ```
 
 2. Run the pipeline:

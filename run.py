@@ -82,6 +82,12 @@ Examples:
   # Use a different Ollama model
   python3 run.py --model llama3:70b
 
+  # Use OpenAI instead of Ollama (requires OPENAI_API_KEY in .env)
+  python3 run.py --provider openai
+
+  # Use Ollama via the LangChain abstraction layer
+  python3 run.py --provider ollama-langchain
+
   # Skip slow fetch steps when data already exists
   python3 run.py --skip-fetch --skip-calibration
 
