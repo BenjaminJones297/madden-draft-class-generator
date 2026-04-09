@@ -72,6 +72,251 @@ POSITION_MAP = {
 }
 
 # ---------------------------------------------------------------------------
+# 2026 NFL Free Agency moves: player_name_lower → {team, contract_years, total_contract_value}
+# Only includes players who CHANGED teams (not retained players).
+# total_contract_value in dollars (0 if unknown).
+# ---------------------------------------------------------------------------
+FA_MOVES_2026 = {
+    # ARI
+    "isaac seumalo":       {"team": "ARI", "contract_years": 3, "total_contract_value": 31_500_000},
+    "tyler allgeier":      {"team": "ARI", "contract_years": 2, "total_contract_value": 12_250_000},
+    "roy lopez":           {"team": "ARI", "contract_years": 2, "total_contract_value": 11_500_000},
+    "kendrick bourne":     {"team": "ARI", "contract_years": 2, "total_contract_value": 10_000_000},
+    "gardner minshew":     {"team": "ARI", "contract_years": 1, "total_contract_value":  5_750_000},
+    "andrew wingard":      {"team": "ARI", "contract_years": 1, "total_contract_value":  3_000_000},
+    "matt pryor":          {"team": "ARI", "contract_years": 1, "total_contract_value":          0},
+    # ATL
+    "jahan dotson":        {"team": "ATL", "contract_years": 2, "total_contract_value": 15_000_000},
+    "jake bailey":         {"team": "ATL", "contract_years": 3, "total_contract_value":  9_000_000},
+    "austin hooper":       {"team": "ATL", "contract_years": 1, "total_contract_value":  3_250_000},
+    "cameron thomas":      {"team": "ATL", "contract_years": 1, "total_contract_value":  3_100_000},
+    "tua tagovailoa":      {"team": "ATL", "contract_years": 1, "total_contract_value":  1_300_000},
+    "chris williams":      {"team": "ATL", "contract_years": 1, "total_contract_value":  2_000_000},
+    "azeez ojulari":       {"team": "ATL", "contract_years": 1, "total_contract_value":          0},
+    "channing tindall":    {"team": "ATL", "contract_years": 1, "total_contract_value":          0},
+    "olamide zaccheaus":   {"team": "ATL", "contract_years": 1, "total_contract_value":          0},
+    "dashawn hand":        {"team": "ATL", "contract_years": 1, "total_contract_value":  3_000_000},
+    "da'shawn hand":       {"team": "ATL", "contract_years": 1, "total_contract_value":  3_000_000},
+    # BAL
+    "trey hendrickson":    {"team": "BAL", "contract_years": 4, "total_contract_value": 112_000_000},
+    "john simpson":        {"team": "BAL", "contract_years": 3, "total_contract_value":  30_000_000},
+    "jaylinn hawkins":     {"team": "BAL", "contract_years": 2, "total_contract_value":  10_000_000},
+    # BUF
+    "dj moore":            {"team": "BUF", "contract_years": 0, "total_contract_value":           0},
+    "bradley chubb":       {"team": "BUF", "contract_years": 3, "total_contract_value":  43_500_000},
+    "dee alford":          {"team": "BUF", "contract_years": 3, "total_contract_value":  21_000_000},
+    "cj gardner-johnson":  {"team": "BUF", "contract_years": 1, "total_contract_value":   6_000_000},
+    "c.j. gardner-johnson":{"team": "BUF", "contract_years": 1, "total_contract_value":   6_000_000},
+    "kyle allen":          {"team": "BUF", "contract_years": 2, "total_contract_value":   4_100_000},
+    "geno stone":          {"team": "BUF", "contract_years": 1, "total_contract_value":           0},
+    # CAR
+    "jaelan phillips":     {"team": "CAR", "contract_years": 4, "total_contract_value": 120_000_000},
+    "devin lloyd":         {"team": "CAR", "contract_years": 3, "total_contract_value":  45_000_000},
+    "rasheed walker":      {"team": "CAR", "contract_years": 1, "total_contract_value":           0},
+    "kenny pickett":       {"team": "CAR", "contract_years": 1, "total_contract_value":           0},
+    "luke fortner":        {"team": "CAR", "contract_years": 1, "total_contract_value":           0},
+    "john metchie iii":    {"team": "CAR", "contract_years": 1, "total_contract_value":           0},
+    "stone forsythe":      {"team": "CAR", "contract_years": 1, "total_contract_value":           0},
+    # CHI
+    "coby bryant":         {"team": "CHI", "contract_years": 3, "total_contract_value":  40_000_000},
+    "devin bush":          {"team": "CHI", "contract_years": 3, "total_contract_value":  30_000_000},
+    "neville gallimore":   {"team": "CHI", "contract_years": 2, "total_contract_value":  12_000_000},
+    "kalif raymond":       {"team": "CHI", "contract_years": 1, "total_contract_value":           0},
+    "jedrick wills jr.":   {"team": "CHI", "contract_years": 1, "total_contract_value":           0},
+    "jedrick wills":       {"team": "CHI", "contract_years": 1, "total_contract_value":           0},
+    "garrett bradbury":    {"team": "CHI", "contract_years": 0, "total_contract_value":           0},
+    # CIN
+    "boye mafe":           {"team": "CIN", "contract_years": 3, "total_contract_value":  60_000_000},
+    "bryan cook":          {"team": "CIN", "contract_years": 3, "total_contract_value":  42_500_000},
+    "jonathan allen":      {"team": "CIN", "contract_years": 2, "total_contract_value":  28_000_000},
+    "josh johnson":        {"team": "CIN", "contract_years": 1, "total_contract_value":           0},
+    # CLE
+    "zion johnson":        {"team": "CLE", "contract_years": 3, "total_contract_value":  49_500_000},
+    "elgton jenkins":      {"team": "CLE", "contract_years": 2, "total_contract_value":  24_000_000},
+    "quincy williams":     {"team": "CLE", "contract_years": 2, "total_contract_value":           0},
+    "jack stoll":          {"team": "CLE", "contract_years": 1, "total_contract_value":           0},
+    "tytus howard":        {"team": "CLE", "contract_years": 0, "total_contract_value":           0},
+    # DAL
+    "jalen thompson":      {"team": "DAL", "contract_years": 3, "total_contract_value":  33_000_000},
+    "cobie durant":        {"team": "DAL", "contract_years": 1, "total_contract_value":           0},
+    "pj locke":            {"team": "DAL", "contract_years": 1, "total_contract_value":   5_000_000},
+    "p.j. locke":          {"team": "DAL", "contract_years": 1, "total_contract_value":   5_000_000},
+    "otito ogbonnia":      {"team": "DAL", "contract_years": 1, "total_contract_value":   3_000_000},
+    "sam howell":          {"team": "DAL", "contract_years": 1, "total_contract_value":           0},
+    "rashan gary":         {"team": "DAL", "contract_years": 0, "total_contract_value":           0},
+    # DET
+    "cade mays":           {"team": "DET", "contract_years": 3, "total_contract_value":  25_000_000},
+    "rock ya-sin":         {"team": "DET", "contract_years": 1, "total_contract_value":   4_000_000},
+    "isiah pacheco":       {"team": "DET", "contract_years": 0, "total_contract_value":           0},
+    "tyler conklin":       {"team": "DET", "contract_years": 1, "total_contract_value":           0},
+    "teddy bridgewater":   {"team": "DET", "contract_years": 0, "total_contract_value":           0},
+    "larry borom":         {"team": "DET", "contract_years": 1, "total_contract_value":   5_000_000},
+    "christian izien":     {"team": "DET", "contract_years": 1, "total_contract_value":           0},
+    "roger mccreary":      {"team": "DET", "contract_years": 1, "total_contract_value":           0},
+    "juice scruggs":       {"team": "DET", "contract_years": 0, "total_contract_value":           0},
+    # GB
+    "javon hargrave":      {"team": "GB",  "contract_years": 2, "total_contract_value":  23_000_000},
+    "benjamin st-juste":   {"team": "GB",  "contract_years": 2, "total_contract_value":  10_000_000},
+    "skyy moore":          {"team": "GB",  "contract_years": 1, "total_contract_value":           0},
+    "zaire franklin":      {"team": "GB",  "contract_years": 0, "total_contract_value":           0},
+    # HOU
+    "reed blankenship":    {"team": "HOU", "contract_years": 3, "total_contract_value":  24_750_000},
+    "braden smith":        {"team": "HOU", "contract_years": 2, "total_contract_value":  20_000_000},
+    "logan hall":          {"team": "HOU", "contract_years": 2, "total_contract_value":   7_000_000},
+    "dominique robinson":  {"team": "HOU", "contract_years": 1, "total_contract_value":           0},
+    "wyatt teller":        {"team": "HOU", "contract_years": 2, "total_contract_value":  16_000_000},
+    "david montgomery":    {"team": "HOU", "contract_years": 0, "total_contract_value":           0},
+    "kai kroeger":         {"team": "HOU", "contract_years": 0, "total_contract_value":           0},
+    "evan brown":          {"team": "HOU", "contract_years": 1, "total_contract_value":   3_500_000},
+    "foster moreau":       {"team": "HOU", "contract_years": 0, "total_contract_value":           0},
+    # IND
+    "arden key":           {"team": "IND", "contract_years": 2, "total_contract_value":           0},
+    "michael clemons":     {"team": "IND", "contract_years": 3, "total_contract_value":  17_500_000},
+    "jonathan owens":      {"team": "IND", "contract_years": 1, "total_contract_value":           0},
+    "colby wooden":        {"team": "IND", "contract_years": 0, "total_contract_value":           0},
+    # JAX
+    "chris rodriguez jr.": {"team": "JAX", "contract_years": 2, "total_contract_value":  10_000_000},
+    "chris rodriguez":     {"team": "JAX", "contract_years": 2, "total_contract_value":  10_000_000},
+    # KC
+    "kenneth walker iii":  {"team": "KC",  "contract_years": 3, "total_contract_value":  45_000_000},
+    "kenneth walker":      {"team": "KC",  "contract_years": 3, "total_contract_value":  45_000_000},
+    "alohi gilman":        {"team": "KC",  "contract_years": 3, "total_contract_value":  24_750_000},
+    "khyiris tonga":       {"team": "KC",  "contract_years": 3, "total_contract_value":  21_000_000},
+    "emari demercado":     {"team": "KC",  "contract_years": 1, "total_contract_value":           0},
+    "kader kohou":         {"team": "KC",  "contract_years": 0, "total_contract_value":           0},
+    # LA
+    "trent mcduffie":      {"team": "LA",  "contract_years": 4, "total_contract_value": 124_000_000},
+    "jaylen watson":       {"team": "LA",  "contract_years": 3, "total_contract_value":  51_000_000},
+    # LAC
+    "tyler biadasz":       {"team": "LAC", "contract_years": 3, "total_contract_value":  30_000_000},
+    "charlie kolar":       {"team": "LAC", "contract_years": 3, "total_contract_value":  24_300_000},
+    "keaton mitchell":     {"team": "LAC", "contract_years": 2, "total_contract_value":   9_250_000},
+    "cole strange":        {"team": "LAC", "contract_years": 2, "total_contract_value":  13_000_000},
+    "alec ingold":         {"team": "LAC", "contract_years": 2, "total_contract_value":   7_500_000},
+    "dalvin tomlinson":    {"team": "LAC", "contract_years": 1, "total_contract_value":   7_500_000},
+    # LV
+    "taron johnson":       {"team": "LV",  "contract_years": 0, "total_contract_value":           0},
+    "tyler linderbaum":    {"team": "LV",  "contract_years": 3, "total_contract_value":  81_000_000},
+    "kwity paye":          {"team": "LV",  "contract_years": 3, "total_contract_value":  48_000_000},
+    "quay walker":         {"team": "LV",  "contract_years": 3, "total_contract_value":  40_500_000},
+    "nakobe dean":         {"team": "LV",  "contract_years": 3, "total_contract_value":  36_000_000},
+    "jalen nailor":        {"team": "LV",  "contract_years": 3, "total_contract_value":  35_000_000},
+    "connor heyward":      {"team": "LV",  "contract_years": 2, "total_contract_value":   5_500_000},
+    "matt gay":            {"team": "LV",  "contract_years": 1, "total_contract_value":           0},
+    "dareke young":        {"team": "LV",  "contract_years": 0, "total_contract_value":           0},
+    # MIA
+    "malik willis":        {"team": "MIA", "contract_years": 3, "total_contract_value":  67_500_000},
+    "joshua uche":         {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    "david ojabo":         {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    "jalen tolbert":       {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    "jamaree salyer":      {"team": "MIA", "contract_years": 0, "total_contract_value":           0},
+    "zayne anderson":      {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    "lonnie johnson jr.":  {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    "lonnie johnson":      {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    "robert beal jr.":     {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    "robert beal":         {"team": "MIA", "contract_years": 1, "total_contract_value":           0},
+    # MIN
+    "kyler murray":        {"team": "MIN", "contract_years": 1, "total_contract_value":           0},
+    "james pierre":        {"team": "MIN", "contract_years": 2, "total_contract_value":   8_500_000},
+    # NE
+    "romeo doubs":         {"team": "NE",  "contract_years": 4, "total_contract_value":  68_000_000},
+    "alijah vera-tucker":  {"team": "NE",  "contract_years": 3, "total_contract_value":  42_000_000},
+    "dremont jones":       {"team": "NE",  "contract_years": 3, "total_contract_value":  39_500_000},
+    "dre'mont jones":      {"team": "NE",  "contract_years": 3, "total_contract_value":  39_500_000},
+    "reggie gilliam":      {"team": "NE",  "contract_years": 3, "total_contract_value":           0},
+    "kevin byard":         {"team": "NE",  "contract_years": 1, "total_contract_value":   9_000_000},
+    "jesse luketa":        {"team": "NE",  "contract_years": 1, "total_contract_value":           0},
+    "kj britt":            {"team": "NE",  "contract_years": 1, "total_contract_value":           0},
+    "k.j. britt":          {"team": "NE",  "contract_years": 1, "total_contract_value":           0},
+    # NO
+    "david edwards":       {"team": "NO",  "contract_years": 4, "total_contract_value":  61_000_000},
+    "travis etienne":      {"team": "NO",  "contract_years": 4, "total_contract_value":  52_000_000},
+    "travis etienne jr.":  {"team": "NO",  "contract_years": 4, "total_contract_value":  52_000_000},
+    "kaden elliss":        {"team": "NO",  "contract_years": 3, "total_contract_value":  33_000_000},
+    "ryan wright":         {"team": "NO",  "contract_years": 4, "total_contract_value":  14_000_000},
+    "noah fant":           {"team": "NO",  "contract_years": 2, "total_contract_value":   8_750_000},
+    "ty chandler":         {"team": "NO",  "contract_years": 0, "total_contract_value":           0},
+    # NYG
+    "isaiah likely":       {"team": "NYG", "contract_years": 3, "total_contract_value":  40_000_000},
+    "tremaine edmunds":    {"team": "NYG", "contract_years": 3, "total_contract_value":  36_000_000},
+    "jordan stout":        {"team": "NYG", "contract_years": 3, "total_contract_value":  12_300_000},
+    "greg newsome":        {"team": "NYG", "contract_years": 1, "total_contract_value":   8_000_000},
+    "greg newsome ii":     {"team": "NYG", "contract_years": 1, "total_contract_value":   8_000_000},
+    "patrick ricard":      {"team": "NYG", "contract_years": 2, "total_contract_value":           0},
+    "ardarius washington": {"team": "NYG", "contract_years": 1, "total_contract_value":   3_000_000},
+    "ar'darius washington":{"team": "NYG", "contract_years": 1, "total_contract_value":   3_000_000},
+    "calvin austin iii":   {"team": "NYG", "contract_years": 1, "total_contract_value":           0},
+    "calvin austin":       {"team": "NYG", "contract_years": 1, "total_contract_value":           0},
+    "darnell mooney":      {"team": "NYG", "contract_years": 1, "total_contract_value":           0},
+    "jason sanders":       {"team": "NYG", "contract_years": 1, "total_contract_value":           0},
+    # NYJ
+    "joseph ossai":        {"team": "NYJ", "contract_years": 3, "total_contract_value":  36_000_000},
+    "demario davis":       {"team": "NYJ", "contract_years": 2, "total_contract_value":  22_000_000},
+    "dylan parham":        {"team": "NYJ", "contract_years": 2, "total_contract_value":  16_000_000},
+    "david onyemata":      {"team": "NYJ", "contract_years": 1, "total_contract_value":  10_500_000},
+    "kingsley enagbare":   {"team": "NYJ", "contract_years": 1, "total_contract_value":  10_000_000},
+    "dane belton":         {"team": "NYJ", "contract_years": 1, "total_contract_value":           0},
+    "nahshon wright":      {"team": "NYJ", "contract_years": 1, "total_contract_value":   3_500_000},
+    "andrew beck":         {"team": "NYJ", "contract_years": 1, "total_contract_value":           0},
+    "cade york":           {"team": "NYJ", "contract_years": 1, "total_contract_value":           0},
+    "geno smith":          {"team": "NYJ", "contract_years": 0, "total_contract_value":           0},
+    "minkah fitzpatrick":  {"team": "NYJ", "contract_years": 3, "total_contract_value":  40_000_000},
+    # PHI
+    "tariq woolen":        {"team": "PHI", "contract_years": 1, "total_contract_value":  15_000_000},
+    "riq woolen":          {"team": "PHI", "contract_years": 1, "total_contract_value":  15_000_000},
+    "arnold ebiketie":     {"team": "PHI", "contract_years": 1, "total_contract_value":           0},
+    "jonathan jones":      {"team": "PHI", "contract_years": 1, "total_contract_value":           0},
+    "hollywood brown":     {"team": "PHI", "contract_years": 1, "total_contract_value":           0},
+    # PIT
+    "michael pittman jr.": {"team": "PIT", "contract_years": 3, "total_contract_value":  59_000_000},
+    "michael pittman":     {"team": "PIT", "contract_years": 3, "total_contract_value":  59_000_000},
+    "jamel dean":          {"team": "PIT", "contract_years": 3, "total_contract_value":  36_500_000},
+    "rico dowdle":         {"team": "PIT", "contract_years": 2, "total_contract_value":  12_250_000},
+    "jaquan brisker":      {"team": "PIT", "contract_years": 1, "total_contract_value":   5_500_000},
+    "darnell savage":      {"team": "PIT", "contract_years": 1, "total_contract_value":           0},
+    # SF
+    "mike evans":          {"team": "SF",  "contract_years": 3, "total_contract_value":  60_400_000},
+    "vederian lowe":       {"team": "SF",  "contract_years": 2, "total_contract_value":           0},
+    "nate hobbs":          {"team": "SF",  "contract_years": 1, "total_contract_value":   4_000_000},
+    "osa odighizuwa":      {"team": "SF",  "contract_years": 0, "total_contract_value":           0},
+    # TEN
+    "wandale robinson":    {"team": "TEN", "contract_years": 4, "total_contract_value":  70_000_000},
+    "wan'dale robinson":   {"team": "TEN", "contract_years": 4, "total_contract_value":  70_000_000},
+    "john franklin-myers": {"team": "TEN", "contract_years": 3, "total_contract_value":  63_000_000},
+    "alontae taylor":      {"team": "TEN", "contract_years": 3, "total_contract_value":  60_000_000},
+    "cordale flott":       {"team": "TEN", "contract_years": 3, "total_contract_value":  45_000_000},
+    "cor'dale flott":      {"team": "TEN", "contract_years": 3, "total_contract_value":  45_000_000},
+    "daniel bellinger":    {"team": "TEN", "contract_years": 3, "total_contract_value":  24_000_000},
+    "jacob martin":        {"team": "TEN", "contract_years": 2, "total_contract_value":  11_000_000},
+    "austin schlottmann":  {"team": "TEN", "contract_years": 2, "total_contract_value":   9_000_000},
+    "jordan elliott":      {"team": "TEN", "contract_years": 2, "total_contract_value":   8_000_000},
+    "tommy townsend":      {"team": "TEN", "contract_years": 2, "total_contract_value":           0},
+    "cordell volson":      {"team": "TEN", "contract_years": 1, "total_contract_value":           0},
+    "mitchell trubisky":   {"team": "TEN", "contract_years": 2, "total_contract_value":           0},
+    "josh williams":       {"team": "TEN", "contract_years": 2, "total_contract_value":           0},
+    "malik herring":       {"team": "TEN", "contract_years": 1, "total_contract_value":           0},
+    "solomon thomas":      {"team": "TEN", "contract_years": 0, "total_contract_value":           0},
+    # WAS
+    "odafe oweh":          {"team": "WAS", "contract_years": 4, "total_contract_value": 100_000_000},
+    "leo chenal":          {"team": "WAS", "contract_years": 3, "total_contract_value":  24_750_000},
+    "tim settle":          {"team": "WAS", "contract_years": 3, "total_contract_value":  24_000_000},
+    "chigoziem okonkwo":   {"team": "WAS", "contract_years": 3, "total_contract_value":           0},
+    "amik robertson":      {"team": "WAS", "contract_years": 2, "total_contract_value":  16_000_000},
+    "nick cross":          {"team": "WAS", "contract_years": 2, "total_contract_value":           0},
+    "klavon chaisson":     {"team": "WAS", "contract_years": 1, "total_contract_value":  12_000_000},
+    "k'lavon chaisson":    {"team": "WAS", "contract_years": 1, "total_contract_value":  12_000_000},
+    "charles omenihu":     {"team": "WAS", "contract_years": 1, "total_contract_value":           0},
+    "jerome ford":         {"team": "WAS", "contract_years": 1, "total_contract_value":           0},
+    "van jefferson":       {"team": "WAS", "contract_years": 1, "total_contract_value":           0},
+}
+
+
+def _norm_name(name: str) -> str:
+    """Normalize player name for FA lookup."""
+    return re.sub(r"[^a-z0-9 ]", "", name.lower().strip())
+
+
+# ---------------------------------------------------------------------------
 # Scraping headers (browser-like, to avoid 403s)
 # ---------------------------------------------------------------------------
 HEADERS = {
@@ -465,6 +710,24 @@ def main() -> None:
         players.append(player)
 
     print(f"  ✓ Merged {len(players):,} players")
+
+    # ------------------------------------------------------------------
+    # 3b. Apply 2026 FA team changes
+    # ------------------------------------------------------------------
+    fa_norm = {_norm_name(k): v for k, v in FA_MOVES_2026.items()}
+    fa_applied = 0
+    for player in players:
+        norm = _norm_name(player["player_name"])
+        if norm in fa_norm:
+            move = fa_norm[norm]
+            player["team"] = move["team"]
+            if move.get("contract_years"):
+                player["contract_years"] = move["contract_years"]
+            if move.get("total_contract_value"):
+                player["total_contract_value"] = move["total_contract_value"]
+            fa_applied += 1
+
+    print(f"  ✓ Applied 2026 FA team changes to {fa_applied} players")
 
     # ------------------------------------------------------------------
     # 4. Save output
