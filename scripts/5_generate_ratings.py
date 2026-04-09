@@ -51,6 +51,11 @@ POSITION_FALLBACKS = {
     # blend with OLB + MLB where the real pass-rushers actually live.
     "DE":   ["OLB", "MLB"],
     "EDGE": ["OLB", "MLB", "DE"],
+    # The calibration 'CB' group is misaligned (contains DTs), so route
+    # CBs to the safety groups where real coverage players exist.
+    "CB":   ["FS", "SS"],
+    "FS":   ["SS"],
+    "SS":   ["FS"],
     "S":    ["FS", "SS"],
     "DB":   ["CB", "FS"],
     "OT":   ["T"],
@@ -236,6 +241,13 @@ def build_prompt(prospect: dict, calibration_examples: list, current_anchors: li
         lines.append(f"Notes: {notes}")
     lines.append("")
 
+    # ── NFL Comparison ──
+    nfl_comp = prospect.get("nfl_comp", "")
+    if nfl_comp:
+        lines.append(f"NFL Comparison: {nfl_comp}")
+        lines.append("Use this comparison player's rating PROFILE (not exact values) to inform the attribute distribution.")
+        lines.append("")
+
     # ── Rules ──
     lines.append("Rules:")
     lines.append("- All rating values must be integers between 0 and 99")
@@ -243,6 +255,42 @@ def build_prompt(prospect: dict, calibration_examples: list, current_anchors: li
     lines.append("- Ratings should reflect a ROOKIE — do not inflate. Compare to the calibration examples above.")
     lines.append("- Non-relevant ratings for this position should be low (28-40 range)")
     lines.append("")
+
+    # Position-specific rules
+    if pos in ("T", "G", "C"):
+        lines.append(f"IMPORTANT for {pos} (offensive lineman):")
+        lines.append("- blockShedding, powerMoves, finesseMoves are DEFENSIVE LINE stats — keep them 15-35")
+        lines.append("- passBlock, passBlockPower, passBlockFinesse, runBlock, runBlockPower, runBlockFinesse, impactBlocking are the KEY stats")
+        lines.append("- acceleration should be 65-78 (NOT 30)")
+        lines.append("- tackle, hitPower, pursuit should be 20-35 (not OL stats)")
+        lines.append("")
+    elif pos in ("FS", "SS"):
+        lines.append(f"IMPORTANT for {pos} (safety):")
+        lines.append("- zoneCoverage, manCoverage, playRecognition, awareness are the KEY coverage stats — do NOT leave these low")
+        lines.append("- A Day-1 starter safety should have zoneCoverage 70-85, playRecognition 74-86")
+        lines.append("- strength should be 60-75 (NOT 28)")
+        lines.append("- Note: the calibration examples may be unreliable for this position; rely more on the NFL comp and round/pick")
+        lines.append("")
+    elif pos == "CB":
+        lines.append("IMPORTANT for CB:")
+        lines.append("- manCoverage and zoneCoverage are the KEY stats — a first-round CB should be 75-88")
+        lines.append("- playRecognition and awareness should be 70-82 for a starter")
+        lines.append("- blockShedding, powerMoves, finesseMoves are DL stats — keep them 10-25 for a CB")
+        lines.append("- speed and acceleration are critical — use 40 time as primary guide")
+        lines.append("- Note: the calibration examples may be unreliable; rely on NFL comp, round, and athleticism")
+        lines.append("")
+    elif pos == "WR":
+        lines.append("IMPORTANT for WR:")
+        lines.append("- Calibration WR speed reference: 4.30→96, 4.37→93, 4.40→92, 4.44→91, 4.46→90, 4.48→90, 4.51→89, 4.59→86, 4.61→85")
+        lines.append("- Use the table above to set speed; do NOT apply a blanket bonus — fast WRs (sub-4.40) get no extra bump")
+        lines.append("- shortRouteRunning, mediumRouteRunning, deepRouteRunning are all KEY stats — do not leave any below 70 for a starter")
+        lines.append("")
+    elif pos in ("DE", "OLB") and pos not in ("T", "G", "C"):
+        lines.append(f"IMPORTANT for {pos} (edge/pass rusher):")
+        lines.append("- blockShedding, powerMoves, finesseMoves are KEY pass-rush stats — these should be HIGH (65-85)")
+        lines.append("- passBlock, runBlock, impactBlocking should be LOW (15-30) — those are offensive stats")
+        lines.append("")
+
     lines.append(f"Return ONLY a valid JSON object with ALL of these exact keys, no extra text:")
     lines.append(all_fields_str)
 
@@ -345,6 +393,81 @@ def call_ollama(model: str, prompt: str) -> str:
     return response["message"]["content"]
 
 
+def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> dict:
+    """
+    Apply rule-based post-processing to fix known LLM systematic errors:
+    - OL: cap DL stats, fix acceleration floor
+    - WR: apply speed position bonus
+    - FS/SS: ensure coverage stats aren't at defaults
+    """
+    r = dict(ratings)
+
+    OL_DL_CAPS = {
+        "T": {"blockShedding": 33, "powerMoves": 30, "finesseMoves": 23, "tackle": 32, "hitPower": 35, "pursuit": 28},
+        "G": {"blockShedding": 38, "powerMoves": 34, "finesseMoves": 30, "tackle": 33, "hitPower": 37, "pursuit": 33},
+        "C": {"blockShedding": 30, "powerMoves": 22, "finesseMoves": 17, "tackle": 30, "hitPower": 31, "pursuit": 31},
+    }
+    OL_ACC_FLOOR = {"T": 68, "G": 68, "C": 70}
+
+    if pos in OL_DL_CAPS:
+        caps = OL_DL_CAPS[pos]
+        for stat, cap in caps.items():
+            if r.get(stat, 0) > cap:
+                r[stat] = cap
+        floor = OL_ACC_FLOOR.get(pos, 68)
+        if r.get("acceleration", 0) < floor:
+            r["acceleration"] = floor
+
+    # WR speed correction: use calibration-derived table; only correct upward when
+    # the LLM undershot the expected WR speed for a given forty time.
+    if pos == "WR":
+        WR_SPEED_TABLE = [
+            (4.30, 96), (4.34, 94), (4.37, 93), (4.40, 92),
+            (4.42, 92), (4.44, 91), (4.46, 90), (4.48, 90),
+            (4.51, 89), (4.59, 86), (4.61, 85),
+        ]
+        spd = r.get("speed", 0)
+        if forty is not None and spd > 0:
+            # Interpolate expected WR speed from forty time
+            table_forties = [t for t, _ in WR_SPEED_TABLE]
+            table_speeds = [s for _, s in WR_SPEED_TABLE]
+            if forty <= table_forties[0]:
+                expected = table_speeds[0]
+            elif forty >= table_forties[-1]:
+                expected = table_speeds[-1]
+            else:
+                for i in range(len(table_forties) - 1):
+                    if table_forties[i] <= forty <= table_forties[i + 1]:
+                        t0, t1 = table_forties[i], table_forties[i + 1]
+                        s0, s1 = table_speeds[i], table_speeds[i + 1]
+                        frac = (forty - t0) / (t1 - t0)
+                        expected = round(s0 + frac * (s1 - s0))
+                        break
+            if spd < expected:
+                r["speed"] = expected
+
+    # Safety coverage floor: if coverage stats look like defaults, bump them
+    if pos in ("FS", "SS"):
+        if r.get("zoneCoverage", 0) < 60:
+            r["zoneCoverage"] = max(r.get("zoneCoverage", 0), 65)
+        if r.get("strength", 0) < 50:
+            r["strength"] = 65
+        if r.get("playRecognition", 0) < 55:
+            r["playRecognition"] = max(r.get("playRecognition", 0), 65)
+
+    # CB: cap DL stats (calibration group is misaligned — contains DTs, not CBs)
+    if pos == "CB":
+        for stat in ("blockShedding", "powerMoves", "finesseMoves", "tackle", "hitPower", "pursuit"):
+            if r.get(stat, 0) > 30:
+                r[stat] = 30
+        if r.get("manCoverage", 0) < 55:
+            r["manCoverage"] = max(r.get("manCoverage", 0), 60)
+        if r.get("zoneCoverage", 0) < 55:
+            r["zoneCoverage"] = max(r.get("zoneCoverage", 0), 60)
+
+    return r
+
+
 # ── Rate a single prospect ────────────────────────────────────────────────────
 def rate_prospect(
     prospect: dict,
@@ -416,6 +539,8 @@ def rate_prospect(
     if verbose and issues:
         print(f"  ↳ Fixed {len(issues)} field(s): {', '.join(issues[:5])}"
               + (" ..." if len(issues) > 5 else ""))
+
+    cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
 
     return cleaned
 

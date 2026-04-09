@@ -69,6 +69,7 @@ def empty_prospect():
         "ht": "",
         "wt": None,
         "forty": None,
+        "forty_source": None,  # "combine", "pro_day", or "estimate"
         "bench": None,
         "vertical": None,
         "broad_jump": None,
@@ -77,6 +78,7 @@ def empty_prospect():
         "rank": None,
         "grade": "",
         "notes": "",
+        "nfl_comp": "",
     }
 
 
@@ -485,68 +487,68 @@ HARDCODED_PROSPECTS = [
     # ---- Tier 1 / Round 1 locks ----
     #  name                        pos    school                 ht     wt   40     bench  vert  broad  cone   shuttle grade
     ("Fernando Mendoza",           "QB",  "Indiana",            "6-5", 236, 4.68,  None,  None, None,  None,  None,   "A+"),
-    ("Caleb Downs",                "FS",  "Ohio State",         "6-0", 206, 4.42,  None,  None, None,  None,  None,   "A+"),
-    ("Arvell Reese",               "OLB", "Ohio State",         "6-4", 241, 4.55,  None,  None, None,  None,  None,   "A+"),
-    ("Jeremiyah Love",             "HB",  "Notre Dame",         "6-0", 212, 4.48,  None,  None, None,  None,  None,   "A+"),
-    ("David Bailey",               "DE",  "Texas Tech",         "6-4", 251, 4.60,  None,  None, None,  None,  None,   "A"),
+    ("Caleb Downs",                "FS",  "Ohio State",         "6-0", 206, 4.46,  None,  None, None,  None,  None,   "A+"),
+    ("Arvell Reese",               "OLB", "Ohio State",         "6-4", 241, 4.46,  None,  None, None,  None,  None,   "A+"),
+    ("Jeremiyah Love",             "HB",  "Notre Dame",         "6-0", 212, 4.36,  None,  None, None,  None,  None,   "A+"),
+    ("David Bailey",               "DE",  "Texas Tech",         "6-4", 251, 4.50,  None,  None, None,  None,  None,   "A"),
     ("Francis Mauigoa",            "T",   "Miami (FL)",         "6-6", 329, 5.20,  None,  None, None,  None,  None,   "A"),
-    ("Sonny Styles",               "MLB", "Ohio State",         "6-5", 244, 4.65,  None,  None, None,  None,  None,   "A"),
+    ("Sonny Styles",               "MLB", "Ohio State",         "6-5", 244, 4.46,  None,  None, None,  None,  None,   "A"),
     ("Rueben Bain Jr.",            "DE",  "Miami (FL)",         "6-2", 263, 4.68,  None,  None, None,  None,  None,   "A"),
-    ("Carnell Tate",               "WR",  "Ohio State",         "6-2", 192, 4.42,  None,  None, None,  None,  None,   "A"),
+    ("Carnell Tate",               "WR",  "Ohio State",         "6-2", 192, 4.53,  None,  None, None,  None,  None,   "A"),
     ("Mansoor Delane",             "CB",  "LSU",                "6-0", 187, 4.38,  None,  None, None,  None,  None,   "A"),
     # ---- Tier 2 / Mid Round 1 ----
-    ("Monroe Freeling",            "T",   "Georgia",            "6-7", 315, 5.22,  None,  None, None,  None,  None,   "A"),
-    ("Dillon Thieneman",           "FS",  "Oregon",             "6-0", 201, 4.45,  None,  None, None,  None,  None,   "A-"),
-    ("Spencer Fano",               "T",   "Utah",               "6-6", 311, 5.18,  None,  None, None,  None,  None,   "A-"),
+    ("Monroe Freeling",            "T",   "Georgia",            "6-7", 315, 4.93,  None,  None, None,  None,  None,   "A"),
+    ("Dillon Thieneman",           "FS",  "Oregon",             "6-0", 201, 4.35,  None,  None, None,  None,  None,   "A-"),
+    ("Spencer Fano",               "T",   "Utah",               "6-6", 311, 4.91,  None,  None, None,  None,  None,   "A-"),
     ("Keldric Faulk",              "DE",  "Auburn",             "6-5", 253, 4.65,  None,  None, None,  None,  None,   "A-"),
     ("Ty Simpson",                 "QB",  "Alabama",            "6-1", 211, 4.62,  None,  None, None,  None,  None,   "A-"),
     ("Makai Lemon",                "WR",  "USC",                "5-11",192, 4.38,  None,  None, None,  None,  None,   "A-"),
-    ("Kenyon Sadiq",               "TE",  "Oregon",             "6-3", 241, 4.60,  None,  None, None,  None,  None,   "A-"),
+    ("Kenyon Sadiq",               "TE",  "Oregon",             "6-3", 241, 4.39,  None,  None, None,  None,  None,   "A-"),
     ("Jermod McCoy",               "CB",  "Tennessee",          "6-1", 188, 4.42,  None,  None, None,  None,  None,   "A-"),
-    ("Omar Cooper Jr.",            "WR",  "Indiana",            "6-0", 199, 4.45,  None,  None, None,  None,  None,   "A-"),
-    ("Anthony Hill Jr.",           "MLB", "Texas",              "6-2", 238, 4.62,  None,  None, None,  None,  None,   "A-"),
+    ("Omar Cooper Jr.",            "WR",  "Indiana",            "6-0", 199, 4.42,  None,  None, None,  None,  None,   "A-"),
+    ("Anthony Hill Jr.",           "MLB", "Texas",              "6-2", 238, 4.51,  None,  None, None,  None,  None,   "A-"),
     # ---- Tier 3 / Late Round 1 – Early Round 2 ----
     ("Olaivavega Ioane",           "G",   "Penn State",         "6-4", 325, 5.25,  None,  None, None,  None,  None,   "B+"),
     ("KC Concepcion",              "WR",  "Texas A&M",          "6-0", 196, 4.45,  None,  None, None,  None,  None,   "B+"),
-    ("Eli Stowers",                "TE",  "Vanderbilt",         "6-4", 239, 4.65,  None,  None, None,  None,  None,   "B+"),
+    ("Eli Stowers",                "TE",  "Vanderbilt",         "6-4", 239, 4.51,  None,  None, None,  None,  None,   "B+"),
     ("Peter Woods",                "DT",  "Clemson",            "6-4", 300, 5.05,  None,  None, None,  None,  None,   "B+"),
     ("Avieon Terrell",             "CB",  "Clemson",            "5-11",188, 4.40,  None,  None, None,  None,  None,   "B+"),
     ("Jordyn Tyson",               "WR",  "Arizona State",      "6-2", 205, 4.45,  None,  None, None,  None,  None,   "B+"),
-    ("Kadyn Proctor",              "T",   "Alabama",            "6-7", 320, 5.22,  None,  None, None,  None,  None,   "B+"),
-    ("Jadarian Price",             "HB",  "Notre Dame",         "5-10",200, 4.45,  None,  None, None,  None,  None,   "B+"),
-    ("Blake Miller",               "T",   "Clemson",            "6-6", 310, 5.20,  None,  None, None,  None,  None,   "B+"),
+    ("Kadyn Proctor",              "T",   "Alabama",            "6-7", 320, 5.21,  None,  None, None,  None,  None,   "B+"),
+    ("Jadarian Price",             "HB",  "Notre Dame",         "5-10",200, 4.49,  None,  None, None,  None,  None,   "B+"),
+    ("Blake Miller",               "T",   "Clemson",            "6-6", 310, 5.04,  None,  None, None,  None,  None,   "B+"),
     ("Kayden McDonald",            "DT",  "Ohio State",         "6-3", 295, 5.10,  None,  None, None,  None,  None,   "B+"),
-    ("Cashius Howell",             "DE",  "Texas A&M",          "6-4", 250, 4.62,  None,  None, None,  None,  None,   "B+"),
+    ("Cashius Howell",             "DE",  "Texas A&M",          "6-4", 250, 4.59,  None,  None, None,  None,  None,   "B+"),
     ("Zion Young",                 "DE",  "Missouri",           "6-4", 245, 4.62,  None,  None, None,  None,  None,   "B+"),
     # ---- Tier 4 / Round 2 ----
     ("Caleb Banks",                "DT",  "Florida",            "6-3", 295, 5.10,  None,  None, None,  None,  None,   "B"),
     ("Gabe Jacas",                 "DE",  "Illinois",           "6-4", 250, 4.65,  None,  None, None,  None,  None,   "B"),
-    ("A.J. Haulcy",                "SS",  "LSU",                "6-1", 205, 4.48,  None,  None, None,  None,  None,   "B"),
+    ("A.J. Haulcy",                "SS",  "LSU",                "6-1", 205, 4.52,  None,  None, None,  None,  None,   "B"),
     ("Denzel Boston",              "WR",  "Washington",         "6-2", 210, 4.42,  None,  None, None,  None,  None,   "B"),
-    ("Emmanuel Pregnon",           "G",   "Oregon",             "6-5", 315, 5.22,  None,  None, None,  None,  None,   "B"),
-    ("Jacob Rodriguez",            "OLB", "Texas Tech",         "6-3", 240, 4.60,  None,  None, None,  None,  None,   "B"),
+    ("Emmanuel Pregnon",           "G",   "Oregon",             "6-5", 315, 5.21,  None,  None, None,  None,  None,   "B"),
+    ("Jacob Rodriguez",            "OLB", "Texas Tech",         "6-3", 240, 4.57,  None,  None, None,  None,  None,   "B"),
     ("Keionte Scott",              "CB",  "Miami (FL)",         "6-0", 188, 4.40,  None,  None, None,  None,  None,   "B"),
     ("Garrett Nussmeier",          "QB",  "LSU",                "6-3", 218, 4.65,  None,  None, None,  None,  None,   "B"),
     ("Harold Perkins Jr.",         "OLB", "LSU",                "6-3", 235, 4.55,  None,  None, None,  None,  None,   "B"),
     ("Christen Miller",            "DT",  "Georgia",            "6-4", 295, 5.08,  None,  None, None,  None,  None,   "B"),
-    ("Max Iheanachor",             "T",   "Arizona State",      "6-5", 310, 5.20,  None,  None, None,  None,  None,   "B"),
-    ("Skyler Bell",                "WR",  "Connecticut",        "6-2", 195, 4.42,  None,  None, None,  None,  None,   "B"),
+    ("Max Iheanachor",             "T",   "Arizona State",      "6-5", 310, 4.91,  None,  None, None,  None,  None,   "B"),
+    ("Skyler Bell",                "WR",  "Connecticut",        "6-2", 195, 4.40,  None,  None, None,  None,  None,   "B"),
     ("Genesis Smith",              "SS",  "Arizona",            "6-0", 200, 4.48,  None,  None, None,  None,  None,   "B"),
-    ("Mike Washington Jr.",        "HB",  "Arkansas",           "5-11",205, 4.52,  None,  None, None,  None,  None,   "B"),
-    ("Sam Roush",                  "TE",  "Stanford",           "6-5", 245, 4.68,  None,  None, None,  None,  None,   "B"),
+    ("Mike Washington Jr.",        "HB",  "Arkansas",           "5-11",205, 4.33,  None,  None, None,  None,  None,   "B"),
+    ("Sam Roush",                  "TE",  "Stanford",           "6-5", 245, 4.70,  None,  None, None,  None,  None,   "B"),
     ("Connor Lew",                 "C",   "Auburn",             "6-4", 305, 5.20,  None,  None, None,  None,  None,   "B"),
     # ---- Tier 5 / Round 2-3 ----
     ("Richard Janvrin",            "OLB", "Cincinnati",         "6-3", 235, 4.62,  None,  None, None,  None,  None,   "B-"),
-    ("Malachi Lawrence",           "DE",  "UCF",                "6-4", 248, 4.65,  None,  None, None,  None,  None,   "B-"),
+    ("Malachi Lawrence",           "DE",  "UCF",                "6-4", 248, 4.52,  None,  None, None,  None,  None,   "B-"),
     ("Trey Zuhn III",              "T",   "Texas A&M",          "6-5", 315, 5.22,  None,  None, None,  None,  None,   "B-"),
-    ("Kamari Ramsey",              "SS",  "USC",                "5-11",195, 4.48,  None,  None, None,  None,  None,   "B-"),
-    ("Jake Golday",                "OLB", "Cincinnati",         "6-3", 240, 4.65,  None,  None, None,  None,  None,   "B-"),
-    ("Chandler Rivers",            "CB",  "Duke",               "5-11",185, 4.42,  None,  None, None,  None,  None,   "B-"),
+    ("Kamari Ramsey",              "SS",  "USC",                "5-11",195, 4.47,  None,  None, None,  None,  None,   "B-"),
+    ("Jake Golday",                "OLB", "Cincinnati",         "6-3", 240, 4.62,  None,  None, None,  None,  None,   "B-"),
+    ("Chandler Rivers",            "CB",  "Duke",               "5-11",185, 4.40,  None,  None, None,  None,  None,   "B-"),
     ("Josh Josephs",               "DE",  "Tennessee",          "6-3", 250, 4.68,  None,  None, None,  None,  None,   "B-"),
-    ("Bryce Lance",                "WR",  "North Dakota State", "6-0", 190, 4.42,  None,  None, None,  None,  None,   "B-"),
-    ("Jake Slaughter",             "C",   "Florida",            "6-4", 305, 5.22,  None,  None, None,  None,  None,   "B-"),
-    ("Jalen Farmer",               "G",   "Kentucky",           "6-4", 305, 5.25,  None,  None, None,  None,  None,   "B-"),
-    ("Chris Johnson",              "CB",  "San Diego State",    "5-10",185, 4.42,  None,  None, None,  None,  None,   "B-"),
+    ("Bryce Lance",                "WR",  "North Dakota State", "6-0", 190, 4.34,  None,  None, None,  None,  None,   "B-"),
+    ("Jake Slaughter",             "C",   "Florida",            "6-4", 305, 5.10,  None,  None, None,  None,  None,   "B-"),
+    ("Jalen Farmer",               "G",   "Kentucky",           "6-4", 305, 4.93,  None,  None, None,  None,  None,   "B-"),
+    ("Chris Johnson",              "CB",  "San Diego State",    "5-10",185, 4.40,  None,  None, None,  None,  None,   "B-"),
     ("Isaiah Bond",                "WR",  "Texas",              "6-0", 185, 4.40,  None,  None, None,  None,  None,   "B-"),
     # ---- Tier 6 / Round 3-4 ----
 
@@ -572,6 +574,159 @@ HARDCODED_PROSPECTS = [
 ]
 # fmt: on
 
+# NFL player comparisons sourced from ESPN, CBS, WalterFootball, Bleacher Report
+NFL_COMPS = {
+    "Fernando Mendoza":   "Jared Goff — high-accuracy timing passer, elite awareness, average arm strength",
+    "Caleb Downs":        "Minkah Fitzpatrick — versatile coverage safety, elite ball skills and IQ",
+    "Arvell Reese":       "Isaiah Simmons / Tremaine Edmunds — athletic hybrid LB with coverage range",
+    "Jeremiyah Love":     "Bijan Robinson — three-down back with elite vision, elusiveness, and receiving",
+    "Sonny Styles":       "Kyle Hamilton — big hybrid safety/LB, elite coverage, versatile alignment",
+    "Carnell Tate":       "Tee Higgins / Chris Godwin — big, physical downfield receiver with contested catch ability",
+    "Dillon Thieneman":   "Harrison Smith — cerebral instincts-based safety, elite ball-hawking and football IQ",
+    "Keldric Faulk":      "Cameron Jordan — powerful versatile DE with power and finesse pass-rush repertoire",
+    "Makai Lemon":        "Amon-Ra St. Brown — precise route runner, high awareness, slot-to-outside versatility",
+    "Peter Woods":        "Grady Jarrett — quick, disruptive interior DT, finesse rusher with burst",
+    "Harold Perkins Jr.": "Micah Parsons — explosive pass-rush specialist, elite motor and first-step quickness",
+    "Rueben Bain Jr.":    "Brandon Graham — compact, high-motor undersized DE with diverse pass-rush moves",
+    "Garrett Nussmeier":  "Baker Mayfield — aggressive gunslinger with arm talent and competitive drive",
+    "Anthony Hill Jr.":   "Devin White — athletic MLB with sideline-to-sideline range and blitz ability",
+    "Jacob Rodriguez":    "Quay Walker — long athletic LB, physical in run defense, developing coverage",
+    "Mansoor Delane":     "Marshon Lattimore — press coverage CB with elite athleticism and ball skills",
+    "Chandler Rivers":    "Darius Slay — quick, smart zone corner with good anticipation",
+    "Kenyon Sadiq":       "Dalton Kincaid — receiving-first TE with route running and YAC ability",
+}
+
+# Scouting notes sourced from ESPN, CBS, PFF, Bleacher Report, WalterFootball, Steelers Depot
+HARDCODED_NOTES: dict[str, str] = {
+    "Fernando Mendoza": "Elite accuracy and processing with a quick release and high football IQ; consistently layers timing throws into tight windows. Heisman-caliber passer with superior awareness and pocket command. Not a scrambler or elite arm talent; can struggle when heavy pressure collapses the pocket quickly.",
+    "Caleb Downs": "Elite football IQ and play recognition allow him to be a versatile chess piece aligned as a free safety or near the line. Exceptional ball skills and closing burst; projected as a generational safety talent. Aggressive style can lead to over-pursuit; best used in a hybrid role.",
+    "Arvell Reese": "Explosive OLB/EDGE hybrid with elite athleticism, closing speed, and violent hand usage. Effective in coverage from the slot and at the second level with his safety background translating to the LB role. Still developing a refined pass-rush counter plan and man-coverage consistency against top route runners.",
+    "Jeremiyah Love": "Elite vision and patience behind the line with decisive one-cut ability and consistent contact balance. Contact-breaking spin moves and power-through-contact ability make him a three-down threat. Pass protection technique still developing; college workload was limited.",
+    "David Bailey": "Elite first-step burst widely considered among the best in the 2026 class; get-off looks almost offsides and forces immediate protection adjustments. Deep pass rush toolkit including ghost, rip, spin, and long-arm moves that he chains effectively. Undersized at 251 lbs; run defense and anchoring need improvement for every-down role.",
+    "Francis Mauigoa": "Devastating hand punch with elite power and mauler mentality as a run blocker; finishes with knock-back force and sustains through the whistle. Strong pass-blocking anchor nullifies bull rushers; active independent hands disrupt rush timing. Foot quickness against speed rushers is a limitation; pad level can rise exposing inside moves.",
+    "Sonny Styles": "Safety-to-LB hybrid with rare size (6'5\", 244 lbs) and elite athleticism (4.46 40, 43.5\" vert); sideline-to-sideline range and fluid hips give him zone coverage dominance. Nearly zero missed tackles in 2025 and effective coverage against TEs and RBs in man. Still refining block deconstruction and processing against NFL misdirection after transitioning from safety.",
+    "Rueben Bain Jr.": "Technical pass rusher with a deep arsenal including euro step, cross chop, rip, spin, and bull rush; finishes plays with a relentless high motor. Power and lower-body strength allow him to convert speed to power and anchor against the run. Short arm length (30 7/8\") limits his bend and arc radius; needs to improve gap discipline and finishing.",
+    "Carnell Tate": "Advanced route runner who manipulates DBs with tempo changes, sharp breaks, and minimal wasted motion; natural hands catcher with nearly zero career drops. Sells vertical stems effectively to create open intermediate routes; consistent route tree from slot or outside. Not an elite speed burner (4.53 40); can struggle against physical press coverage that disrupts release timing.",
+    "Mansoor Delane": "Elite press coverage corner described as sticky in man with quick, patient footwork and physicality at the line. Opportunistic playmaker with consistent ball skills (multiple INTs and PBUs at LSU); attacks the football at the catch point. Wrestling background contributes balance and toughness; occasional eye-discipline lapses in zone and moderate length are minor concerns.",
+    "Monroe Freeling": "Elite athletic profile for OT with 84\" wingspan, quick feet (4.93 40), and basketball-background movement skills. Advanced pass blocker who mirrors speed rushers and handles stunts with high IQ. Run blocking needs refinement; can play too high losing leverage and overextend when attempting to seal defenders.",
+    "Dillon Thieneman": "Exceptional football IQ and ball-hawking instincts with 8 career INTs; reads QBs and diagnoses plays before the snap like a veteran. Explosive athlete (4.35 40, 41\" vertical) with sideline-to-sideline range capable of playing centerfield or down in the box. Can be overaggressive leading to over-pursuit; not elite in short-area man coverage against the quickest slot receivers.",
+    "Spencer Fano": "Elite run blocker with the highest FBS PFF run grade (93.6) among tackles; explosive at point of attack, generates serious displacement, and excels on zone schemes. 0 sacks allowed in 2025; quick feet and excellent second-level mobility. Needs more functional strength to anchor against NFL power rushers and improve punch timing in pass protection.",
+    "Keldric Faulk": "Power-based disruptor with elite length (34 3/8\" arms) and a devastating bull rush; dominant run defender who routinely seals the edge. Can align at multiple positions and shows rip and swim hand moves. Lacks elite first-step burst or bend; finesse pass rush counter moves are still developing.",
+    "Ty Simpson": "Smart pocket passer with a quick-whip release, above-average arm, and strong pre-snap processing; set Alabama record for lowest career interception percentage. Manipulates defenses with eye movement and delivers with anticipation on timing routes. Deep ball accuracy is inconsistent; not a dynamic scrambler; limited to one year as primary starter.",
+    "Makai Lemon": "Elite route-running technician with precise footwork, sharp breaks, and understanding of leverage and spacing; dangerous from slot and outside. Dynamic YAC threat (21 forced missed tackles in 2025) with contact balance and vision after the catch. Lacks elite top-end vertical speed; physical press corners can disrupt release timing.",
+    "Kenyon Sadiq": "Explosive receiving TE with elite athleticism (4.39 40, 43.5\" vertical) that creates matchup nightmares for LBs and safeties. Aggressive and effective blocker with strong effort and finishing mentality. Route breaks need sharpening for separation in man coverage; raw in-line blocking technique against power defensive ends.",
+    "Jermod McCoy": "Elite man-coverage corner with advanced mirroring ability and press-man mastery; allowed only 10 catches for 168 yards in man coverage in 2024. Outstanding ball skills with 6 INTs and 16 PBUs in two seasons; 77\" wingspan helps contest at catch point. Missed 2025 season with ACL injury; recovery is the primary concern for draft stock.",
+    "Omar Cooper Jr.": "Physical, YAC-heavy receiver with explosive burst, toughness, and running-back-like contact balance after the catch. Quick feet and nuanced route stems create separation via technique and speed variation. Route tree somewhat limited in college's RPO-heavy system; needs to prove consistency against physical press corners at the NFL level.",
+    "Anthony Hill Jr.": "Elite athlete with sideline-to-sideline range (4.51 40), explosive blitz burst, and very low missed tackle rate (<5% in 2025). Outstanding run defender with quick trigger and perimeter pursuit; natural leader and signal-caller. Zone coverage instincts can lag; can over-pursue against misdirection and is still developing block-deconstruction technique.",
+    "Olaivavega Ioane": "Powerful interior guard with a strong base, natural anchor against bull rushers, and good hand-fighting ability. Effective finisher in the run game with above-average grip strength and sustain. Athleticism for pulling and movement blocking is limited; technique needs refinement in complex pass-protection assignments.",
+    "KC Concepcion": "Versatile receiver with solid route running, reliable hands, and good understanding of spacing against zone coverage. Creates separation with footwork and timing rather than elite burst. Needs to develop after-catch yards and consistency against physical press corners; route tree still growing at the NFL level.",
+    "Eli Stowers": "Athletic dual-threat TE with competent receiving ability and enough athleticism to create mismatches. Willing and capable blocker with effort. Needs to refine route breaks for consistent separation in man coverage; must add blocking strength to become a complete in-line option.",
+    "Peter Woods": "Elite first-step burst for interior DL; routinely the first lineman upfield and forces protection adjustments. Violent hands, tight hand usage, and ability to convert speed to power; posted 9 sacks and 14 TFLs in his best season. Needs to develop a more complete pass-rush counter plan and maintain better pad level consistency.",
+    "Avieon Terrell": "Excellent zone awareness, fluid hip transitions, and versatile alignment ability (outside, slot, and blitzer). Outstanding forced-fumble producer (8 career FFs) and consistent at the catch point. Slight frame (~5'11\", 188 lbs) can be outmuscled by large receivers; needs to develop press strength against elite physical WRs.",
+    "Jordyn Tyson": "Elite route runner with sudden burst, sharp breaks, and well-developed full route tree; especially dangerous at all three levels. Reliable hands and catch radius; YAC ability with vision and contact balance. Three consecutive seasons with significant injuries (knee, collarbone, hamstring) are primary concern; needs to add strength for press coverage.",
+    "Kadyn Proctor": "Physically massive tackle (6'7\", 352 lbs) with elite anchor strength against bull rushers; nearly immovable when set with a wide base. Powerful hands and excellent grip allow him to control defenders throughout plays. Upright play style limits power transfer; can overset outside exposing inside counter moves.",
+    "Jadarian Price": "Elite vision and patience to set up blocks with decisive cuts and strong burst through gaps; elite kick return production (FBS-leading 37.5 yard avg). Contact balance and acceleration allow big-play runs. Pass protection technique is developmental; limited college receiving usage (15 career receptions) leaves that skill unproven.",
+    "Blake Miller": "Athletic offensive tackle with a solid technique foundation and good pass protection awareness. Reasonable pass set quickness and hand fighting ability. Needs to add lower-body strength and anchor for power rushers; run blocking consistency needs improvement at the next level.",
+    "Kayden McDonald": "Athletic interior DT with a quick first step and ability to penetrate one-gap schemes. Strong run defender with good instincts and awareness. Pass rush repertoire needs development; needs to generate more consistent interior disruption and sack production.",
+    "Cashius Howell": "Athletic edge rusher with good first-step quickness and closing speed; can align at multiple pass-rush spots. Shows improved hand usage on pass rush reps. Run defense technique is raw; needs to develop consistent counters and a more complete rush plan.",
+    "Zion Young": "Motor-driven pass rusher with good bend and leverage off the edge; relentless effort on every snap. Has the athletic base to develop multiple rush moves. Power rush is limited; needs to develop counter moves and add strength to hold up in run defense.",
+    "Caleb Banks": "Disruptive interior DT with a strong motor and good gap-shooting penetration ability. Consistent effort and run-stopping effectiveness. Pass rush production has been limited; needs to develop a more varied rush plan with better counters.",
+    "Gabe Jacas": "Long EDGE rusher with high effort and strong hands; shows power rush ability and the ability to hold the point of attack. Good motor and competitive toughness. Raw pass-rush technique overall; needs to develop speed rush and effective counters against NFL tackles.",
+    "A.J. Haulcy": "Physical safety with strong run support skills and aggressive downhill tackling approach. Good zone coverage awareness and ability to deliver a hit. Man coverage range is limited in deep zones; needs to develop more consistent ball production and man-coverage technique.",
+    "Denzel Boston": "Big-bodied X receiver (6'4\", 210 lbs) with elite catch radius, body control, and strong contested catch ability; 20 TDs in two seasons reflects red zone value. Surprising route efficiency for size with sharp in-breakers and understanding of soft zones. Lacks top-end speed (approx. 4.6 40) for consistent separation; needs polished release against press corners.",
+    "Emmanuel Pregnon": "Athletic interior guard with solid technique and good IQ in pass protection; handles stunts and line games effectively. Above-average movement ability for a guard with pulling and second-level athleticism. Needs to add anchor power for down-blocks and double-team situations at the NFL level.",
+    "Jacob Rodriguez": "Long, physical LB from Texas Tech with aggressive run-defense presence and developing pass-rush ability. Physical in run fits with active hands and strong tackling. Coverage technique is still raw; needs improvement in man-coverage situations and processing route combinations.",
+    "Keionte Scott": "Elite burst and twitchy athleticism from the slot; outstanding blitzer and run defender with aggressive downhill approach. Strong zone instincts, quick reaction, and ability to jump routes. Struggles in man coverage against physical boundary receivers; high missed tackle rate from overpursuit.",
+    "Garrett Nussmeier": "Above-average arm with a quick whip-like release; calm and composed in the pocket with good progression reads. Effective at layering timing throws over the middle and working through progressions pre-snap. Accuracy under pressure is inconsistent; not a dynamic runner; injury history (abdominal) affects mechanics.",
+    "Harold Perkins Jr.": "Game-breaking pass-rush burst with elite first step, closing speed, and dip around the arc; 17 sacks and 35.5 TFLs in college career. Dangerous as a blitzer from multiple alignments with disguise and timing. Undersized at ~235 lbs; needs improved gap discipline and tackling consistency; ACL injury in 2024 is a medical concern.",
+    "Christen Miller": "Powerful interior DT from Georgia with strong run-stopping ability and a commanding physical presence. Good first step and ability to anchor at the line of scrimmage. Pass rush production is limited; needs to develop a more varied rush move portfolio.",
+    "Max Iheanachor": "Athletic tackle prospect from Arizona State with good footwork and pass protection tools. Above-average athleticism for the position with good initial quickness. Needs to add functional anchor strength and refine run-blocking technique for the NFL level.",
+    "Skyler Bell": "Fast and athletic WR from Connecticut with good vertical separation and strong hands for his size. Fluid athlete with the speed to threaten vertically and make plays downfield. Smaller school competition may inflate numbers; needs to demonstrate consistency against elite DBs.",
+    "Genesis Smith": "Versatile safety from Arizona with good range in zone coverage and solid run support. Good athletic profile with zone awareness and willingness to fill. Needs development in man coverage, press situations, and ball production at the NFL level.",
+    "Mike Washington Jr.": "Elite top-end speed (4.33 40) with a downhill one-cut running style and power through contact. Explosive burst to the second level and ability to make big plays when through the line. Pass protection technique is a major development area; ball security has been inconsistent (multiple fumbles).",
+    "Sam Roush": "Athletic TE with good receiving skills and the ability to threaten the seam and find soft zones. Effective run blocker with effort and willingness. Route breaks need refinement for separation in man coverage; needs to add strength to become a consistent in-line blocking option.",
+    "Connor Lew": "Experienced center with solid technique, good snap exchange, and above-average pass protection awareness. Handles stunts and line games with intelligence. Athleticism for pulling scenarios is slightly limited; needs to continue developing anchor against powerful nose tackles.",
+    "Richard Janvrin": "High-effort OLB with solid run-defense instincts and reliable tackling in tight spaces. Good football IQ and positioning in run fits. Pass rush and coverage skills are limited; not ideal for every-down roles in modern sub-package schemes.",
+    "Malachi Lawrence": "Athletic DE from UCF with a good motor and developing pass-rush tools. Strong effort level and run-containment ability. Smaller school competition is a concern; needs to prove consistency and power against higher-level offensive linemen.",
+    "Trey Zuhn III": "Big offensive tackle with good length and pass protection potential. Above-average size and arm length provide a natural edge in alignment. Footwork consistency needs refinement; anchor strength against bull rushers needs to improve for NFL-level action.",
+    "Kamari Ramsey": "Versatile safety from USC with zone coverage instincts and solid run support ability. Good athletic base and awareness in post-snap reads. Needs to develop ball production and man-coverage consistency against NFL-caliber routes.",
+    "Jake Golday": "Athletic OLB from Cincinnati with good pass-rush production and solid run-defense ability. Effective motor and quickness off the snap. Coverage skills are still developing; needs to improve in zone assignments and man coverage for three-down value.",
+    "Chandler Rivers": "Quick, instinctive CB from Duke with good zone anticipation and route recognition ability. Short-area burst helps him close on the ball. Undersized against big physical receivers; press coverage technique needs development; needs to show he can handle elite WRs.",
+    "Josh Josephs": "Athletic DE from Tennessee with developing pass-rush tools and a good motor. Shows flashes of quick hands and ability to defeat blocks. Consistency across full games is a concern; needs to develop a deeper rush repertoire and add play strength.",
+    "Bryce Lance": "Elite speed burner (4.34 40) from North Dakota State with explosive vertical separation ability and reliable hands. Natural deep-ball tracker who quickly creates separation with acceleration. Small school competition concern; route tree and overall polish need development against high-level competition.",
+    "Jake Slaughter": "Experienced center from Florida with solid technique, good snap-to-handoff consistency, and NFL-ready football IQ. Reliable anchor and able to handle pass-protection assignments cleanly. Limited athleticism for pulling or reaching defenders in space; center-only role projection.",
+    "Jalen Farmer": "Athletic guard from Kentucky with good footwork and above-average position athleticism. Mobile in pass sets and capable of climbing to the second level. Needs to add anchor strength for power blockers; technique needs refinement in sustained run blocks.",
+    "Chris Johnson": "Competitive CB from San Diego State with solid man-coverage technique and a high-effort competitive spirit. Quick to read routes and maintain coverage. Smaller school competition concern; athleticism profile may be average by NFL standards.",
+    "Isaiah Bond": "Elite track speed and explosive acceleration (4.39 40); field-stretching vertical threat who consistently creates deep separation. Track background shows in smooth stride and ability to close gaps instantly. Undersized (5'11\", ~180 lbs); struggles against physical press coverage; limited catch radius reduces contested-catch utility.",
+    "Amare Jones": "Long CB from Troy with above-average size and developing man coverage skills. Good frame and reach to contest at the catch point. Raw technique overall; small school competition concern; needs to show improved footwork and hip fluidity.",
+    "Devontez Walker": "Elite deep-threat speed (4.36 40, 21.18 mph top speed) with large catch radius and excellent ball tracking on verticals. Dangerous vertical stretcher who forces coverage adjustments every snap. Route running is stiff at the top of breaking routes; needs development of full route tree for varied NFL usage.",
+    "Pierce Quick": "Big offensive tackle from Alabama with developing technique and good size/length potential. Physical build provides the raw materials for an NFL starter. Raw footwork and technique need significant refinement; not a finished product and will require developmental patience.",
+    "Aaron Beavers": "Physical DE from Ole Miss with strong run-containment ability and a good motor. Effective power rush and solid edge-setting skills. Pass rush finesse and counter moves are limited; sack production needs to improve for impact at the next level.",
+    "Malachi Moore": "Elite zone instincts and versatile alignment ability (hybrid corner/safety) from Alabama's complex Saban system; strong play recognition and football IQ. Consistent, technical tackler with very low missed tackle rate and leadership ability. Limited top-end speed; not a dominant run-stopper against power runners.",
+    "Luke Surline": "Athletic TE from Utah State with good receiving ability and the athleticism to attack zone seams. Capable blocker who competes with effort. Blocking technique against power defensive ends needs development; not a dominant in-line blocker at the NFL level.",
+    "Landon Donovan": "Experienced center from Oklahoma with good technique and solid football awareness. Reliable anchor and competent in pass-protection assignments. Athleticism is average; limited as a puller or reach blocker in spread zone schemes; projects as a center-only prospect.",
+    "Beau Pribula": "True dual-threat QB with elite mobility and improving accuracy (67.4% completion rate in 2025). Red zone and short-yardage specialist with the athleticism to make off-schedule plays. Arm strength is moderate; limited high-volume starting experience at the highest level of competition.",
+    "Ben Minich": "Very long tackle (6'8\") whose rare arm length and size provide a natural physical advantage. Good base athleticism from Penn State. Raw technique with inconsistent footwork; weight management concern; hand usage needs to improve for pass protection refinement.",
+    "Braedon Bowman": "Athletic guard from Clemson with a good technique foundation and solid mobility for the position. Good footwork in pass sets. Needs to add anchor strength and power for run blocking at the NFL level.",
+    "Jaylen McCollough": "Strong zone coverage safety with disciplined deep coverage instincts and solid ball skills (4 INTs as NFL rookie). Reliable, clean tackler with good technique and awareness. Run defense physicality is average at the NFL level; not a box enforcer by nature.",
+    "Walter Nolen": "Elite first-step burst and explosive interior penetration ability; routinely the first DL upfield off the snap. Good lateral agility and versatility to align at 3-tech or 4i. Can play too high losing leverage; inconsistent run defense when washed out; needs to improve pass-rush counter development.",
+    "Michael Pratt": "Touch-accurate pocket passer with strong leadership and proven winner at Tulane (Cotton Bowl victory). Good timing and anticipation on middle-of-field throws with improving mechanics. Arm strength is below average; not a dynamic athlete; struggles with accuracy under complex pressure schemes.",
+    "Kameron Johnson": "Big-bodied WR (6'4\", 205 lbs) with size, athleticism, and catch radius to win in contested situations. Physical downfield presence and potential red zone threat. Route tree is limited; needs significant development in separation and route-running precision at the NFL level.",
+    "Isaiah Iton": "Athletic DE from Washington with a good motor and developing pass-rush tools. Shows quickness and burst off the snap. Needs to add play strength and power to hold up in run defense; pass-rush plan needs development for consistency.",
+    "Caden Sterns": "Intelligent safety from Texas with advanced zone awareness and disciplined deep coverage ability. Strong play recognition and ball skills from multiple alignments. Injury history has affected his NFL career; long-term durability and whether he regains full athleticism are questions.",
+    "Dylan Laube": "Outstanding pass-catching back with elite route running for the position and soft, reliable hands; 68 receptions for 699 yards in his final season. Elite lateral agility, vision, and patience to navigate tight spaces and find cutback lanes. Not a power runner; limited experience in pass protection; small school (New Hampshire) competition is a concern.",
+}
+
+
+# Official 2026 NFL Combine 40-yard dash times (electronic, neutral surface).
+# These take priority over any hardcoded estimate in HARDCODED_PROSPECTS.
+# Source: sharpfootballanalysis.com/analysis/nfl-combine-40-yard-dash-times-2026/
+COMBINE_FORTIES: dict[str, float] = {
+    "Jeremiyah Love":      4.36,
+    "David Bailey":        4.50,
+    "Arvell Reese":        4.46,
+    "Sonny Styles":        4.46,
+    "Carnell Tate":        4.53,
+    "Dillon Thieneman":    4.35,
+    "Spencer Fano":        4.91,
+    "Kenyon Sadiq":        4.39,
+    "Omar Cooper Jr.":     4.42,
+    "Anthony Hill Jr.":    4.51,
+    "Mike Washington Jr.": 4.33,
+    "Sam Roush":           4.70,
+    "Eli Stowers":         4.51,
+    "A.J. Haulcy":         4.52,
+    "Chris Johnson":       4.40,
+    "Chandler Rivers":     4.40,
+    "Jacob Rodriguez":     4.57,
+    "Cashius Howell":      4.59,
+    "Kamari Ramsey":       4.47,
+    "Jake Golday":         4.62,
+    "Bryce Lance":         4.34,
+    "Jadarian Price":      4.49,
+    "Malachi Lawrence":    4.52,
+    "Skyler Bell":         4.40,
+    "Blake Miller":        5.04,
+    "Jalen Farmer":        4.93,
+    "Monroe Freeling":     4.93,
+    "Max Iheanachor":      4.91,
+    "Emmanuel Pregnon":    5.21,
+    "Kadyn Proctor":       5.21,
+    "Jake Slaughter":      5.10,
+    "Caleb Banks":         5.04,
+}
+
+# Pro-day 40-yard dash times for players who were DNP at the combine.
+# Only used when no COMBINE_FORTIES entry exists for the player.
+# Pro-day times are hand-timed and less controlled; do NOT pick the faster of
+# combine vs pro-day — always prefer the combine time.
+PRO_DAY_FORTIES: dict[str, float] = {
+    "Caleb Downs":    4.42,   # Ohio State pro day 3/25/26 (official)
+    "Keionte Scott":  4.33,   # Miami pro day 3/23/26 (confirmed 4.33)
+    "Makai Lemon":    4.48,   # USC pro day (4.48–4.53 range; combine DNP)
+    "Mansoor Delane": 4.36,   # LSU pro day (4.35–4.38 range; combine DNP)
+}
+
 
 def build_hardcoded() -> list[dict]:
     """Convert the hardcoded tuple list to prospect dicts with sequential rank."""
@@ -586,7 +741,17 @@ def build_hardcoded() -> list[dict]:
         p["school"] = school
         p["ht"] = ht
         p["wt"] = wt
-        p["forty"] = forty
+        # Resolve forty: combine (official) > pro day > hardcoded estimate.
+        # Never cherry-pick the faster of two sources; combine always wins.
+        if name in COMBINE_FORTIES:
+            p["forty"] = COMBINE_FORTIES[name]
+            p["forty_source"] = "combine"
+        elif name in PRO_DAY_FORTIES:
+            p["forty"] = PRO_DAY_FORTIES[name]
+            p["forty_source"] = "pro_day"
+        else:
+            p["forty"] = forty
+            p["forty_source"] = "estimate" if forty is not None else None
         p["bench"] = bench
         p["vertical"] = vertical
         p["broad_jump"] = broad_jump
@@ -594,6 +759,12 @@ def build_hardcoded() -> list[dict]:
         p["shuttle"] = shuttle
         p["rank"] = rank
         p["grade"] = grade
+        comp = NFL_COMPS.get(name)
+        if comp:
+            p["nfl_comp"] = comp
+        notes = HARDCODED_NOTES.get(name)
+        if notes:
+            p["notes"] = notes
         prospects.append(p)
     return prospects
 
