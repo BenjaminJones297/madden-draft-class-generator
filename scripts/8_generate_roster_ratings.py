@@ -1,219 +1,124 @@
 """
-Script 8 — Generate deterministic Madden 26 ratings for current NFL roster players.
+Script 8 — Build Madden 26 roster using official ratings + real contract data.
 
-For each player in data/nfl_rosters_2026.json, computes Madden-style attribute ratings
-using a fully deterministic algorithm (no LLM required):
+Reads:
+  data/current_player_ratings_full.json  — official Madden 26 player ratings
+      extracted from the user's .ros file by script 3 (node scripts/3_extract_roster_ratings.js).
+  data/nfl_rosters_2026.json             — current active NFL roster + contract data
+      fetched from nflverse by script 7.
 
-  1. Overall rating  — calibrated from contract AAV using a position-aware log curve.
-     Players with no contract data are rated from position defaults + experience.
-  2. Position-key attributes — scaled proportionally around position defaults.
-  3. Non-position attributes — kept at position defaults.
-  4. Dev trait — determined by overall rating tier.
-  5. Contract fields — mapped to Madden format (cap hit, years left, etc.).
+For every active NFL player:
+  - Looks up the player's official Madden ratings by name match.
+  - Uses those ratings EXACTLY as they appear in the official Madden roster.
+  - Adds real-world contract information (AAV, total value, years) from nflverse/OTC.
+  - Falls back to position defaults ONLY for players not present in the Madden file
+    (e.g. UDFA signings, IR players added after the last roster update).
 
 Output:
   data/roster_players_rated.json
 
 Run:
   python scripts/8_generate_roster_ratings.py
+  (Requires script 3 to have been run first with a valid .ros file.)
 """
 
 import json
-import math
 import os
+import re
 import sys
 from collections import Counter
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+DATA_DIR     = os.path.join(PROJECT_ROOT, "data")
 
 sys.path.insert(0, PROJECT_ROOT)
 from utils.defaults import get_defaults
-from utils.enums import POSITION_KEY_FIELDS, ALL_RATING_FIELDS
+from utils.enums import ALL_RATING_FIELDS
 
-INPUT_FILE  = os.path.join(DATA_DIR, "nfl_rosters_2026.json")
-OUTPUT_FILE = os.path.join(DATA_DIR, "roster_players_rated.json")
-
-# ---------------------------------------------------------------------------
-# Per-position salary benchmarks (2025-26 NFL market values in USD)
-# Format: (min_rookie_aav, top_starter_aav, elite_aav)
-#   min_rookie_aav   -> ~58 OVR  (practice-squad / UDFA)
-#   top_starter_aav  -> ~88 OVR  (Pro Bowl starter)
-#   elite_aav        -> ~97 OVR  (top 3 in NFL at position)
-# ---------------------------------------------------------------------------
-POSITION_SALARY_BENCHMARKS: dict = {
-    "QB":  (  800_000,  35_000_000,  65_000_000),
-    "HB":  (  800_000,   8_000_000,  18_000_000),
-    "FB":  (  800_000,   2_000_000,   5_000_000),
-    "WR":  (  800_000,  15_000_000,  35_000_000),
-    "TE":  (  800_000,  12_000_000,  25_000_000),
-    "T":   (  800_000,  14_000_000,  28_000_000),
-    "G":   (  800_000,  12_000_000,  22_000_000),
-    "C":   (  800_000,  10_000_000,  20_000_000),
-    "DE":  (  800_000,  18_000_000,  32_000_000),
-    "DT":  (  800_000,  12_000_000,  24_000_000),
-    "OLB": (  800_000,  16_000_000,  30_000_000),
-    "MLB": (  800_000,  12_000_000,  22_000_000),
-    "CB":  (  800_000,  14_000_000,  28_000_000),
-    "FS":  (  800_000,  10_000_000,  20_000_000),
-    "SS":  (  800_000,  10_000_000,  20_000_000),
-    "K":   (  800_000,   2_500_000,   7_000_000),
-    "P":   (  800_000,   2_000_000,   5_500_000),
-    "LS":  (  800_000,   1_200_000,   3_000_000),
-}
-
-# Fields that are always fixed (never scaled with overall)
-FIXED_FIELDS: set = {
-    "kickReturn", "stamina", "toughness", "injury", "morale",
-    "personality", "devTrait", "unkRating1",
-}
-
-# Fields eligible for scaling when they are key fields for the position
-SCALABLE_FIELDS: set = {
-    "speed", "acceleration", "agility", "strength", "awareness",
-    "throwPower", "throwAccuracy", "throwAccuracyShort", "throwAccuracyMid",
-    "throwAccuracyDeep", "throwOnTheRun", "throwUnderPressure", "playAction",
-    "breakSack", "tackle", "hitPower", "blockShedding", "finesseMoves",
-    "powerMoves", "pursuit", "zoneCoverage", "manCoverage", "pressCoverage",
-    "playRecognition", "jumping", "catching", "catchInTraffic", "spectacularCatch",
-    "shortRouteRunning", "mediumRouteRunning", "deepRouteRunning", "release",
-    "runBlock", "passBlock", "runBlockPower", "runBlockFinesse",
-    "passBlockPower", "passBlockFinesse", "impactBlocking", "leadBlock",
-    "jukeMove", "spinMove", "stiffArm", "trucking", "breakTackle",
-    "ballCarrierVision", "changeOfDirection", "carrying",
-    "kickPower", "kickAccuracy",
-}
+ROSTER_FILE          = os.path.join(DATA_DIR, "nfl_rosters_2026.json")
+MADDEN_RATINGS_FILE  = os.path.join(DATA_DIR, "current_player_ratings_full.json")
+OUTPUT_FILE          = os.path.join(DATA_DIR, "roster_players_rated.json")
 
 
 # ---------------------------------------------------------------------------
-# Deterministic rating algorithms
+# Name normalisation helpers for fuzzy matching
 # ---------------------------------------------------------------------------
 
-def aav_to_overall(aav: float, pos: str) -> int:
+def _norm(name: str) -> str:
+    """Lower-case, strip punctuation, collapse spaces."""
+    return re.sub(r"[^a-z0-9 ]", "", name.lower()).strip()
+
+
+def build_name_lookup(madden_ratings: dict) -> dict:
     """
-    Map a contract AAV (average annual value in USD) to a Madden overall rating
-    using a logarithmic curve calibrated per position.
-
-    Returns an integer in [55, 99].
+    Build a lookup dict from normalised player name -> Madden rating object.
+    Creates multiple keys per player to handle common name variations:
+      - Exact lowercase key (stored natively)
+      - Normalised key (strips punctuation / extra spaces)
+      - Last-name-first swap  ("Allen Josh" -> "josh allen")
     """
-    benchmarks = POSITION_SALARY_BENCHMARKS.get(pos, POSITION_SALARY_BENCHMARKS["QB"])
-    min_aav, _starter_aav, elite_aav = benchmarks
-
-    aav = max(min_aav * 0.5, min(aav, elite_aav * 1.5))
-
-    log_min   = math.log(max(min_aav, 1))
-    log_elite = math.log(max(elite_aav, 1))
-    log_aav   = math.log(max(aav, 1))
-
-    t = (log_aav - log_min) / max(log_elite - log_min, 1e-9)
-    t = max(0.0, min(1.0, t))
-
-    # Map [0, 1] -> [55, 99]
-    overall = 55 + t * (99 - 55)
-    return int(round(overall))
+    lookup: dict = {}
+    for raw_name, obj in madden_ratings.items():
+        norm = _norm(raw_name)
+        lookup[raw_name.lower()] = obj  # exact lowercase
+        lookup[norm] = obj              # normalised
+    return lookup
 
 
-def experience_bonus(experience: int) -> int:
-    """Small overall bonus for veteran experience when no contract data exists."""
-    if experience <= 0:
-        return 0
-    if experience <= 3:
-        return experience * 2       # +2, +4, +6
-    if experience <= 7:
-        return 6 + (experience - 3) # +7 ... +10
-    if experience <= 12:
-        return 10 - (experience - 7) # +9 ... +5
-    return max(0, 5 - (experience - 12))
-
-
-def estimate_overall_no_contract(pos: str, experience: int) -> int:
-    """Fallback overall when no contract data is available."""
-    defaults = get_defaults(pos)
-    base  = defaults.get("overall", 65)
-    bonus = experience_bonus(experience)
-    return min(99, max(55, base + bonus))
-
-
-def dev_trait_from_overall(overall: int) -> int:
-    """Assign dev trait from overall rating tier."""
-    if overall >= 92:
-        return 3  # XFactor
-    if overall >= 86:
-        return 2  # Star
-    if overall >= 79:
-        return 1  # Impact
-    return 0      # Normal
-
-
-def scale_ratings(pos: str, overall: int) -> dict:
+def find_madden_ratings(player_name: str, lookup: dict) -> dict | None:
     """
-    Build a complete Madden rating dict for a player at *pos* with *overall*.
-
-    Key position attributes are scaled proportionally (0.8x multiplier) around
-    position defaults.  Secondary attributes scale gently (0.3x). Fixed fields
-    are kept at the position default.
+    Try to find official Madden ratings for *player_name* in *lookup*.
+    Attempts:
+      1. Exact lowercase match
+      2. Normalised match (strips punctuation)
+      3. Last-name-first swap  ("C.J. Stroud" -> "cj stroud")
+    Returns the ratings dict, or None if no match found.
     """
-    defaults   = get_defaults(pos)
-    key_fields = set(POSITION_KEY_FIELDS.get(pos, []))
-    default_overall = defaults.get("overall", 65)
-    delta = overall - default_overall
+    # 1. Exact lowercase
+    candidate = player_name.lower()
+    if candidate in lookup:
+        return lookup[candidate]
 
-    ratings: dict = {}
-    for field in ALL_RATING_FIELDS:
-        if field == "overall":
-            ratings[field] = overall
-            continue
+    # 2. Normalised
+    norm = _norm(player_name)
+    if norm in lookup:
+        return lookup[norm]
 
-        if field in FIXED_FIELDS:
-            ratings[field] = defaults.get(field, 0)
-            continue
+    # 3. Handle suffix (Jr., Sr., III …)
+    clean = re.sub(r"\b(jr|sr|ii|iii|iv|v)\.?$", "", norm).strip()
+    if clean and clean in lookup:
+        return lookup[clean]
 
-        base = defaults.get(field, 0)
+    return None
 
-        if field in key_fields and field in SCALABLE_FIELDS:
-            scaled = base + int(round(delta * 0.8))
-            ratings[field] = max(28, min(99, scaled))
-        elif base >= 40 and field in SCALABLE_FIELDS:
-            # Non-key but meaningful field: small adjustment
-            adjusted = base + int(round(delta * 0.3))
-            ratings[field] = max(28, min(99, adjusted))
-        else:
-            ratings[field] = base
 
-    ratings["devTrait"] = dev_trait_from_overall(overall)
-    return ratings
-
+# ---------------------------------------------------------------------------
+# Contract helpers
+# ---------------------------------------------------------------------------
 
 def map_contract_fields(player: dict) -> dict:
     """
-    Convert real-world contract values to Madden contract fields.
-
-    Returns a dict with:
-      contractLength    (total contract years)
-      contractYearsLeft (approximate years remaining)
-      contractBonus     (portion of signing bonus, in dollars)
-      contractSalary    (base salary for current year, in dollars)
+    Convert real-world contract values to Madden contract field equivalents.
     """
-    aav         = player.get("aav", 0) or 0
-    total_value = player.get("total_contract_value", 0) or 0
-    guaranteed  = player.get("guaranteed", 0) or 0
-    years       = int(player.get("contract_years", 0) or 0)
-    experience  = int(player.get("experience", 0) or 0)
+    aav        = player.get("aav", 0) or 0
+    total      = player.get("total_contract_value", 0) or 0
+    guaranteed = player.get("guaranteed", 0) or 0
+    years      = int(player.get("contract_years", 0) or 0)
 
     if years <= 0:
         years = 1
 
-    # Estimate years remaining (heuristic: assume contract signed ~2 years ago)
+    # Approximate years remaining (heuristic: assume deal was signed ~2 yrs ago)
     years_left = max(1, years - min(years - 1, 2))
 
-    # Signing bonus ~ 50% of guaranteed
+    # Signing bonus ~ 50 % of guaranteed
     signing_bonus = int(guaranteed * 0.5) if guaranteed else 0
 
-    # Base salary for current year ~ (AAV - pro-rated bonus spread)
+    # Base salary for current year
     pro_rated_bonus = signing_bonus // max(years, 1)
     base_salary = int(max(800_000, aav - pro_rated_bonus))
 
@@ -226,37 +131,55 @@ def map_contract_fields(player: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Build a rated player record
+# Fallback ratings (used only when player is not in the Madden file)
 # ---------------------------------------------------------------------------
 
-def rate_player(player: dict) -> dict:
+def fallback_ratings(pos: str) -> dict:
+    """Return position defaults for a player not found in the Madden file."""
+    return dict(get_defaults(pos))
+
+
+# ---------------------------------------------------------------------------
+# Build one rated player record
+# ---------------------------------------------------------------------------
+
+def build_rated_player(player: dict, madden_obj: dict | None) -> dict:
     """
-    Given a raw player dict from nfl_rosters_2026.json, return a fully rated
-    player dict suitable for use in Madden 26.
+    Combine an nflverse roster player with (optionally) their official Madden ratings.
+
+    If *madden_obj* is None the player was not found in the Madden file; position
+    defaults are used instead and a 'ratingsSource' flag is set to 'fallback'.
     """
     pos        = player.get("position", "QB")
-    aav        = player.get("aav", 0) or 0
     experience = int(player.get("experience", 0) or 0)
 
-    # 1. Determine overall
-    if aav > 0:
-        overall = aav_to_overall(aav, pos)
+    # ── Ratings ─────────────────────────────────────────────────────────────
+    if madden_obj is not None:
+        # Official Madden ratings — use as-is, fill any missing fields from defaults
+        defaults = get_defaults(pos)
+        ratings: dict = {}
+        for field in ALL_RATING_FIELDS:
+            if field in madden_obj:
+                ratings[field] = madden_obj[field]
+            else:
+                ratings[field] = defaults.get(field, 0)
+        ratings_source = "madden"
     else:
-        overall = estimate_overall_no_contract(pos, experience)
+        ratings = fallback_ratings(pos)
+        ratings_source = "fallback"
 
-    # 2. Scale all attribute ratings
-    ratings = scale_ratings(pos, overall)
-
-    # 3. Contract Madden fields
+    # ── Contract fields ──────────────────────────────────────────────────────
     contract_fields = map_contract_fields(player)
 
-    # 4. Parse first/last name
+    # ── Name fields ──────────────────────────────────────────────────────────
     first_name = player.get("first_name", "").strip()
     last_name  = player.get("last_name", "").strip()
     if not first_name and not last_name:
-        parts = player.get("player_name", "").split()
+        parts      = player.get("player_name", "").split()
         first_name = parts[0] if parts else ""
         last_name  = " ".join(parts[1:]) if len(parts) > 1 else ""
+
+    aav = player.get("aav", 0) or 0
 
     return {
         "firstName":          first_name,
@@ -278,7 +201,8 @@ def rate_player(player: dict) -> dict:
         "guaranteed":         player.get("guaranteed", 0) or 0,
         # Madden contract fields
         **contract_fields,
-        # Madden ratings
+        # Official Madden ratings (or fallback)
+        "ratingsSource":      ratings_source,
         "ratings":            ratings,
     }
 
@@ -289,63 +213,103 @@ def rate_player(player: dict) -> dict:
 
 def main() -> None:
     print("=" * 60)
-    print("Script 8 — Generate deterministic roster ratings")
+    print("Script 8 — Build roster with official Madden ratings")
     print("=" * 60)
 
-    if not os.path.isfile(INPUT_FILE):
-        print(f"\n✗ Input file not found: {INPUT_FILE}", file=sys.stderr)
+    # ── Load inputs ──────────────────────────────────────────────────────────
+    if not os.path.isfile(ROSTER_FILE):
+        print(f"\n✗ Roster file not found: {ROSTER_FILE}", file=sys.stderr)
         print("  Run script 7 first: python scripts/7_fetch_nfl_roster_and_contracts.py")
         sys.exit(1)
 
-    with open(INPUT_FILE, encoding="utf-8") as fh:
-        players = json.load(fh)
+    if not os.path.isfile(MADDEN_RATINGS_FILE):
+        print(f"\n✗ Madden ratings file not found: {MADDEN_RATINGS_FILE}", file=sys.stderr)
+        print("  Run script 3 first:")
+        print("    node scripts/3_extract_roster_ratings.js --ros /path/to/file.ros")
+        print("  Without a .ros file, player ratings cannot be sourced from Madden.")
+        sys.exit(1)
 
-    print(f"\n  Loaded {len(players):,} players from {os.path.relpath(INPUT_FILE, PROJECT_ROOT)}")
+    with open(ROSTER_FILE, encoding="utf-8") as fh:
+        roster_players = json.load(fh)
 
-    # Rate every player
-    rated: list = []
-    for player in players:
+    with open(MADDEN_RATINGS_FILE, encoding="utf-8") as fh:
+        madden_ratings_raw: dict = json.load(fh)
+
+    print(f"\n  Roster players : {len(roster_players):,}")
+    print(f"  Madden ratings : {len(madden_ratings_raw):,} players in file")
+
+    # ── Build name lookup ─────────────────────────────────────────────────────
+    lookup = build_name_lookup(madden_ratings_raw)
+
+    # ── Rate every player ─────────────────────────────────────────────────────
+    rated:      list = []
+    matched:    int  = 0
+    fallbacks:  int  = 0
+    unmatched_names: list = []
+
+    for player in roster_players:
         try:
-            rated.append(rate_player(player))
-        except Exception as exc:
-            name = player.get("player_name", "?")
-            print(f"  ⚠  Skipped {name}: {exc}", file=sys.stderr)
+            name       = player.get("player_name", "")
+            madden_obj = find_madden_ratings(name, lookup)
 
-    # Sort: by team, then position, then overall descending
+            if madden_obj is not None:
+                matched += 1
+            else:
+                fallbacks += 1
+                unmatched_names.append(
+                    f"  {name} ({player.get('position', '?')}, {player.get('team', '?')})"
+                )
+
+            rated.append(build_rated_player(player, madden_obj))
+        except Exception as exc:
+            n = player.get("player_name", "?")
+            print(f"  ⚠  Skipped {n}: {exc}", file=sys.stderr)
+
+    # ── Sort: team → position → overall descending ────────────────────────────
     rated.sort(key=lambda p: (
         p.get("team", ""),
         p.get("pos", ""),
         -(p["ratings"].get("overall", 0)),
     ))
 
-    # Save output
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+    # ── Save output ───────────────────────────────────────────────────────────
+    os.makedirs(os.path.dirname(OUTPUT_FILE) if os.path.dirname(OUTPUT_FILE) else DATA_DIR,
+                exist_ok=True)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as fh:
         json.dump(rated, fh, indent=2)
 
-    print(f"  Saved {len(rated):,} rated players → {os.path.relpath(OUTPUT_FILE, PROJECT_ROOT)}")
+    # ── Print summary ─────────────────────────────────────────────────────────
+    print("\n" + "=" * 60)
+    print("Summary")
+    print("=" * 60)
+    print(f"  Total players processed : {len(rated):,}")
+    print(f"  Official Madden ratings : {matched:,} (exact match from .ros file)")
+    print(f"  Fallback (pos defaults) : {fallbacks:,} (not found in Madden file)")
 
-    # Summary by position
-    pos_counts = Counter(p["pos"] for p in rated)
+    if unmatched_names:
+        print(f"\n  Players using fallback ratings ({len(unmatched_names)}):")
+        for line in unmatched_names[:30]:
+            print(line)
+        if len(unmatched_names) > 30:
+            print(f"  … and {len(unmatched_names) - 30} more")
+
+    # Per-position rating overview (from Madden-sourced players only)
     ovr_by_pos: dict = {}
     for p in rated:
-        pos = p["pos"]
-        ovr = p["ratings"]["overall"]
-        if pos not in ovr_by_pos:
-            ovr_by_pos[pos] = []
-        ovr_by_pos[pos].append(ovr)
+        if p["ratingsSource"] == "madden":
+            pos = p["pos"]
+            ovr = p["ratings"].get("overall", 0)
+            ovr_by_pos.setdefault(pos, []).append(ovr)
 
-    print("\n" + "=" * 60)
-    print("Rating summary by position")
-    print("=" * 60)
-    for pos in sorted(ovr_by_pos):
-        ovrs = ovr_by_pos[pos]
-        avg  = sum(ovrs) / len(ovrs)
-        top  = max(ovrs)
-        n    = len(ovrs)
-        print(f"  {pos:<4}  n={n:<4}  avg={avg:5.1f}  top={top}")
+    if ovr_by_pos:
+        print("\n  Official-rating overview by position (Madden-sourced only):")
+        for pos in sorted(ovr_by_pos):
+            ovrs = ovr_by_pos[pos]
+            avg  = sum(ovrs) / len(ovrs)
+            top  = max(ovrs)
+            print(f"    {pos:<4}  n={len(ovrs):<4}  avg={avg:5.1f}  top={top}")
 
-    print(f"\n  Total: {len(rated):,} players rated")
+    print(f"\n  Output → {os.path.relpath(OUTPUT_FILE, PROJECT_ROOT)}")
     print("\n✓ Done.")
 
 
