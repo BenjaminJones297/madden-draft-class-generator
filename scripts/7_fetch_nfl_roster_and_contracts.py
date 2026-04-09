@@ -646,7 +646,14 @@ def main() -> None:
     seen: set[tuple] = set()
 
     for row in roster_rows:
-        player_name = (row.get("player_name") or row.get("full_name") or "").strip()
+        # Prefer first_name + last_name when both exist (avoids nflverse player_name mismatches)
+        first = (row.get("first_name") or "").strip()
+        last  = (row.get("last_name")  or "").strip()
+        player_name = (
+            f"{first} {last}".strip()
+            if first and last
+            else (row.get("player_name") or row.get("full_name") or "").strip()
+        )
         if not player_name:
             continue
 
