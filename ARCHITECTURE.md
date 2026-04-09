@@ -933,7 +933,11 @@ services:
       - file-store:/data/files
 
   postgres:
-    image: postgres:16-alpine
+    # Use postgres:16 (Debian) rather than postgres:16-alpine if you plan to
+    # add PostgreSQL extensions (e.g., pgvector for semantic search, pg_trgm
+    # for fuzzy player name matching). Alpine saves ~80MB but lacks some
+    # extension build dependencies. For a plain install, either image works.
+    image: postgres:16
     environment:
       - POSTGRES_DB=madden
       - POSTGRES_USER=madden
@@ -1214,4 +1218,4 @@ These are decisions that only the repo owner can make. Answering them will unblo
 
 ---
 
-*Document maintained in `ARCHITECTURE.md`. Last updated: 2025.*
+*Document maintained in `ARCHITECTURE.md`. Last updated: April 2026.*
