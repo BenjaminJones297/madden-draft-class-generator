@@ -29,7 +29,9 @@
 CLI pipeline (today)                Web Application (target)
 ─────────────────────               ─────────────────────────────────────────
 python run.py --ros …       →       Browser GUI with real-time job progress
-6 numbered scripts          →       Modular service layer + REST API
+python roster_run.py …      →       Roster pipeline launcher in the GUI
+8 numbered scripts /        →       Modular service layer + REST API
+  two CLI orchestrators
 Ollama local only           →       Pluggable LLM (Ollama / OpenAI / Anthropic)
 One .draftclass output      →       Persistent library of draft classes & rosters
 No franchise awareness      →       AI-assisted franchise advisor
@@ -143,6 +145,7 @@ backend/
 ├── config.py                   # Settings (pydantic-settings, reads .env)
 ├── routers/
 │   ├── pipeline.py             # POST /pipeline/run, GET /pipeline/jobs/{id}
+│   ├── roster_pipeline.py      # POST /roster-pipeline/run (scripts 7→3→8)
 │   ├── prospects.py            # CRUD for prospects
 │   ├── draft_classes.py        # CRUD for draft classes
 │   ├── roster.py               # Roster upload + query
@@ -151,12 +154,15 @@ backend/
 │   ├── files.py                # File upload/download (.ros, .draftclass)
 │   └── mut.py                  # MUT endpoints (future)
 ├── services/
-│   ├── pipeline_service.py     # Orchestrates the 6-step pipeline as async tasks
-│   ├── calibration_service.py  # Wraps script 2 logic
-│   ├── prospect_service.py     # Wraps scripts 1, 4
-│   ├── rating_service.py       # Wraps script 5 (LLM calls)
-│   ├── file_service.py         # Wraps Node sidecar calls
-│   ├── franchise_service.py    # Franchise analysis logic
+│   ├── pipeline_service.py       # Orchestrates draft-class pipeline (scripts 1–6) as async tasks
+│   ├── roster_pipeline_service.py# Orchestrates roster pipeline (scripts 7→3→8) as async tasks
+│   ├── calibration_service.py    # Wraps script 2 logic
+│   ├── prospect_service.py       # Wraps scripts 1, 4
+│   ├── rating_service.py         # Wraps script 5 (draft-class LLM calls)
+│   ├── roster_fetch_service.py   # Wraps script 7 (nflverse roster + contract fetch)
+│   ├── roster_rating_service.py  # Wraps script 8 (Madden ratings merge)
+│   ├── file_service.py           # Wraps Node sidecar calls
+│   ├── franchise_service.py      # Franchise analysis logic
 │   ├── llm/
 │   │   ├── base.py             # LLMProvider abstract base
 │   │   ├── ollama_provider.py
@@ -173,6 +179,7 @@ backend/
 │   ├── job_runner.py           # ARQ worker entry point
 │   └── tasks/
 │       ├── pipeline_tasks.py
+│       ├── roster_pipeline_tasks.py
 │       └── franchise_tasks.py
 └── db/
     ├── session.py              # Async SQLAlchemy session
@@ -181,15 +188,24 @@ backend/
 
 ### API endpoint reference
 
-#### Pipeline
+#### Pipeline (draft class — scripts 1–6 via `run.py`)
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/pipeline/run` | Start a full pipeline job. Body: `{ roster_file_id?, model?, prospects_count?, skip_steps? }` |
+| `POST` | `/api/v1/pipeline/run` | Start a full draft-class pipeline job. Body: `{ roster_file_id?, model?, prospects_count?, skip_steps? }` |
 | `GET` | `/api/v1/pipeline/jobs` | List all pipeline jobs with status |
 | `GET` | `/api/v1/pipeline/jobs/{job_id}` | Get job status, progress (0–100), current step, errors |
 | `DELETE` | `/api/v1/pipeline/jobs/{job_id}` | Cancel a running job |
 | `WS` | `/ws/jobs/{job_id}` | WebSocket stream for real-time step progress and log lines |
+
+#### Roster Pipeline (scripts 7 → 3 → 8 via `roster_run.py`)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/roster-pipeline/run` | Fetch current NFL rosters + contracts (script 7), extract official Madden ratings from a `.ros` file (script 3), merge into rated roster (script 8). Body: `{ roster_file_id? }` |
+| `GET` | `/api/v1/roster-pipeline/jobs` | List roster pipeline jobs |
+| `GET` | `/api/v1/roster-pipeline/jobs/{job_id}` | Status + progress for a roster pipeline job |
+| `WS` | `/ws/jobs/{job_id}` | Shared WebSocket endpoint — same protocol as draft-class jobs |
 
 #### Prospects
 
@@ -1059,12 +1075,14 @@ jobs:
 The goal is **zero breakage** of the existing CLI throughout the migration. Each phase is independently shippable.
 
 ### Phase 1: Wrap the CLI in an API (4–6 weeks)
-**Goal:** The 6 pipeline scripts become callable over HTTP. No frontend yet.
+**Goal:** Both pipeline orchestrators (`run.py` and `roster_run.py`) become callable over HTTP. No frontend yet.
 
 ```
-[x] Current state: python run.py
-[ ] Target:        POST /api/v1/pipeline/run  →  returns job_id
-                   GET  /api/v1/pipeline/jobs/{id}  →  returns status
+[x] Current state: python run.py            (draft class — scripts 1–6)
+                   python roster_run.py      (roster — scripts 7→3→8)
+[ ] Target:        POST /api/v1/pipeline/run         →  returns job_id
+                   POST /api/v1/roster-pipeline/run  →  returns job_id
+                   GET  /api/v1/pipeline/jobs/{id}   →  returns status
 ```
 
 1. **Create `backend/` FastAPI app** with minimal structure (config, DB session, router skeletons)
@@ -1073,14 +1091,19 @@ The goal is **zero breakage** of the existing CLI throughout the migration. Each
    - Wrap it with the `LLMProvider` abstraction
    - Replace file I/O with DB writes
 3. **Migrate `scripts/1,4` (Python fetchers)** → `backend/services/prospect_service.py`
-4. **Create Node.js sidecar** (`node-sidecar/`) wrapping scripts 2, 3, 6 as Express endpoints
-5. **Create `backend/services/pipeline_service.py`** — replicates `run.py` orchestration logic but calls service functions instead of subprocess
-6. **Add ARQ worker** + Redis for async execution
-7. **Keep `run.py` working** — it can optionally call the API or continue to call scripts directly (add `--api` flag)
-8. **Add Alembic migrations** for initial schema
-9. **Docker Compose** with postgres + redis + backend + node-sidecar
+4. **Migrate `scripts/7_fetch_nfl_roster_and_contracts.py`** → `backend/services/roster_fetch_service.py`
+5. **Migrate `scripts/8_generate_roster_ratings.py`** → `backend/services/roster_rating_service.py`
+6. **Create Node.js sidecar** (`node-sidecar/`) wrapping scripts 2, 3, 6 as Express endpoints
+   - Script 3 now writes both `current_player_ratings.json` (top-10 per position for calibration)
+     and `current_player_ratings_full.json` (all players, used by script 8 for roster merging)
+7. **Create `backend/services/pipeline_service.py`** — replicates `run.py` orchestration (scripts 1–6)
+8. **Create `backend/services/roster_pipeline_service.py`** — replicates `roster_run.py` orchestration (scripts 7→3→8)
+9. **Add ARQ worker** + Redis for async execution
+10. **Keep `run.py` and `roster_run.py` working** — they can optionally call the API or continue to call scripts directly
+11. **Add Alembic migrations** for initial schema
+12. **Docker Compose** with postgres + redis + backend + node-sidecar
 
-**Deliverable:** `curl -X POST localhost:8000/api/v1/pipeline/run` runs the full pipeline.
+**Deliverable:** `curl -X POST localhost:8000/api/v1/pipeline/run` runs the draft-class pipeline; `curl -X POST localhost:8000/api/v1/roster-pipeline/run` runs the roster pipeline.
 
 ---
 
@@ -1173,10 +1196,12 @@ madden-franchise-manager/
 ├── scripts/                        # LEGACY — kept for CLI use
 │   ├── 1_fetch_combine_and_picks.py
 │   ├── 2_extract_calibration.js
-│   ├── 3_extract_roster_ratings.js
+│   ├── 3_extract_roster_ratings.js   # updated: also writes current_player_ratings_full.json
 │   ├── 4_fetch_2026_prospects.py
 │   ├── 5_generate_ratings.py
-│   └── 6_create_draft_class.js
+│   ├── 6_create_draft_class.js
+│   ├── 7_fetch_nfl_roster_and_contracts.py  # NEW: nflverse roster + contract fetch
+│   └── 8_generate_roster_ratings.py         # NEW: merge Madden ratings + contract data
 │
 ├── utils/                          # LEGACY shared utils (still used by scripts)
 │   ├── enums.py
@@ -1184,7 +1209,8 @@ madden-franchise-manager/
 │   ├── defaults.py
 │   └── visuals_template.js
 │
-├── run.py                          # LEGACY CLI orchestrator (kept working)
+├── run.py                          # LEGACY CLI orchestrator — draft class (scripts 1–6)
+├── roster_run.py                   # LEGACY CLI orchestrator — roster (scripts 7→3→8)
 ├── requirements.txt                # Root-level Python deps (legacy CLI)
 └── package.json                    # Root-level Node deps (legacy CLI)
 ```
