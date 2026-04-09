@@ -4,3 +4,7 @@ lxml>=4.9.0
 ollama>=0.4.0
 tqdm>=4.66.0
 python-dotenv>=1.0.0
+# LangChain — multi-provider LLM support (Ollama, OpenAI, etc.)
+langchain>=0.3.0
+langchain-ollama>=0.2.0
+langchain-openai>=0.3.0

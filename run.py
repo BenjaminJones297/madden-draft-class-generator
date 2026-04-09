@@ -82,6 +82,12 @@ Examples:
   # Use a different Ollama model
   python3 run.py --model llama3:70b
 
+  # Use OpenAI instead of Ollama (requires OPENAI_API_KEY in .env)
+  python3 run.py --provider openai
+
+  # Use Ollama via the LangChain abstraction layer
+  python3 run.py --provider ollama-langchain
+
   # Skip slow fetch steps when data already exists
   python3 run.py --skip-fetch --skip-calibration
 
@@ -105,7 +111,20 @@ Examples:
         "--model",
         metavar="MODEL",
         default=None,
-        help="Ollama model to use (default: llama3:8b, or OLLAMA_MODEL from .env)",
+        help="LLM model to use (default: llama3:8b for Ollama providers, gpt-4o-mini for OpenAI)",
+    )
+    parser.add_argument(
+        "--provider",
+        metavar="PROVIDER",
+        default=None,
+        choices=["ollama", "ollama-langchain", "openai"],
+        help=(
+            "LLM provider for step 5 rating generation "
+            "(default: from LLM_PROVIDER in .env, or 'ollama').\n"
+            "  ollama           — Direct Ollama call (no extra deps)\n"
+            "  ollama-langchain — Ollama via LangChain\n"
+            "  openai           — OpenAI API via LangChain (requires OPENAI_API_KEY)"
+        ),
     )
     parser.add_argument(
         "--out",
@@ -229,7 +248,12 @@ def main() -> int:
     if ros_path:
         ros_path = os.path.expanduser(ros_path)
 
-    model = args.model or dotenv.get("OLLAMA_MODEL") or "llama3:8b"
+    provider = args.provider or dotenv.get("LLM_PROVIDER") or "ollama"
+    # Default model depends on provider
+    if provider == "openai":
+        model = args.model or dotenv.get("OPENAI_MODEL") or "gpt-4o-mini"
+    else:
+        model = args.model or dotenv.get("OLLAMA_MODEL") or "llama3:8b"
     output_dir = args.out or dotenv.get("OUTPUT_DIR") or os.path.join(PROJECT_ROOT, "data", "output")
     output_dir = os.path.expanduser(output_dir)
 
@@ -257,8 +281,10 @@ def main() -> int:
     print("=" * 60)
     print(f"  Python   : {python}")
     print(f"  Node     : {node}")
+    print(f"  Provider : {provider}")
     print(f"  Model    : {model}")
-    print(f"  Ollama   : {ollama_host}")
+    if provider in ("ollama", "ollama-langchain"):
+        print(f"  Ollama   : {ollama_host}")
     print(f"  Output   : {output_dir}")
     if ros_path:
         print(f"  Roster   : {ros_path}")
@@ -378,12 +404,13 @@ def main() -> int:
     # ═══════════════════════════════════════════════════════════════════════
     step = 5
     if args.start_from <= step:
-        print_step_header(step, TOTAL_STEPS, f"Generate ratings via Ollama ({model})")
+        print_step_header(step, TOTAL_STEPS, f"Generate ratings via {provider} ({model})")
         print("  This is the longest step — each prospect requires an LLM call.")
         cmd = [
             python,
             os.path.join(PROJECT_ROOT, "scripts", "5_generate_ratings.py"),
             "--model", model,
+            "--provider", provider,
         ]
         if args.resume:
             cmd.append("--resume")
