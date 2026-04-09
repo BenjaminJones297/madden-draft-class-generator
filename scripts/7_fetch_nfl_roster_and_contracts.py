@@ -36,11 +36,11 @@ RAW_DIR = os.path.join(DATA_DIR, "raw")
 # Source URLs
 # ---------------------------------------------------------------------------
 ROSTER_URL = (
-    "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_current.csv"
+    "https://github.com/nflverse/nflverse-data/releases/download/weekly_rosters/roster_weekly_2025.csv"
 )
 # nflverse contract data (sourced from Over The Cap)
 CONTRACTS_URL = (
-    "https://github.com/nflverse/nflverse-data/releases/download/contracts/contracts_current.csv"
+    "https://github.com/nflverse/nflverse-data/releases/download/contracts/historical_contracts.csv.gz"
 )
 # Over The Cap scraping fallback
 OTC_CONTRACTS_URL = "https://overthecap.com/contracts"
@@ -93,9 +93,11 @@ REQUEST_TIMEOUT = 30  # seconds
 
 def download_csv(url: str, label: str, headers: dict | None = None) -> list[dict] | None:
     """
-    Download a CSV from *url* and return its rows as a list of dicts.
+    Download a CSV (plain or .gz) from *url* and return its rows as a list of dicts.
     Returns None on any error (allows callers to fall back gracefully).
     """
+    import gzip
+
     print(f"\n→ Downloading {label} …")
     print(f"  {url}")
 
@@ -124,7 +126,12 @@ def download_csv(url: str, label: str, headers: dict | None = None) -> list[dict
             chunks.append(chunk)
             bar.update(len(chunk))
 
-    text = b"".join(chunks).decode("utf-8-sig")
+    raw_bytes = b"".join(chunks)
+    # Decompress gzip if needed
+    if url.endswith(".gz"):
+        raw_bytes = gzip.decompress(raw_bytes)
+
+    text = raw_bytes.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
     rows = list(reader)
     print(f"  ✓ {len(rows):,} rows")
@@ -230,11 +237,13 @@ def build_contracts_from_nflverse(rows: list[dict]) -> dict[str, dict]:
 
     Expected nflverse contracts columns (may vary by version):
       player, team, pos, year_signed, years, value, apy, gtd, apy_cap_pct, ...
+    For the historical file, keeps the most recent contract per player.
     """
-    contracts: dict[str, dict] = {}
+    # Collect all rows per player, then keep the most recent year_signed
+    from collections import defaultdict
+    by_player: dict[str, list] = defaultdict(list)
 
     for row in rows:
-        # Try several possible name column keys
         name = (
             row.get("player")
             or row.get("player_name")
@@ -243,6 +252,18 @@ def build_contracts_from_nflverse(rows: list[dict]) -> dict[str, dict]:
         ).strip()
         if not name:
             continue
+        by_player[name.lower()].append(row)
+
+    contracts: dict[str, dict] = {}
+
+    for name_lower, player_rows in by_player.items():
+        # Sort by year_signed descending → pick most recent
+        def _year(r):
+            try:
+                return int(float(r.get("year_signed") or r.get("year") or 0))
+            except (ValueError, TypeError):
+                return 0
+        row = sorted(player_rows, key=_year, reverse=True)[0]
 
         apy   = parse_money(row.get("apy")   or row.get("aav")   or "0")
         total = parse_money(row.get("value")  or row.get("total") or "0")
@@ -254,11 +275,12 @@ def build_contracts_from_nflverse(rows: list[dict]) -> dict[str, dict]:
             years = 0
 
         if apy > 0 or total > 0:
-            contracts[name.lower()] = {
+            contracts[name_lower] = {
                 "aav": apy or (total / max(years, 1)),
                 "total_value": total,
                 "guaranteed": gtd,
                 "contract_years": years,
+                "year_signed": _year(row),
                 "team": row.get("team", ""),
                 "position": row.get("pos", row.get("position", "")),
             }
@@ -313,10 +335,29 @@ def main() -> None:
     # ------------------------------------------------------------------
     # 1. Download current NFL rosters from nflverse
     # ------------------------------------------------------------------
-    roster_rows = download_csv(ROSTER_URL, "roster_current.csv")
+    roster_rows = download_csv(ROSTER_URL, "roster_weekly_2025.csv")
     if not roster_rows:
         print("\n✗ Could not download roster data. Exiting.", file=sys.stderr)
         sys.exit(1)
+
+    # Weekly file contains every week — keep the most recent entry per player+team
+    # (don't filter to the global max week, which would only show Super Bowl teams)
+    if any(r.get("week") for r in roster_rows):
+        from collections import defaultdict
+        latest: dict[tuple, dict] = {}
+        for r in roster_rows:
+            try:
+                wk = int(float(r.get("week") or 0))
+            except (ValueError, TypeError):
+                wk = 0
+            key = (
+                (r.get("player_name") or r.get("full_name") or "").strip().lower(),
+                (r.get("team") or r.get("team_abbr") or "").strip().lower(),
+            )
+            if key not in latest or wk > latest[key][1]:
+                latest[key] = (r, wk)
+        roster_rows = [v[0] for v in latest.values()]
+        print(f"  Deduplicated to most recent week per player: {len(roster_rows):,} rows")
 
     # Save raw roster CSV
     raw_roster_path = os.path.join(RAW_DIR, "roster_current.csv")
@@ -364,9 +405,10 @@ def main() -> None:
         if not player_name:
             continue
 
-        # Status filter: keep active, practice squad, injured reserve
+        # Status filter: keep active (ACT), practice squad (DEV), injured reserve (RES/INA)
+        # Drop cut (CUT), retired (RET), traded-away (TRD/TRC), unknown
         status = (row.get("status") or "").strip().upper()
-        if status in ("", "RET", "UNK", "EXE"):
+        if status in ("", "CUT", "RET", "UNK", "EXE", "TRD", "TRC"):
             continue
 
         # De-duplicate: same player on same team in same season
@@ -377,13 +419,12 @@ def main() -> None:
             continue
         seen.add(key)
 
-        # Normalise position
-        raw_pos = (
-            row.get("position")
-            or row.get("depth_chart_position")
-            or ""
-        ).strip().upper()
-        pos = POSITION_MAP.get(raw_pos, raw_pos) if raw_pos else "QB"
+        # Normalise position: prefer depth_chart_position for specific Madden positions
+        # (nflverse 'position' uses broad groups like DL/OL/LB/DB)
+        dcp = (row.get("depth_chart_position") or "").strip().upper()
+        broad = (row.get("position") or "").strip().upper()
+        raw_pos = dcp if dcp else broad
+        pos = POSITION_MAP.get(raw_pos, POSITION_MAP.get(broad, raw_pos)) if raw_pos else "QB"
 
         # Contract lookup — try exact name, then last+first swap
         contract = contracts.get(player_name.lower(), {})
