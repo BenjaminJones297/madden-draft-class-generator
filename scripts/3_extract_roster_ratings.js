@@ -25,10 +25,15 @@ const Franchise = require('madden-franchise');
 // Constants
 // ---------------------------------------------------------------------------
 
-const OUTPUT_PATH = path.join(__dirname, '..', 'data', 'current_player_ratings.json');
-const ENV_PATH    = path.join(__dirname, '..', '.env');
+const OUTPUT_PATH      = path.join(__dirname, '..', 'data', 'current_player_ratings.json');
+const OUTPUT_FULL_PATH = path.join(__dirname, '..', 'data', 'current_player_ratings_full.json');
+const ENV_PATH         = path.join(__dirname, '..', '.env');
 
-/** Max players kept per position (top N by overall). */
+/**
+ * Max players kept per position in the existing grouped output (used by
+ * script 5 as LLM calibration anchors).  The new full-player output written
+ * to current_player_ratings_full.json has no limit.
+ */
 const TOP_N = 10;
 
 /**
@@ -75,7 +80,7 @@ const FIELD_MAP = {
   runBlockFinesse:      'RunBlockFinesseRating',
   passBlockPower:       'PassBlockPowerRating',
   passBlockFinesse:     'PassBlockFinesseRating',
-  impactBlock:          'ImpactBlockRating',
+  impactBlocking:       ['ImpactBlockRating', 'ImpactBlockingRating'],
   leadBlock:            'LeadBlockRating',
   jukeMove:             'JukeMoveRating',
   spinMove:             'SpinMoveRating',
@@ -92,6 +97,8 @@ const FIELD_MAP = {
   toughness:            'ToughnessRating',
   injury:               'InjuryRating',
   morale:               'MoraleRating',
+  personality:          ['PersonalityGrade', 'PlayerPersonality', 'Personality'],
+  unkRating1:           ['UnkRating1', 'SchemeRating', 'Trait1'],
   // dev trait is a special case (enum string → number), handled separately
 };
 
@@ -299,6 +306,33 @@ function buildPlayerObject(name, overall, positionKeys, record) {
   return obj;
 }
 
+/**
+ * Build a complete player ratings object with ALL fields from FIELD_MAP.
+ * Used for the full-roster lookup file (current_player_ratings_full.json).
+ * @param {string} name      Full player name.
+ * @param {string} position  Position string from the roster file.
+ * @param {import('madden-franchise/FranchiseFileRecord')} record
+ * @returns {Object}
+ */
+function buildFullPlayerObject(name, position, record) {
+  const obj = { name, pos: position };
+
+  for (const [key, franchiseFieldNames] of Object.entries(FIELD_MAP)) {
+    const raw = safeGet(record, franchiseFieldNames);
+    if (raw !== null && raw !== undefined) {
+      const num = Number(raw);
+      if (!isNaN(num)) obj[key] = num;
+    }
+  }
+
+  // devTrait — always include
+  const rawDevTrait = safeGet(record, ['TraitDevelopment', 'DevTrait', 'DevelopmentTrait']);
+  const devTrait    = parseDevTrait(rawDevTrait);
+  obj.devTrait = devTrait !== null ? devTrait : 0;
+
+  return obj;
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -364,7 +398,8 @@ async function main() {
         // ----------------------------------------------------------------
         // 4. Process each record
         // ----------------------------------------------------------------
-        const grouped = {}; // { [posString]: playerObject[] }
+        const grouped    = {}; // { [posString]: playerObject[] }  — existing format
+        const fullByName = {}; // { [lowerName]: fullPlayerObject } — new full lookup
         let active    = 0;
         let skipped   = 0;
 
@@ -402,7 +437,11 @@ async function main() {
             continue;
           }
 
-          // Determine which fields to include for this position
+          // ── Full-player object (all rating fields) for the lookup file ──
+          const fullObj = buildFullPlayerObject(name, position, record);
+          fullByName[name.toLowerCase()] = fullObj;
+
+          // ── Grouped object (position-specific fields) for the LLM file ──
           const positionKeys = POSITION_FIELDS[position];
           if (!positionKeys) {
             // Unrecognized position (e.g. 'NA') — store with base fields only
@@ -423,14 +462,14 @@ async function main() {
         console.log(`    Skipped records          : ${skipped}`);
 
         // ----------------------------------------------------------------
-        // 5. Sort each position by overall desc, keep top N
+        // 5. Sort each position by overall desc, keep top N for LLM file
         // ----------------------------------------------------------------
         for (const pos of Object.keys(grouped)) {
           grouped[pos].sort((a, b) => b.overall - a.overall);
           grouped[pos] = grouped[pos].slice(0, TOP_N);
         }
 
-        resolve(grouped);
+        resolve({ grouped, fullByName });
       } catch (err) {
         reject(err);
       }
@@ -442,19 +481,27 @@ async function main() {
   });
 
   // -----------------------------------------------------------------------
-  // 6. Write output
+  // 6. Write outputs
   // -----------------------------------------------------------------------
+  const { grouped, fullByName } = playersByPosition;
+
   fs.mkdirSync(path.dirname(OUTPUT_PATH), { recursive: true });
-  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(playersByPosition, null, 2));
-  console.log(`\n    Saved → ${OUTPUT_PATH}`);
+
+  // Existing grouped / top-10 file (used by script 5 as LLM anchors)
+  fs.writeFileSync(OUTPUT_PATH, JSON.stringify(grouped, null, 2));
+  console.log(`\n    Saved (LLM anchors)   → ${OUTPUT_PATH}`);
+
+  // New full-player lookup file (used by script 8 for exact roster ratings)
+  fs.writeFileSync(OUTPUT_FULL_PATH, JSON.stringify(fullByName, null, 2));
+  console.log(`    Saved (full lookup)   → ${OUTPUT_FULL_PATH}`);
 
   // -----------------------------------------------------------------------
   // 7. Print summary
   // -----------------------------------------------------------------------
   console.log('\n========== Summary ==========');
-  const positions = Object.keys(playersByPosition).sort();
+  const positions = Object.keys(grouped).sort();
   for (const pos of positions) {
-    const players  = playersByPosition[pos];
+    const players  = grouped[pos];
     const topOvr   = players[0] ? players[0].overall : 0;
     const topName  = players[0] ? players[0].name    : '';
     console.log(
@@ -462,6 +509,7 @@ async function main() {
       `(best: ${topName} OVR ${topOvr})`
     );
   }
+  console.log(`  Full lookup: ${Object.keys(fullByName).length} total players`);
   console.log('=============================\n');
 }
 
