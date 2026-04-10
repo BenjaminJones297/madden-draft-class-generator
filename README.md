@@ -263,32 +263,41 @@ Step 5 uses [LangChain](https://www.langchain.com/) to abstract the LLM backend.
 | `ollama` | Direct Ollama call | **Default.** No extra deps; fastest for local use |
 | `ollama-langchain` | Ollama via LangChain (`langchain-ollama`) | Same local model, routed through LangChain's chain abstraction |
 | `openai` | OpenAI API via LangChain (`langchain-openai`) | Requires `OPENAI_API_KEY` in `.env`; no local GPU needed |
-| `multi-chain` | 3-chain decomposition via LangChain | **Best quality.** Breaks the problem into specialised sub-tasks |
+| `multi-chain` | 3-chain decomposition via LangChain | **Best quality.** Breaks the problem into specialized sub-tasks |
 
 ### Multi-chain strategy
 
-The `multi-chain` provider decomposes what was previously a single monolithic prompt into three specialised LLM calls. Each chain has a narrow, well-defined responsibility — yielding more reliable outputs, shorter prompts, and the opportunity to use different (cheaper/faster) models per sub-task.
+The `multi-chain` provider decomposes what was previously a single monolithic prompt into three specialized LLM calls. Each chain has a narrow, well-defined responsibility — yielding more reliable outputs, shorter prompts, and the opportunity to use different (cheaper/faster) models per sub-task.
 
 ```
-                          ┌── Chain 1: Athleticism ──┐
-    prospect context ─────┤                          ├─► merge ─► Chain 3: Overall + DevTrait
-                          └── Chain 2: Skills ───────┘
+    prospect context
+          │
+          ▼
+    Chain 1 (athleticism_llm — fast model)
+      combine measurables → physical ratings
+          │ athleticism ratings
+          ▼
+    Chain 2 (skills_llm — main model)
+      position context + calibration + Chain 1 output → skill ratings
+          │ skill ratings
+          ▼
+    Chain 3 (skills_llm — main model)
+      draft capital + merged Chain 1+2 → overall + devTrait
 ```
 
 | Chain | Model | Input | Output |
 |---|---|---|---|
 | **1 — Athleticism** | `ATHLETICISM_MODEL` (fast) | Combine measurables (40-time, bench, vertical…) | `speed`, `acceleration`, `agility`, `jumping`, `strength`, `stamina`, `toughness`, `injury` |
-| **2 — Skills** | main `--model` | Position, calibration examples, NFL comp | All position-specific skill ratings |
-| **3 — Dev/Overall** | main `--model` | Draft capital + merged chain 1+2 ratings | `overall`, `devTrait` |
+| **2 — Skills** | main `--model` | Position, calibration examples, NFL comp, **Chain 1 output** | All position-specific skill ratings |
+| **3 — Dev/Overall** | main `--model` | Draft capital + **merged Chain 1+2 ratings** | `overall`, `devTrait` |
 
-Chains 1 and 2 are independent and run **in parallel** via LangChain's `RunnableParallel`. Chain 3 runs sequentially once both results are available.
+Each chain builds on the previous chain's output — Chain 2 receives the resolved athleticism ratings from Chain 1 as context, and Chain 3 receives the full merged picture.
 
 **Why this is better:**
 
-- **Shorter, focused prompts** — each chain asks the LLM to do one thing well, reducing hallucinations on the fields it doesn't specialise in
+- **Shorter, focused prompts** — each chain asks the LLM to do one thing well, reducing hallucinations on fields it doesn't specialize in
 - **Different models per sub-task** — physical attribute mapping from measurables is nearly deterministic; a cheap/fast model (e.g. `llama3:8b`) works just as well as a large one for Chain 1, while Chain 2 benefits from a more capable model
-- **Parallel execution** — Chains 1 and 2 run simultaneously, reducing total latency per prospect
-- **Independent retry** — if one chain fails, only that chain needs to be retried
+- **Independent retry** — if one chain fails, only that chain needs to be retried without losing the other results
 
 ### LangChain LCEL chain pattern
 
@@ -297,18 +306,26 @@ All providers (except `ollama`) use LangChain's **LCEL (LangChain Expression Lan
 ```python
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableParallel, RunnableLambda
+from langchain_core.runnables import RunnableLambda
 
-# Single-chain providers (ollama-langchain, openai):
-chain = ChatPromptTemplate.from_messages([("human", "{input}")]) | llm | StrOutputParser()
-
-# Multi-chain: parallel chains feeding into a sequential chain
-parallel_step = RunnableParallel(
-    athleticism=athleticism_chain,  # Chain 1 — fast model
-    skills=skills_chain,            # Chain 2 — main model
-    prospect=RunnableLambda(lambda ctx: ctx["prospect"]),
+# Each chain: input dict → prompt → LLM → parse JSON
+chain = (
+    RunnableLambda(lambda ctx: {"input": build_prompt(ctx)})
+    | ChatPromptTemplate.from_messages([("human", "{input}")])
+    | llm
+    | StrOutputParser()
+    | RunnableLambda(parse_json)
 )
-full_pipeline = parallel_step | dev_trait_chain  # Chain 3
+
+# Sequential execution: each chain's output feeds the next
+athleticism_raw = athleticism_chain.invoke({"prospect": prospect})
+skills_raw      = skills_chain.invoke({"prospect": prospect, "athleticism": athleticism_raw, ...})
+dev_raw         = dev_trait_chain.invoke({"prospect": prospect, "athleticism": athleticism_raw, "skills": skills_raw})
+
+# When chains are truly independent (e.g. rating different prospects in batch),
+# RunnableParallel enables concurrent execution:
+# from langchain_core.runnables import RunnableParallel
+# parallel = RunnableParallel(prospect_a=chain, prospect_b=chain)
 ```
 
 ### Using multi-chain

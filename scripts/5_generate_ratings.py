@@ -552,33 +552,44 @@ def rate_prospect_multi_chain(
     """
     Rate a prospect using a 3-chain decomposition strategy via LangChain LCEL.
 
-    The problem is split into three focused sub-tasks assigned to specialised
-    LLM calls.  Chains 1 and 2 are independent and run in parallel using
-    LangChain's ``RunnableParallel``; Chain 3 runs sequentially once both
-    earlier results are available.
+    The problem is split into three focused, sequential sub-tasks.  Each chain
+    receives the output of the previous chain as context, so later chains can
+    build on earlier results.
 
     Architecture::
 
-                              ┌── Chain 1: Athleticism ──┐
-        prospect context ─────┤                          ├─► merge ─► Chain 3: Overall/DevTrait
-                              └── Chain 2: Skills ───────┘
-
-        Chain 1 (athleticism_llm):  combine measurables → speed/accel/agility/etc.
-        Chain 2 (skills_llm):       calibration + NFL comp → position skill ratings
-        Chain 3 (skills_llm):       merged ratings + draft capital → overall + devTrait
+        prospect context
+              │
+              ▼
+        Chain 1 (athleticism_llm) — fast model
+          combine measurables → speed, accel, agility, jumping, strength, stamina, toughness, injury
+              │ athleticism ratings
+              ▼
+        Chain 2 (skills_llm) — main model
+          position context + calibration + NFL comp + Chain 1 athleticism → skill ratings
+              │ skill ratings
+              ▼
+        Chain 3 (skills_llm) — main model
+          draft capital + merged Chain 1+2 ratings → overall + devTrait
 
     ``athleticism_llm`` may be a smaller/cheaper model (e.g. ``llama3:8b``)
     while ``skills_llm`` uses a more capable model (e.g. ``llama3:70b`` or
-    ``gpt-4o-mini``).  When both are the same model the parallel step still
-    reduces wall-clock time vs sequential execution.
+    ``gpt-4o-mini``).
 
-    LangChain LCEL pattern used for each chain::
+    Each step uses LangChain's LCEL chain pattern::
 
         prompt_template | llm | StrOutputParser() | parse_fn
+
+    This keeps each LLM call modular and easily swappable.  If two chains
+    have no data dependency (e.g. rating different prospects simultaneously),
+    they can be wrapped in ``RunnableParallel`` for concurrent execution::
+
+        from langchain_core.runnables import RunnableParallel
+        parallel = RunnableParallel(prospect_a=chain, prospect_b=chain)
     """
     from langchain_core.prompts import ChatPromptTemplate
     from langchain_core.output_parsers import StrOutputParser
-    from langchain_core.runnables import RunnableParallel, RunnableLambda
+    from langchain_core.runnables import RunnableLambda
 
     pos = prospect["pos"]
     canon = canonical_pos(pos)
@@ -604,10 +615,11 @@ def rate_prospect_multi_chain(
         | RunnableLambda(_parse)
     )
 
-    # Chain 2: calibration context + NFL comp → position skill ratings (main model)
+    # Chain 2: calibration context + NFL comp + Chain 1 output → position skill ratings (main model)
+    # Receives athleticism ratings from Chain 1 via ctx["athleticism"]
     skills_chain = (
         RunnableLambda(lambda ctx: {"input": build_skills_prompt(
-            ctx["prospect"], {}, ctx["cal_examples"], ctx["anchors"]
+            ctx["prospect"], ctx["athleticism"], ctx["cal_examples"], ctx["anchors"]
         )})
         | prompt_tmpl
         | skills_llm
@@ -615,19 +627,10 @@ def rate_prospect_multi_chain(
         | RunnableLambda(_parse)
     )
 
-    # Chains 1 and 2 run in parallel — they share the same input context but
-    # are completely independent of each other's output.
-    parallel_step = RunnableParallel(
-        athleticism=athleticism_chain,
-        skills=skills_chain,
-        # Pass the prospect through so Chain 3 can access it
-        prospect=RunnableLambda(lambda ctx: ctx["prospect"]),
-    )
-
-    # Chain 3: merged context → overall OVR + devTrait (sequential after parallel)
+    # Chain 3: merged Chain 1+2 context → overall OVR + devTrait (sequential after chains 1+2)
     dev_trait_chain = (
-        RunnableLambda(lambda results: {"input": build_dev_trait_prompt(
-            results["prospect"], results["athleticism"], results["skills"]
+        RunnableLambda(lambda ctx: {"input": build_dev_trait_prompt(
+            ctx["prospect"], ctx["athleticism"], ctx["skills"]
         )})
         | prompt_tmpl
         | skills_llm
@@ -635,29 +638,29 @@ def rate_prospect_multi_chain(
         | RunnableLambda(_parse)
     )
 
-    # ── Full pipeline: parallel_step feeds into dev_trait_chain ──────────────
-    # The output of dev_trait_chain is only {"overall": ..., "devTrait": ...}.
-    # We pass the parallel_step output alongside so the final merge can access
-    # all three results.
-    full_pipeline = parallel_step | RunnableLambda(
-        lambda results: {
-            **results,
-            "dev": dev_trait_chain.invoke(results),
-        }
-    )
-
-    # ── Execute pipeline ──────────────────────────────────────────────────────
-    ctx = {"prospect": prospect, "cal_examples": cal_examples, "anchors": anchors}
+    # ── Execute chains sequentially: each step passes its output to the next ──
     try:
-        pipeline_results = full_pipeline.invoke(ctx)
+        # Step 1: resolve physical/athletic ratings
+        athleticism_raw: dict = athleticism_chain.invoke({"prospect": prospect})
+
+        # Step 2: resolve position-specific skill ratings (informed by Step 1)
+        skills_raw: dict = skills_chain.invoke({
+            "prospect": prospect,
+            "athleticism": athleticism_raw,
+            "cal_examples": cal_examples,
+            "anchors": anchors,
+        })
+
+        # Step 3: resolve overall OVR + devTrait (informed by Steps 1 and 2)
+        dev_raw: dict = dev_trait_chain.invoke({
+            "prospect": prospect,
+            "athleticism": athleticism_raw,
+            "skills": skills_raw,
+        })
     except Exception as exc:
         if "connect" in str(exc).lower() or "refused" in str(exc).lower():
             raise ConnectionError(str(exc)) from exc
         raise
-
-    athleticism_raw: dict = pipeline_results.get("athleticism") or {}
-    skills_raw: dict = pipeline_results.get("skills") or {}
-    dev_raw: dict = pipeline_results.get("dev") or {}
 
     if verbose:
         print(
