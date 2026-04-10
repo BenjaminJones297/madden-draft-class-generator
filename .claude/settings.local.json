@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /c/Users/benja/repos/madden-draft-class-generator/scripts/*.py /c/Users/benja/repos/madden-draft-class-generator/scripts/*.js)"
+    ]
+  }
+}
