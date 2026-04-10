@@ -13,8 +13,10 @@ function stats(arr) {
 const byPos = {};
 prospects.forEach(p => (byPos[p.pos] = byPos[p.pos]||[]).push(p));
 
-// Known calibration contamination
-const CAL_PROXY = { CB:'FS', DE:'OLB', DT:null };
+// Known calibration contamination - FIXED: enum map corrected in 2_extract_calibration.js
+// All position keys now map to actual players at that position.
+// ILB = combined enums 13+14 (both inside linebacker types from M26 binary)
+const CAL_PROXY = {}; // no proxy needed — direct position lookup is now correct
 
 const AUDIT = {
   QB:  ['throwPower','throwAccuracyShort','throwAccuracyMid','throwAccuracyDeep','throwOnRun','throwUnderPressure','speed','agility','acceleration','stamina','awareness','changeOfDirection'],
@@ -27,7 +29,7 @@ const AUDIT = {
   DE:  ['speed','acceleration','agility','strength','blockShedding','powerMoves','finesseMoves','pursuit','stamina','awareness','changeOfDirection','jumping'],
   DT:  ['speed','acceleration','agility','strength','blockShedding','powerMoves','finesseMoves','pursuit','stamina','awareness'],
   OLB: ['speed','acceleration','agility','strength','pursuit','tackle','hitPower','blockShedding','stamina','awareness','jumping','manCoverage','zoneCoverage'],
-  MLB: ['speed','acceleration','agility','strength','pursuit','tackle','hitPower','blockShedding','stamina','awareness'],
+  ILB: ['speed','acceleration','agility','strength','pursuit','tackle','hitPower','blockShedding','stamina','awareness'],
   CB:  ['speed','acceleration','agility','manCoverage','zoneCoverage','catching','catchInTraffic','pursuit','tackle','hitPower','stamina','jumping','kickReturn','awareness'],
   FS:  ['speed','acceleration','agility','manCoverage','zoneCoverage','catching','catchInTraffic','pursuit','tackle','hitPower','stamina','jumping','awareness','changeOfDirection'],
   SS:  ['speed','acceleration','agility','manCoverage','zoneCoverage','catching','catchInTraffic','pursuit','tackle','hitPower','stamina','jumping','awareness','changeOfDirection'],

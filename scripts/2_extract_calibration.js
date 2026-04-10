@@ -32,12 +32,23 @@ const DEFAULT_VISUALS_PATH = path.join(__dirname, '..', 'data', 'raw', 'default_
 const COMBINE_CSV_PATH   = path.join(__dirname, '..', 'data', 'raw', 'combine_2025.csv');
 const OUTPUT_PATH        = path.join(__dirname, '..', 'data', 'calibration_set.json');
 
-/** M26 DraftPositionE enum → position string */
+/** M26 DraftPositionE enum → position string
+ *
+ *  NOTE: The M26 binary enum values differ from the logical order.
+ *  Verified by cross-referencing the 2025 draft class binary against
+ *  known player identities (Mason Graham=DT, Travis Hunter=CB, etc.).
+ *
+ *  Enums 8 and 9 are additional interior OL types (extra G / extra T);
+ *  they are merged into G and T respectively for calibration purposes.
+ *  Enums 13 and 14 are both ILB types; merged into ILB.
+ *  Enum 15 is a coverage-OLB type; merged into OLB.
+ */
 const ENUM_TO_POS = {
   0: 'QB',  1: 'HB',  2: 'FB',  3: 'WR',  4: 'TE',
-  5: 'T',   6: 'G',   7: 'C',   8: 'DE',  9: 'DT',
-  10: 'OLB', 11: 'MLB', 12: 'CB', 13: 'FS', 14: 'SS',
-  15: 'K',  16: 'P',  17: 'LS',
+  5: 'T',   6: 'G',   7: 'C',   8: 'G',   9: 'T',
+  10: 'OLB', 11: 'DE', 12: 'DT', 13: 'ILB', 14: 'ILB',
+  15: 'OLB', 16: 'CB', 17: 'FS', 18: 'SS',
+  19: 'K',  20: 'P',  21: 'LS',
 };
 
 /** All numeric rating fields to capture from each prospect */
