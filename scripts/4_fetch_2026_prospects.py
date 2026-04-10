@@ -75,6 +75,7 @@ def empty_prospect():
         "broad_jump": None,
         "cone": None,
         "shuttle": None,
+        "ten_split": None,
         "rank": None,
         "grade": "",
         "notes": "",
@@ -825,6 +826,47 @@ COMBINE_SHUTTLE: dict[str, float] = {
     "Spencer Fano":        4.67,
 }
 
+
+# 10-yard split (seconds) — maps to acceleration
+COMBINE_TEN_SPLIT: dict[str, float] = {
+    # WR
+    "Bryce Lance":         1.49,
+    "Skyler Bell":         1.53,
+    "Omar Cooper Jr.":     1.55,
+    # HB
+    "Mike Washington Jr.": 1.51,
+    "Jeremiyah Love":      1.55,
+    "Jadarian Price":      1.61,
+    # TE
+    "Kenyon Sadiq":        1.54,
+    "Eli Stowers":         1.59,
+    "Sam Roush":           1.61,
+    # LB/OLB/MLB
+    "Sonny Styles":        1.56,
+    "Anthony Hill Jr.":    1.58,
+    "Jake Golday":         1.60,
+    "Jacob Rodriguez":     1.60,
+    # DE/EDGE
+    "Arvell Reese":        1.58,
+    "Cashius Howell":      1.58,
+    "Malachi Lawrence":    1.59,
+    "David Bailey":        1.62,
+    # DT
+    "Caleb Banks":         1.76,
+    # CB
+    "Chris Johnson":       1.54,
+    "Chandler Rivers":     1.55,
+    "Kamari Ramsey":       1.57,
+    # SAF
+    "Dillon Thieneman":    1.52,
+    "A.J. Haulcy":         1.62,
+    # OT
+    "Spencer Fano":        1.72,
+    "Max Iheanachor":      1.73,
+    "Blake Miller":        1.75,
+    "Kadyn Proctor":       1.84,
+}
+
 
 def build_hardcoded() -> list[dict]:
     """Convert the hardcoded tuple list to prospect dicts with sequential rank."""
@@ -899,14 +941,17 @@ def apply_verified_combine_data(prospects: list[dict]) -> list[dict]:
             p["cone"] = COMBINE_CONE[name]
         if name in COMBINE_SHUTTLE:
             p["shuttle"] = COMBINE_SHUTTLE[name]
+        if name in COMBINE_TEN_SPLIT:
+            p["ten_split"] = COMBINE_TEN_SPLIT[name]
     if overrides:
         print(f"  [verified combine] Applied {overrides} verified forty times (combine/pro_day).")
-    bench_count   = sum(1 for p in prospects if p.get("bench"))
-    vert_count    = sum(1 for p in prospects if p.get("vertical"))
-    cone_count    = sum(1 for p in prospects if p.get("cone"))
-    shuttle_count = sum(1 for p in prospects if p.get("shuttle"))
+    bench_count    = sum(1 for p in prospects if p.get("bench"))
+    vert_count     = sum(1 for p in prospects if p.get("vertical"))
+    cone_count     = sum(1 for p in prospects if p.get("cone"))
+    shuttle_count  = sum(1 for p in prospects if p.get("shuttle"))
+    ten_count      = sum(1 for p in prospects if p.get("ten_split"))
     print(f"  [verified combine] bench={bench_count}  vertical={vert_count}  "
-          f"cone={cone_count}  shuttle={shuttle_count} prospects with data.")
+          f"cone={cone_count}  shuttle={shuttle_count}  ten_split={ten_count} prospects with data.")
     return prospects
 def load_manual_csv() -> list[dict]:
     path = os.path.join(RAW_DIR, "prospects_2026_manual.csv")

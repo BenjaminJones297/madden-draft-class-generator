@@ -408,7 +408,7 @@ def _lerp(x: float, table: list[tuple]) -> int:
     return ys[-1]
 
 
-def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle) -> dict:
+def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle, ten_split=None) -> dict:
     """
     Floor-only corrections driven by real combine measurements.
     Never lowers a rating — only raises it if the measurement implies a higher floor.
@@ -461,6 +461,18 @@ def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle)
         floor = _lerp(float(shuttle), SHUTTLE_TABLE)
         if r.get("agility", 0) < floor:
             r["agility"] = floor
+
+
+    # ── 10-yard split → Acceleration ─────────────────────────────────────────
+    if ten_split is not None:
+        # Lower time = higher acceleration (universal floor, all positions)
+        TEN_TABLE = [(1.48, 98), (1.50, 96), (1.52, 94), (1.54, 92),
+                     (1.56, 90), (1.58, 88), (1.60, 85), (1.62, 82),
+                     (1.65, 78), (1.68, 74), (1.72, 68), (1.78, 62),
+                     (1.84, 55)]
+        floor = _lerp(float(ten_split), TEN_TABLE)
+        if r.get("acceleration", 0) < floor:
+            r["acceleration"] = floor
 
     return r
 
@@ -688,10 +700,11 @@ def rate_prospect(
     cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
     cleaned = apply_combine_corrections(
         cleaned, pos,
-        bench    = prospect.get("bench"),
-        vertical = prospect.get("vertical"),
-        cone     = prospect.get("cone"),
-        shuttle  = prospect.get("shuttle"),
+        bench     = prospect.get("bench"),
+        vertical  = prospect.get("vertical"),
+        cone      = prospect.get("cone"),
+        shuttle   = prospect.get("shuttle"),
+        ten_split = prospect.get("ten_split"),
     )
 
     return cleaned
