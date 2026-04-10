@@ -197,6 +197,7 @@ def run_step(
     optional: bool = False,
     hint: str = "",
     cwd: str = PROJECT_ROOT,
+    env: dict = None,
 ) -> bool:
     """
     Run a subprocess command.  Returns True on success.
@@ -206,7 +207,7 @@ def run_step(
     and returns False, signalling the caller to abort.
     """
     print(f"  Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd)
+    result = subprocess.run(cmd, cwd=cwd, env=env)
     if result.returncode != 0:
         if optional:
             print(f"  ⚠  Step {step_num} exited with code {result.returncode} (optional — continuing)")
@@ -400,12 +401,14 @@ def main() -> int:
         if args.resume:
             cmd.append("--resume")
         if args.prospects:
-            cmd.extend(["--prospects", str(args.prospects)])
+            cmd.extend(["--max-prospects", str(args.prospects)])
+        env = None
 
         ok = run_step(
             label="generate ratings",
             cmd=cmd,
             step_num=step,
+            env=env,
             hint=(
                 "Is Ollama running?  Try: ollama serve\n"
                 f"  Is the model pulled?  Try: ollama pull {model}\n"

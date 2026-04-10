@@ -611,6 +611,7 @@ def main():
     parser.add_argument("--model", default=None, help="Ollama model name (default: from .env or llama3:8b)")
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint if available")
     parser.add_argument("--verbose", action="store_true", help="Print field-fix details")
+    parser.add_argument("--max-prospects", type=int, default=None, help="Limit number of prospects to rate (for testing)")
     args = parser.parse_args()
 
     model = args.model or DEFAULT_MODEL
@@ -661,6 +662,8 @@ def main():
         print(f"  ↳ Resuming from checkpoint: {len(rated_list)} prospects already rated.")
 
     remaining = [p for p in prospects if p.get("name", "") not in completed_names]
+    if args.max_prospects and args.max_prospects < len(remaining):
+        remaining = remaining[:args.max_prospects]
     print(f"\nGenerating ratings for {len(remaining)} prospect(s) using model '{model}' ...")
     print(f"  Ollama host: {OLLAMA_HOST}\n")
 
