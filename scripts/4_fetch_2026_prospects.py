@@ -203,7 +203,7 @@ def dedupe(prospects: list[dict]) -> list[dict]:
             existing = out[seen[key]]
             for field in ("ht", "wt", "forty", "bench", "vertical",
                           "broad_jump", "cone", "shuttle", "school",
-                          "grade", "rank"):
+                          "grade", "rank", "forty_source"):
                 if not existing.get(field) and p.get(field):
                     existing[field] = p[field]
     return out
@@ -225,6 +225,8 @@ def merge_measurables(prospects: list[dict], combine_rows: dict) -> list[dict]:
             p["wt"] = parse_weight(row.get("wt"))
         if not p.get("forty"):
             p["forty"] = parse_float(row.get("forty_yd"))
+            if p["forty"]:
+                p["forty_source"] = "combine"
         if not p.get("bench"):
             p["bench"] = parse_float(row.get("bench_reps"))
         if not p.get("vertical"):
@@ -769,9 +771,28 @@ def build_hardcoded() -> list[dict]:
     return prospects
 
 
-# ---------------------------------------------------------------------------
-# Manual CSV loader (data/raw/prospects_2026_manual.csv)
-# ---------------------------------------------------------------------------
+def apply_verified_forties(prospects: list[dict]) -> list[dict]:
+    """
+    Unconditionally stamp verified forty times from COMBINE_FORTIES and
+    PRO_DAY_FORTIES onto any matching prospect, overriding scraped estimates.
+    Also ensures every prospect with a forty value has a forty_source set.
+    """
+    overrides = 0
+    for p in prospects:
+        name = p.get("name", "")
+        if name in COMBINE_FORTIES:
+            p["forty"] = COMBINE_FORTIES[name]
+            p["forty_source"] = "combine"
+            overrides += 1
+        elif name in PRO_DAY_FORTIES:
+            p["forty"] = PRO_DAY_FORTIES[name]
+            p["forty_source"] = "pro_day"
+            overrides += 1
+        elif p.get("forty") and not p.get("forty_source"):
+            p["forty_source"] = "estimate"
+    if overrides:
+        print(f"  [verified forties] Applied {overrides} verified times (combine/pro_day).")
+    return prospects
 def load_manual_csv() -> list[dict]:
     path = os.path.join(RAW_DIR, "prospects_2026_manual.csv")
     if not os.path.exists(path):
@@ -946,6 +967,10 @@ def main():
     if combine_rows:
         prospects = merge_measurables(prospects, combine_rows)
         print(f"\n  Overlaid combine measurables for up to {len(combine_rows)} players")
+
+    # ---- Apply verified forty times (always overrides scraped estimates) ----
+    print("\n  Applying verified forty times …")
+    prospects = apply_verified_forties(prospects)
 
     # ---- Assign/sort ranks ----
     prospects = assign_ranks(prospects)
