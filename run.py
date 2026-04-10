@@ -2,13 +2,14 @@
 """
 run.py — Madden 26 Draft Class Generator · Pipeline Orchestrator
 
-Runs all 6 pipeline scripts in order:
+Runs all 7 pipeline scripts in order:
   1. scripts/1_fetch_combine_and_picks.py    (Python)  — download nflverse CSVs
   2. scripts/2_extract_calibration.js        (Node)    — build calibration set
   3. scripts/3_extract_roster_ratings.js     (Node)    — extract roster ratings [OPTIONAL]
   4. scripts/4_fetch_2026_prospects.py       (Python)  — fetch 2026 prospects
   5. scripts/5_generate_ratings.py           (Python)  — generate ratings via Ollama
-  6. scripts/6_create_draft_class.js         (Node)    — write .draftclass file
+  6. scripts/polish_ratings{4..11}.js        (Node)    — apply calibration polish passes
+  7. scripts/6_create_draft_class.js         (Node)    — write .draftclass file
 
 Usage:
   python3 run.py [options]
@@ -93,6 +94,9 @@ Examples:
 
   # Jump straight to step 5 (all earlier data already present)
   python3 run.py --start-from 5 --resume
+
+  # Re-apply polish passes and rebuild (skip LLM generation)
+  python3 run.py --start-from 6
 """,
     )
     parser.add_argument(
@@ -133,6 +137,12 @@ Examples:
         help="Skip step 2 — use existing calibration_set.json",
     )
     parser.add_argument(
+        "--skip-polish",
+        action="store_true",
+        default=False,
+        help="Skip step 6 — do not apply calibration polish passes",
+    )
+    parser.add_argument(
         "--resume",
         action="store_true",
         default=False,
@@ -143,8 +153,8 @@ Examples:
         metavar="N",
         type=int,
         default=1,
-        choices=range(1, 7),
-        help="Start from step N (1–6), skipping all earlier steps (default: 1)",
+        choices=range(1, 8),
+        help="Start from step N (1–7), skipping all earlier steps (default: 1)",
     )
     return parser
 
@@ -268,6 +278,8 @@ def main() -> int:
         print("  --skip-fetch active: skipping steps 1 & 4")
     if args.skip_calibration:
         print("  --skip-calibration active: skipping step 2")
+    if args.skip_polish:
+        print("  --skip-polish active: skipping step 6")
     if args.resume:
         print("  --resume active: step 5 will continue from last checkpoint")
     if args.start_from > 1:
@@ -277,7 +289,7 @@ def main() -> int:
     os.makedirs(output_dir, exist_ok=True)
 
     pipeline_start = time.time()
-    TOTAL_STEPS = 6
+    TOTAL_STEPS = 7
 
     # ═══════════════════════════════════════════════════════════════════════
     # Step 1 — Fetch nflverse combine + draft picks CSVs
@@ -295,9 +307,9 @@ def main() -> int:
         if not ok:
             return 1
     elif args.skip_fetch:
-        print(f"\n--- Step 1/6: Skipped (--skip-fetch) ---")
+        print(f"\n--- Step 1/7: Skipped (--skip-fetch) ---")
     else:
-        print(f"\n--- Step 1/6: Skipped (--start-from {args.start_from}) ---")
+        print(f"\n--- Step 1/7: Skipped (--start-from {args.start_from}) ---")
 
     # ═══════════════════════════════════════════════════════════════════════
     # Step 2 — Build calibration set from M26 2025 draft class
@@ -315,9 +327,9 @@ def main() -> int:
         if not ok:
             return 1
     elif args.skip_calibration:
-        print(f"\n--- Step 2/6: Skipped (--skip-calibration) ---")
+        print(f"\n--- Step 2/7: Skipped (--skip-calibration) ---")
     else:
-        print(f"\n--- Step 2/6: Skipped (--start-from {args.start_from}) ---")
+        print(f"\n--- Step 2/7: Skipped (--start-from {args.start_from}) ---")
 
     # ═══════════════════════════════════════════════════════════════════════
     # Step 3 — Extract current roster ratings (OPTIONAL)
@@ -325,7 +337,7 @@ def main() -> int:
     step = 3
     if args.start_from <= step:
         if not ros_path:
-            print(f"\n--- Step 3/6: Skipped (no --ros provided) ---")
+            print(f"\n--- Step 3/7: Skipped (no --ros provided) ---")
             print("  Tip: provide --ros /path/to/file.ros for better rating benchmarks.")
         else:
             print_step_header(step, TOTAL_STEPS, "Extract current roster ratings from .ros file")
@@ -348,7 +360,7 @@ def main() -> int:
                     hint="Ensure the file is a valid Madden 26 .ros roster file.",
                 )
     else:
-        print(f"\n--- Step 3/6: Skipped (--start-from {args.start_from}) ---")
+        print(f"\n--- Step 3/7: Skipped (--start-from {args.start_from}) ---")
 
     # ═══════════════════════════════════════════════════════════════════════
     # Step 4 — Fetch 2026 prospects
@@ -369,9 +381,9 @@ def main() -> int:
         if not ok:
             return 1
     elif args.skip_fetch:
-        print(f"\n--- Step 4/6: Skipped (--skip-fetch) ---")
+        print(f"\n--- Step 4/7: Skipped (--skip-fetch) ---")
     else:
-        print(f"\n--- Step 4/6: Skipped (--start-from {args.start_from}) ---")
+        print(f"\n--- Step 4/7: Skipped (--start-from {args.start_from}) ---")
 
     # ═══════════════════════════════════════════════════════════════════════
     # Step 5 — Generate ratings via Ollama
@@ -403,12 +415,46 @@ def main() -> int:
         if not ok:
             return 1
     else:
-        print(f"\n--- Step 5/6: Skipped (--start-from {args.start_from}) ---")
+        print(f"\n--- Step 5/7: Skipped (--start-from {args.start_from}) ---")
 
     # ═══════════════════════════════════════════════════════════════════════
-    # Step 6 — Write .draftclass file
+    # Step 6 — Apply calibration polish passes
     # ═══════════════════════════════════════════════════════════════════════
     step = 6
+    POLISH_SCRIPTS = [
+        "polish_ratings4.js",
+        "polish_ratings5.js",
+        "polish_ratings6.js",
+        "polish_ratings7.js",
+        "polish_ratings8.js",
+        "polish_ratings9.js",
+        "polish_ratings10.js",
+        "polish_ratings11.js",
+    ]
+    if args.start_from <= step and not args.skip_polish:
+        print_step_header(step, TOTAL_STEPS, "Apply calibration polish passes")
+        for script in POLISH_SCRIPTS:
+            script_path = os.path.join(PROJECT_ROOT, "scripts", script)
+            if not os.path.isfile(script_path):
+                print(f"  ⚠  {script} not found — skipping")
+                continue
+            ok = run_step(
+                label=script,
+                cmd=[node, script_path, "--fix"],
+                step_num=step,
+                hint=f"Check {script} for errors.",
+            )
+            if not ok:
+                return 1
+    elif args.skip_polish:
+        print(f"\n--- Step 6/7: Skipped (--skip-polish) ---")
+    else:
+        print(f"\n--- Step 6/7: Skipped (--start-from {args.start_from}) ---")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # Step 7 — Write .draftclass file
+    # ═══════════════════════════════════════════════════════════════════════
+    step = 7
     if args.start_from <= step:
         print_step_header(step, TOTAL_STEPS, "Write .draftclass file")
         cmd = [
@@ -422,13 +468,13 @@ def main() -> int:
             step_num=step,
             hint=(
                 "Ensure step 5 completed successfully and data/prospects_rated.json exists.\n"
-                "  Then re-run: python3 run.py --start-from 6"
+                "  Then re-run: python3 run.py --start-from 7"
             ),
         )
         if not ok:
             return 1
     else:
-        print(f"\n--- Step 6/6: Skipped (--start-from {args.start_from}) ---")
+        print(f"\n--- Step 7/7: Skipped (--start-from {args.start_from}) ---")
 
     # ── Success ─────────────────────────────────────────────────────────────
     elapsed = time.time() - pipeline_start
