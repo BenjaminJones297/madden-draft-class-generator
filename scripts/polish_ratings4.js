@@ -208,8 +208,8 @@ function pass5_hbCarrying(prospects) {
 // Floors based on position and round; also parse notes for style
 // ---------------------------------------------------------------------------
 const PASS_RUSH_FLOORS = {
-  DE:  { blockShedding: 62, powerMoves: 52, finesseMoves: 48 },
-  DT:  { blockShedding: 58, powerMoves: 48, finesseMoves: 38 },
+  DE:  { blockShedding: 65, powerMoves: 60, finesseMoves: 56 },
+  DT:  { blockShedding: 62, powerMoves: 58, finesseMoves: 55 },
   OLB: { blockShedding: 58, powerMoves: 45, finesseMoves: 42 },
 };
 
