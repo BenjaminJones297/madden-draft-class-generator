@@ -475,6 +475,32 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             if spd < expected:
                 r["speed"] = expected
 
+    # TE speed correction: modern TEs are trending faster; only correct upward.
+    # Anchored so a 4.39 (Kenyon Sadiq) yields 92, tapering to calibration range
+    # (~87) by 4.50 and below 80 for true blocking TEs.
+    if pos == "TE":
+        TE_SPEED_TABLE = [
+            (4.39, 92), (4.44, 90), (4.50, 87), (4.60, 83), (4.70, 80),
+        ]
+        spd = r.get("speed", 0)
+        if forty is not None and spd > 0:
+            table_forties = [t for t, _ in TE_SPEED_TABLE]
+            table_speeds  = [s for _, s in TE_SPEED_TABLE]
+            if forty <= table_forties[0]:
+                expected = table_speeds[0]
+            elif forty >= table_forties[-1]:
+                expected = table_speeds[-1]
+            else:
+                for i in range(len(table_forties) - 1):
+                    if table_forties[i] <= forty <= table_forties[i + 1]:
+                        t0, t1 = table_forties[i], table_forties[i + 1]
+                        s0, s1 = table_speeds[i], table_speeds[i + 1]
+                        frac = (forty - t0) / (t1 - t0)
+                        expected = round(s0 + frac * (s1 - s0))
+                        break
+            if spd < expected:
+                r["speed"] = expected
+
     # Safety coverage floor: if coverage stats look like defaults, bump them
     if pos in ("FS", "SS"):
         if r.get("zoneCoverage", 0) < 60:
