@@ -730,6 +730,102 @@ PRO_DAY_FORTIES: dict[str, float] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Other 2026 combine measurements (official, from CBS Sports / NFL.com)
+# ---------------------------------------------------------------------------
+# Bench press reps at 225 lbs
+COMBINE_BENCH: dict[str, int] = {
+    "Blake Miller":        32,
+    "Gabe Jacas":          30,
+    "Kenyon Sadiq":        26,
+    "Jordyn Tyson":        26,
+    "Sam Roush":           25,
+    "Max Iheanachor":      25,
+    "Kadyn Proctor":       25,
+    "Anthony Hill Jr.":    21,
+    "Jadarian Price":      21,
+    "Dillon Thieneman":    18,
+    "Chris Johnson":       17,
+    "Avieon Terrell":      17,
+    "Kamari Ramsey":       16,
+    "Jermod McCoy":        14,
+}
+
+# Vertical jump (inches)
+COMBINE_VERTICAL: dict[str, float] = {
+    "Eli Stowers":         45.5,
+    "Kenyon Sadiq":        43.5,
+    "Sonny Styles":        43.5,
+    "Genesis Smith":       42.5,
+    "Bryce Lance":         41.5,
+    "Skyler Bell":         41.0,
+    "Dillon Thieneman":    41.0,
+    "Malachi Lawrence":    40.0,
+    "Jake Golday":         39.0,
+    "Chandler Rivers":     39.0,
+    "Mike Washington Jr.": 39.0,
+    "Jacob Rodriguez":     38.5,
+    "Sam Roush":           38.5,
+    "Chris Johnson":       38.0,
+    "Anthony Hill Jr.":    37.0,
+    "Omar Cooper Jr.":     37.0,
+    "Kamari Ramsey":       36.0,
+    "Keldric Faulk":       35.0,
+    "David Bailey":        35.0,
+    "Denzel Boston":       35.0,
+    "Jadarian Price":      35.0,
+    "Avieon Terrell":      34.0,
+    "Cashius Howell":      32.5,
+    "Caleb Banks":         32.0,
+}
+
+# Broad jump (inches — converted from feet-inches)
+COMBINE_BROAD: dict[str, int] = {
+    "Eli Stowers":         135,   # 11'3"
+    "Sonny Styles":        134,   # 11'2"
+    "Kenyon Sadiq":        133,   # 11'1"
+    "Skyler Bell":         133,   # 11'1"
+    "Bryce Lance":         133,   # 11'1"
+    "Chandler Rivers":     130,   # 10'10"
+    "Malachi Lawrence":    130,   # 10'10"
+    "David Bailey":        129,   # 10'9"
+    "Mike Washington Jr.": 128,   # 10'8"
+    "Genesis Smith":       128,   # 10'8"
+    "Sam Roush":           126,   # 10'6"
+    "Chris Johnson":       126,   # 10'6"
+    "Anthony Hill Jr.":    125,   # 10'5"
+    "Dillon Thieneman":    125,   # 10'5"
+    "Jake Golday":         125,   # 10'5"
+    "Jadarian Price":      124,   # 10'4"
+    "Avieon Terrell":      123,   # 10'3"
+    "Jacob Rodriguez":     121,   # 10'1"
+    "Kamari Ramsey":       120,   # 10'0"
+    "Keldric Faulk":       117,   # 9'9"
+    "Cashius Howell":      115,   # 9'7"
+    "Caleb Banks":         114,   # 9'6"
+}
+
+# 3-cone drill (seconds) — maps to changeOfDirection
+COMBINE_CONE: dict[str, float] = {
+    "Jacob Rodriguez":     6.90,
+    "Jake Golday":         7.02,
+    "Sam Roush":           7.08,
+    "Sonny Styles":        7.09,
+    "Spencer Fano":        7.34,
+}
+
+# 20-yard shuttle (seconds) — maps to agility
+COMBINE_SHUTTLE: dict[str, float] = {
+    "Genesis Smith":       4.18,
+    "Jacob Rodriguez":     4.19,
+    "Sonny Styles":        4.26,
+    "Denzel Boston":       4.28,
+    "Jake Golday":         4.34,
+    "Sam Roush":           4.37,
+    "Spencer Fano":        4.67,
+}
+
+
 def build_hardcoded() -> list[dict]:
     """Convert the hardcoded tuple list to prospect dicts with sequential rank."""
     prospects = []
@@ -771,15 +867,17 @@ def build_hardcoded() -> list[dict]:
     return prospects
 
 
-def apply_verified_forties(prospects: list[dict]) -> list[dict]:
+def apply_verified_combine_data(prospects: list[dict]) -> list[dict]:
     """
-    Unconditionally stamp verified forty times from COMBINE_FORTIES and
-    PRO_DAY_FORTIES onto any matching prospect, overriding scraped estimates.
-    Also ensures every prospect with a forty value has a forty_source set.
+    Unconditionally stamp verified 2026 combine/pro-day measurements onto any
+    matching prospect, overriding scraped estimates.
+    Covers: forty, bench, vertical, broad_jump, cone, shuttle.
+    Also ensures every prospect with a forty value has forty_source set.
     """
     overrides = 0
     for p in prospects:
         name = p.get("name", "")
+        # Forty time
         if name in COMBINE_FORTIES:
             p["forty"] = COMBINE_FORTIES[name]
             p["forty_source"] = "combine"
@@ -790,8 +888,25 @@ def apply_verified_forties(prospects: list[dict]) -> list[dict]:
             overrides += 1
         elif p.get("forty") and not p.get("forty_source"):
             p["forty_source"] = "estimate"
+        # Other combine measurements
+        if name in COMBINE_BENCH:
+            p["bench"] = COMBINE_BENCH[name]
+        if name in COMBINE_VERTICAL:
+            p["vertical"] = COMBINE_VERTICAL[name]
+        if name in COMBINE_BROAD:
+            p["broad_jump"] = COMBINE_BROAD[name]
+        if name in COMBINE_CONE:
+            p["cone"] = COMBINE_CONE[name]
+        if name in COMBINE_SHUTTLE:
+            p["shuttle"] = COMBINE_SHUTTLE[name]
     if overrides:
-        print(f"  [verified forties] Applied {overrides} verified times (combine/pro_day).")
+        print(f"  [verified combine] Applied {overrides} verified forty times (combine/pro_day).")
+    bench_count   = sum(1 for p in prospects if p.get("bench"))
+    vert_count    = sum(1 for p in prospects if p.get("vertical"))
+    cone_count    = sum(1 for p in prospects if p.get("cone"))
+    shuttle_count = sum(1 for p in prospects if p.get("shuttle"))
+    print(f"  [verified combine] bench={bench_count}  vertical={vert_count}  "
+          f"cone={cone_count}  shuttle={shuttle_count} prospects with data.")
     return prospects
 def load_manual_csv() -> list[dict]:
     path = os.path.join(RAW_DIR, "prospects_2026_manual.csv")
@@ -968,9 +1083,9 @@ def main():
         prospects = merge_measurables(prospects, combine_rows)
         print(f"\n  Overlaid combine measurables for up to {len(combine_rows)} players")
 
-    # ---- Apply verified forty times (always overrides scraped estimates) ----
-    print("\n  Applying verified forty times …")
-    prospects = apply_verified_forties(prospects)
+    # ---- Apply verified combine data (always overrides scraped estimates) ----
+    print("\n  Applying verified combine data …")
+    prospects = apply_verified_combine_data(prospects)
 
     # ---- Assign/sort ranks ----
     prospects = assign_ranks(prospects)

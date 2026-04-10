@@ -164,9 +164,12 @@ function pass5_jumping(prospects) {
     let n = 0;
     group.forEach(p => {
       const target = linearRescale(p.ratings[scaleAttr], srcMin, srcMax, tgtMin, tgtMax);
-      applyIf(p.ratings, 'jumping', target, 5, `${p.firstName} ${p.lastName}`, p.pos,
-        `jumping ghost/uniform; ${scaleAttr}=${p.ratings[scaleAttr]} → ${Math.round(target)}`);
-      n++;
+      // Floor-only: never lower a jumping value already set from combine data
+      if (Math.round(target) > p.ratings.jumping) {
+        applyIf(p.ratings, 'jumping', target, 5, `${p.firstName} ${p.lastName}`, p.pos,
+          `jumping ghost/uniform; ${scaleAttr}=${p.ratings[scaleAttr]} → ${Math.round(target)}`);
+        n++;
+      }
     });
     total += n;
     console.log(`  ${pos}: ${n} corrections`);

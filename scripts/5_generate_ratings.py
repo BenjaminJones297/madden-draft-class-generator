@@ -393,6 +393,78 @@ def call_ollama(model: str, prompt: str) -> str:
     return response["message"]["content"]
 
 
+def _lerp(x: float, table: list[tuple]) -> int:
+    """Linear-interpolate x against a sorted (x, y) table. Clamps to edges."""
+    xs = [pt[0] for pt in table]
+    ys = [pt[1] for pt in table]
+    if x <= xs[0]:
+        return ys[0]
+    if x >= xs[-1]:
+        return ys[-1]
+    for i in range(len(xs) - 1):
+        if xs[i] <= x <= xs[i + 1]:
+            frac = (x - xs[i]) / (xs[i + 1] - xs[i])
+            return round(ys[i] + frac * (ys[i + 1] - ys[i]))
+    return ys[-1]
+
+
+def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle) -> dict:
+    """
+    Floor-only corrections driven by real combine measurements.
+    Never lowers a rating — only raises it if the measurement implies a higher floor.
+
+    Mappings:
+      vertical   → jumping
+      bench      → strength  (position-grouped)
+      cone       → changeOfDirection  (lower time = higher CoD)
+      shuttle    → agility            (lower time = higher agility)
+    """
+    r = dict(r)
+
+    # ── Vertical → Jumping ────────────────────────────────────────────────────
+    if vertical is not None:
+        VERT_TABLE = [(27.0, 62), (31.0, 72), (33.0, 78), (35.0, 82),
+                      (37.0, 86), (39.0, 89), (41.0, 92), (43.5, 95), (45.5, 97)]
+        floor = _lerp(float(vertical), VERT_TABLE)
+        if r.get("jumping", 0) < floor:
+            r["jumping"] = floor
+
+    # ── Bench → Strength ─────────────────────────────────────────────────────
+    if bench is not None:
+        # Position groups: heavy (OL/DT), mid (TE/HB/FB/LB/DE), skill (rest)
+        HEAVY = {"T", "G", "C", "DT"}
+        MID   = {"TE", "HB", "FB", "MLB", "OLB", "DE"}
+        if pos in HEAVY:
+            BENCH_TABLE = [(10, 63), (15, 70), (20, 76), (25, 81), (30, 86), (35, 90)]
+        elif pos in MID:
+            BENCH_TABLE = [(9, 58), (13, 64), (17, 70), (21, 75), (25, 79), (30, 84)]
+        else:
+            BENCH_TABLE = [(8, 54), (12, 59), (15, 64), (20, 70), (25, 75)]
+        floor = _lerp(int(bench), BENCH_TABLE)
+        if r.get("strength", 0) < floor:
+            r["strength"] = floor
+
+    # ── 3-cone → changeOfDirection ────────────────────────────────────────────
+    if cone is not None:
+        # Invert: lower time = higher CoD → table sorted ascending (low time, high rating)
+        CONE_TABLE = [(6.70, 94), (6.90, 90), (7.00, 87), (7.10, 84),
+                      (7.20, 81), (7.40, 77), (7.60, 73), (8.00, 66)]
+        floor = _lerp(float(cone), CONE_TABLE)
+        if r.get("changeOfDirection", 0) < floor:
+            r["changeOfDirection"] = floor
+
+    # ── Shuttle → Agility ──────────────────────────────────────────────────────
+    if shuttle is not None:
+        SHUTTLE_TABLE = [(4.10, 95), (4.18, 91), (4.25, 88), (4.30, 86),
+                         (4.35, 84), (4.40, 82), (4.50, 78), (4.60, 74),
+                         (4.70, 70), (5.00, 62)]
+        floor = _lerp(float(shuttle), SHUTTLE_TABLE)
+        if r.get("agility", 0) < floor:
+            r["agility"] = floor
+
+    return r
+
+
 def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> dict:
     """
     Apply rule-based post-processing to fix known LLM systematic errors:
@@ -614,6 +686,13 @@ def rate_prospect(
               + (" ..." if len(issues) > 5 else ""))
 
     cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
+    cleaned = apply_combine_corrections(
+        cleaned, pos,
+        bench    = prospect.get("bench"),
+        vertical = prospect.get("vertical"),
+        cone     = prospect.get("cone"),
+        shuttle  = prospect.get("shuttle"),
+    )
 
     return cleaned
 
