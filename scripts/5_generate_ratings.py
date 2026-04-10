@@ -9,11 +9,17 @@ Supported LLM providers (set via --provider or LLM_PROVIDER in .env):
   ollama           — Direct Ollama call (default, no extra deps)
   ollama-langchain — Ollama via LangChain (requires langchain-ollama)
   openai           — OpenAI API via LangChain (requires langchain-openai + OPENAI_API_KEY)
+  multi-chain      — 3-chain decomposition strategy via LangChain (best quality)
+                     Breaks the problem into focused sub-tasks:
+                       Chain 1 (Athleticism LLM): combine measurables → physical ratings
+                       Chain 2 (Skills LLM):      position context → skill ratings   [parallel]
+                       Chain 3 (Skills LLM):      merged context → overall + devTrait [sequential]
 
 Usage:
     python scripts/5_generate_ratings.py [--model llama3:8b] [--resume]
     python scripts/5_generate_ratings.py --provider openai [--model gpt-4o-mini]
     python scripts/5_generate_ratings.py --provider ollama-langchain
+    python scripts/5_generate_ratings.py --provider multi-chain --athleticism-model llama3:8b --model llama3:70b
 """
 
 import argparse
@@ -34,6 +40,13 @@ sys.path.insert(0, PROJECT_ROOT)
 from utils.enums import ALL_RATING_FIELDS, POSITION_KEY_FIELDS, POSITION_TO_ENUM
 from utils.defaults import get_defaults
 
+# Physical/athletic fields resolved by the athleticism chain in multi-chain mode.
+# These map almost directly from combine measurables and are independent of football IQ.
+ATHLETICISM_FIELDS = [
+    "speed", "acceleration", "agility", "jumping",
+    "strength", "stamina", "toughness", "injury",
+]
+
 # ── Load .env ────────────────────────────────────────────────────────────────
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
@@ -41,6 +54,8 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3:8b")
 DEFAULT_PROVIDER = os.getenv("LLM_PROVIDER", "ollama")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+# For multi-chain: optionally use a smaller/faster model for the athleticism chain
+ATHLETICISM_MODEL = os.getenv("ATHLETICISM_MODEL", "")  # falls back to DEFAULT_MODEL when empty
 
 # Set OLLAMA_HOST so the ollama package picks it up
 os.environ["OLLAMA_HOST"] = OLLAMA_HOST
@@ -315,6 +330,363 @@ def build_correction_prompt(all_fields_str: str, prev_text: str) -> str:
     )
 
 
+# ── Multi-chain prompt builders ───────────────────────────────────────────────
+# These three focused prompts replace the single monolithic prompt when the
+# 'multi-chain' provider is used. Each LLM call has a narrow responsibility:
+#   Chain 1 — physical/athletic ratings from combine measurables
+#   Chain 2 — position-specific skill ratings from football context
+#   Chain 3 — overall OVR + devTrait from draft capital + merged ratings
+
+def build_athleticism_prompt(prospect: dict) -> str:
+    """
+    Chain 1 prompt: translate combine measurables into athletic ratings.
+
+    Intended for a fast/cheap model — the mapping from 40-time, bench press,
+    vertical etc. to Madden ratings is nearly deterministic and does not
+    require any football domain knowledge or calibration examples.
+
+    Output fields: speed, acceleration, agility, jumping, strength,
+                   stamina, toughness, injury
+    """
+    pos = prospect["pos"]
+    wt = _fmt_val(prospect.get("wt"), "N/A")
+    ht = prospect.get("ht", "N/A")
+    forty = _fmt_val(prospect.get("forty"), "N/A")
+    bench = _fmt_val(prospect.get("bench"), "N/A")
+    vertical = _fmt_val(prospect.get("vertical"), "N/A")
+    broad = _fmt_val(prospect.get("broadJump"), "N/A")
+    cone = _fmt_val(prospect.get("cone"), "N/A")
+    shuttle = _fmt_val(prospect.get("shuttle"), "N/A")
+
+    fields_str = ", ".join(ATHLETICISM_FIELDS)
+    return f"""You are a Madden NFL 26 ratings expert converting NFL Combine measurables to in-game athletic ratings.
+
+PROSPECT:
+Position: {pos} | {ht}, {wt} lbs
+40-yard dash: {forty}s | Bench press reps: {bench} | Vertical: {vertical} in
+Broad jump: {broad} in | 3-cone: {cone}s | Shuttle: {shuttle}s
+
+CONVERSION GUIDE (apply to the position norms below):
+- speed: 40-yard dash is the primary driver
+    4.30s→96, 4.34→94, 4.37→93, 4.40→92, 4.44→91, 4.46→90, 4.48→90,
+    4.51→89, 4.59→86, 4.61→85, 4.65→83, 4.70→80, 4.75→77, 4.80→74
+  Adjust ±2 for position norms (OL/DT skew lower, WR/CB skew higher).
+- acceleration: correlates with 10-yard split; typically within 2 pts of speed.
+- agility: 3-cone and shuttle primary (lower time = higher rating).
+    3-cone 6.50s→90, 6.70→86, 6.90→82, 7.10→77, 7.30→72, 7.50→65
+- jumping: vertical jump primary.
+    40in→96, 38in→92, 36in→87, 34in→82, 32in→77, 30in→72, 28in→66, 26in→60
+- strength: bench press reps (225 lbs) primary.
+    30+reps→82, 25→76, 20→70, 15→62, 10→55, N/A→55 (use wt as secondary signal)
+- stamina: 70–88 range; higher for skill positions and lighter players.
+- toughness: 62–82 range; higher for bigger/heavier players.
+- injury: 70–88 range (lower = more durable in Madden; heavier players often higher).
+
+Return ONLY a valid JSON object with these exact keys, no extra text:
+{fields_str}"""
+
+
+def build_skills_prompt(
+    prospect: dict,
+    athleticism: dict,
+    calibration_examples: list,
+    current_anchors: list,
+) -> str:
+    """
+    Chain 2 prompt: generate position-specific skill ratings.
+
+    Athletic attributes (speed, strength, etc.) are already resolved by
+    Chain 1 and shown as context. This prompt focuses exclusively on
+    football-skill ratings (route running, coverage, pass rush, etc.)
+    and uses calibration examples + NFL comp for grounding.
+
+    Output fields: position key fields excluding ATHLETICISM_FIELDS
+                   and excluding overall/devTrait (handled by Chain 3).
+    """
+    pos = prospect["pos"]
+    canon = canonical_pos(pos)
+    key_fields = POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
+
+    # Skill target = position key fields minus what's already resolved
+    exclude = set(ATHLETICISM_FIELDS) | {"overall", "devTrait"}
+    skill_fields = [f for f in key_fields if f not in exclude]
+    # Fall back to all key fields if nothing is left (e.g. K/P positions)
+    if not skill_fields:
+        skill_fields = [f for f in key_fields if f not in {"devTrait"}]
+    skill_fields_str = ", ".join(skill_fields)
+
+    name = prospect.get("name", f"{prospect.get('firstName','')} {prospect.get('lastName','')}".strip())
+    forty = _fmt_val(prospect.get("forty"), "N/A")
+    wt = _fmt_val(prospect.get("wt"), "N/A")
+    rank = _fmt_val(prospect.get("rank"), "N/A")
+    grade = prospect.get("grade", "N/A")
+    draft_round = _fmt_val(prospect.get("draftRound"), "?")
+    notes = (prospect.get("notes") or "").strip()
+
+    lines = []
+    lines.append(
+        f"You are a Madden NFL 26 ratings expert. Generate ONLY the position-specific SKILL "
+        f"ratings for this {pos} prospect."
+    )
+    lines.append(
+        "Physical/athletic ratings are already resolved — focus only on football skills."
+    )
+    lines.append("")
+
+    # Athletic context already resolved by Chain 1
+    if athleticism:
+        athl_str = ", ".join(f"{k}={v}" for k, v in sorted(athleticism.items()))
+        lines.append(f"RESOLVED ATHLETICISM: {athl_str}")
+        lines.append("")
+
+    if calibration_examples:
+        lines.append(f"CALIBRATION — 2025 {pos} rookies with actual Madden 26 launch ratings:")
+        for ex in calibration_examples:
+            prof = ex.get("profile", {})
+            rats = ex.get("ratings", {})
+            n = prof.get("name", "Unknown")
+            dr = _fmt_val(prof.get("draft_round"), "?")
+            dp = _fmt_val(prof.get("draft_pick"), "?")
+            key_str = _key_ratings_str(rats, pos)
+            lines.append(f"• {n} | Round {dr}, Pick {dp} | {key_str}")
+        lines.append("")
+
+    if current_anchors:
+        lines.append(f"CURRENT NFL {pos} ANCHORS (for scale reference):")
+        for player in current_anchors:
+            n = player.get("name", "?")
+            rats = player.get("ratings", {})
+            ovr = rats.get("overall", "?")
+            key_str = _key_ratings_str(rats, pos)
+            lines.append(f"• {n} | OVR {ovr} | {key_str}")
+        lines.append("")
+
+    lines.append(
+        f"PROSPECT: {name} | {pos} | 40yd: {forty} | {wt} lbs | "
+        f"Rank: #{rank} | Grade: {grade} | Draft round: {draft_round}"
+    )
+    nfl_comp = prospect.get("nfl_comp", "")
+    if nfl_comp:
+        lines.append(
+            f"NFL Comparison: {nfl_comp} — use this player's SKILL PROFILE "
+            "(not exact values) to inform the attribute distribution."
+        )
+    if notes:
+        lines.append(f"Notes: {notes}")
+    lines.append("")
+    lines.append("Rules:")
+    lines.append("- All values: integers 0–99")
+    lines.append("- Ratings should reflect a ROOKIE — do not inflate")
+    lines.append("")
+    lines.append(f"Return ONLY a valid JSON object with these exact keys, no extra text:")
+    lines.append(skill_fields_str)
+
+    return "\n".join(lines)
+
+
+def build_dev_trait_prompt(prospect: dict, athleticism: dict, skills: dict) -> str:
+    """
+    Chain 3 prompt: set overall OVR and devTrait from draft capital + merged ratings.
+
+    This is a tiny, highly-focused prompt. Chains 1 and 2 have already resolved
+    all individual attributes; this chain just needs to decide how good the player
+    is as a whole and what their development trajectory looks like.
+
+    Output fields: overall, devTrait
+    """
+    pos = prospect["pos"]
+    canon = canonical_pos(pos)
+    rank = _fmt_val(prospect.get("rank"), "N/A")
+    grade = prospect.get("grade", "N/A")
+    draft_round = _fmt_val(prospect.get("draftRound"), "?")
+    nfl_comp = prospect.get("nfl_comp", "")
+
+    key_fields = POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
+    combined = {**athleticism, **skills}
+    key_summary = ", ".join(
+        f"{k}={combined[k]}"
+        for k in key_fields
+        if k in combined and k not in ("devTrait", "overall")
+    )
+
+    lines = []
+    lines.append(
+        "You are a Madden NFL 26 ratings expert. "
+        "Set ONLY the overall rating and development trait for this prospect."
+    )
+    lines.append("")
+    lines.append(
+        f"PROSPECT: {pos} | Board rank: #{rank} | Grade: {grade} | Draft round: {draft_round}"
+    )
+    if nfl_comp:
+        lines.append(f"NFL Comparison: {nfl_comp}")
+    lines.append(f"Key ratings already set: {key_summary}")
+    lines.append("")
+    lines.append("RULES:")
+    lines.append(
+        "- overall: weighted average of key position ratings (0–99); "
+        "typical rookie ranges: Round 1→72–82, Round 2→68–75, Round 3-4→65–72, Round 5-7→60–68"
+    )
+    lines.append(
+        "- devTrait: 0=Normal, 1=Impact, 2=Star, 3=XFactor. "
+        "Round 1 top picks→Impact/Star. Top 5 generational talents→Star/XFactor. "
+        "Round 2-3→Normal/Impact. Round 4-7→Normal."
+    )
+    lines.append("")
+    lines.append('Return ONLY a valid JSON object with exactly these two keys:')
+    lines.append('overall, devTrait')
+
+    return "\n".join(lines)
+
+
+# ── Multi-chain rating function ───────────────────────────────────────────────
+
+def rate_prospect_multi_chain(
+    prospect: dict,
+    skills_llm,
+    athleticism_llm,
+    calibration: dict,
+    current_ratings: dict,
+    verbose: bool = False,
+) -> dict:
+    """
+    Rate a prospect using a 3-chain decomposition strategy via LangChain LCEL.
+
+    The problem is split into three focused sub-tasks assigned to specialised
+    LLM calls.  Chains 1 and 2 are independent and run in parallel using
+    LangChain's ``RunnableParallel``; Chain 3 runs sequentially once both
+    earlier results are available.
+
+    Architecture::
+
+                              ┌── Chain 1: Athleticism ──┐
+        prospect context ─────┤                          ├─► merge ─► Chain 3: Overall/DevTrait
+                              └── Chain 2: Skills ───────┘
+
+        Chain 1 (athleticism_llm):  combine measurables → speed/accel/agility/etc.
+        Chain 2 (skills_llm):       calibration + NFL comp → position skill ratings
+        Chain 3 (skills_llm):       merged ratings + draft capital → overall + devTrait
+
+    ``athleticism_llm`` may be a smaller/cheaper model (e.g. ``llama3:8b``)
+    while ``skills_llm`` uses a more capable model (e.g. ``llama3:70b`` or
+    ``gpt-4o-mini``).  When both are the same model the parallel step still
+    reduces wall-clock time vs sequential execution.
+
+    LangChain LCEL pattern used for each chain::
+
+        prompt_template | llm | StrOutputParser() | parse_fn
+    """
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.output_parsers import StrOutputParser
+    from langchain_core.runnables import RunnableParallel, RunnableLambda
+
+    pos = prospect["pos"]
+    canon = canonical_pos(pos)
+    defaults = get_defaults(canon)
+
+    cal_examples = get_calibration_examples(pos, prospect, calibration)
+    anchors = get_current_anchors(pos, current_ratings)
+
+    # Shared prompt template (single human turn; same for all chains)
+    prompt_tmpl = ChatPromptTemplate.from_messages([("human", "{input}")])
+
+    def _parse(text: str) -> dict:
+        return extract_json(text) or {}
+
+    # ── Define the three LCEL chains ─────────────────────────────────────────
+
+    # Chain 1: combine measurables → athletic ratings (fast model)
+    athleticism_chain = (
+        RunnableLambda(lambda ctx: {"input": build_athleticism_prompt(ctx["prospect"])})
+        | prompt_tmpl
+        | athleticism_llm
+        | StrOutputParser()
+        | RunnableLambda(_parse)
+    )
+
+    # Chain 2: calibration context + NFL comp → position skill ratings (main model)
+    skills_chain = (
+        RunnableLambda(lambda ctx: {"input": build_skills_prompt(
+            ctx["prospect"], {}, ctx["cal_examples"], ctx["anchors"]
+        )})
+        | prompt_tmpl
+        | skills_llm
+        | StrOutputParser()
+        | RunnableLambda(_parse)
+    )
+
+    # Chains 1 and 2 run in parallel — they share the same input context but
+    # are completely independent of each other's output.
+    parallel_step = RunnableParallel(
+        athleticism=athleticism_chain,
+        skills=skills_chain,
+        # Pass the prospect through so Chain 3 can access it
+        prospect=RunnableLambda(lambda ctx: ctx["prospect"]),
+    )
+
+    # Chain 3: merged context → overall OVR + devTrait (sequential after parallel)
+    dev_trait_chain = (
+        RunnableLambda(lambda results: {"input": build_dev_trait_prompt(
+            results["prospect"], results["athleticism"], results["skills"]
+        )})
+        | prompt_tmpl
+        | skills_llm
+        | StrOutputParser()
+        | RunnableLambda(_parse)
+    )
+
+    # ── Full pipeline: parallel_step feeds into dev_trait_chain ──────────────
+    # The output of dev_trait_chain is only {"overall": ..., "devTrait": ...}.
+    # We pass the parallel_step output alongside so the final merge can access
+    # all three results.
+    full_pipeline = parallel_step | RunnableLambda(
+        lambda results: {
+            **results,
+            "dev": dev_trait_chain.invoke(results),
+        }
+    )
+
+    # ── Execute pipeline ──────────────────────────────────────────────────────
+    ctx = {"prospect": prospect, "cal_examples": cal_examples, "anchors": anchors}
+    try:
+        pipeline_results = full_pipeline.invoke(ctx)
+    except Exception as exc:
+        if "connect" in str(exc).lower() or "refused" in str(exc).lower():
+            raise ConnectionError(str(exc)) from exc
+        raise
+
+    athleticism_raw: dict = pipeline_results.get("athleticism") or {}
+    skills_raw: dict = pipeline_results.get("skills") or {}
+    dev_raw: dict = pipeline_results.get("dev") or {}
+
+    if verbose:
+        print(
+            f"  ↳ Athleticism: {sorted(athleticism_raw)}, "
+            f"Skills: {sorted(skills_raw)}, "
+            f"Dev: overall={dev_raw.get('overall')}, devTrait={dev_raw.get('devTrait')}"
+        )
+
+    # ── Merge: defaults → athleticism → skills → dev ─────────────────────────
+    merged: dict = dict(defaults)
+    merged.update({k: v for k, v in athleticism_raw.items() if k in ATHLETICISM_FIELDS})
+    merged.update({k: v for k, v in skills_raw.items() if k in ALL_RATING_FIELDS})
+    if "overall" in dev_raw:
+        merged["overall"] = dev_raw["overall"]
+    if "devTrait" in dev_raw:
+        merged["devTrait"] = dev_raw["devTrait"]
+
+    # ── Validate and apply rule-based corrections ─────────────────────────────
+    cleaned, issues = validate_ratings(merged, canon)
+    if verbose and issues:
+        print(
+            f"  ↳ Fixed {len(issues)} field(s): {', '.join(issues[:5])}"
+            + (" ..." if len(issues) > 5 else "")
+        )
+    cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
+
+    return cleaned
+
+
 # ── JSON parsing ──────────────────────────────────────────────────────────────
 def extract_json(text: str) -> dict | None:
     """
@@ -557,6 +929,7 @@ def rate_prospect(
     verbose: bool = False,
     provider: str = "ollama",
     langchain_llm=None,
+    athleticism_llm=None,
 ) -> dict:
     """
     Generate Madden 26 ratings for a single prospect.
@@ -566,7 +939,22 @@ def rate_prospect(
     call path is used.  For any LangChain-backed provider pass *langchain_llm*
     (built with :func:`build_langchain_llm`) and the appropriate *provider*
     string; the call is then routed through LangChain.
+
+    For ``"multi-chain"`` pass both *langchain_llm* (skills model) and
+    *athleticism_llm* (fast model for Chain 1).  The three-chain LCEL pipeline
+    is used instead of a single monolithic prompt.
     """
+    # Multi-chain: delegate to the specialised function
+    if provider == "multi-chain":
+        return rate_prospect_multi_chain(
+            prospect=prospect,
+            skills_llm=langchain_llm,
+            athleticism_llm=athleticism_llm,
+            calibration=calibration,
+            current_ratings=current_ratings,
+            verbose=verbose,
+        )
+
     pos = prospect["pos"]
     canon = canonical_pos(pos)
     all_fields_str = ", ".join(ALL_RATING_FIELDS)
@@ -658,12 +1046,26 @@ def main():
     parser.add_argument(
         "--provider",
         default=None,
-        choices=["ollama", "ollama-langchain", "openai"],
+        choices=["ollama", "ollama-langchain", "openai", "multi-chain"],
         help=(
             "LLM provider to use (default: from LLM_PROVIDER in .env, or 'ollama').\n"
             "  ollama           — Direct Ollama call (no extra deps)\n"
             "  ollama-langchain — Ollama via LangChain (requires langchain-ollama)\n"
-            "  openai           — OpenAI API via LangChain (requires langchain-openai + OPENAI_API_KEY)"
+            "  openai           — OpenAI API via LangChain (requires langchain-openai + OPENAI_API_KEY)\n"
+            "  multi-chain      — 3-chain decomposition strategy (best quality, requires langchain-ollama or langchain-openai)\n"
+            "                     Chain 1 (athleticism_llm): combine measurables → physical ratings\n"
+            "                     Chain 2 (skills_llm):      position context → skill ratings   [parallel]\n"
+            "                     Chain 3 (skills_llm):      merged context → overall + devTrait [sequential]"
+        ),
+    )
+    parser.add_argument(
+        "--athleticism-model",
+        metavar="MODEL",
+        default=None,
+        help=(
+            "Model for the athleticism chain in multi-chain mode (default: same as --model). "
+            "Use a smaller/faster model here to reduce cost — physical attributes are nearly "
+            "deterministic from combine measurables and do not require a large model."
         ),
     )
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint if available")
@@ -701,6 +1103,7 @@ def main():
 
     # ── Provider-specific setup and connectivity check ────────────────────────
     langchain_llm = None
+    athleticism_llm_obj = None
 
     if provider == "ollama":
         # Check Ollama connectivity early
@@ -743,6 +1146,33 @@ def main():
                     sys.exit(1)
                 print(f"  ⚠ LangChain/Ollama connectivity check warning: {e}")
 
+    elif provider == "multi-chain":
+        # Determine which LangChain backend to use (ollama-langchain or openai)
+        # If OPENAI_API_KEY is set we default to the openai backend, else ollama-langchain.
+        mc_backend = "openai" if os.getenv("OPENAI_API_KEY") else "ollama-langchain"
+
+        # Skills LLM (main model)
+        try:
+            langchain_llm = build_langchain_llm(mc_backend, model)
+            print(f"  Multi-chain skills LLM: backend='{mc_backend}' model='{model}'.")
+        except (ImportError, ValueError) as exc:
+            print(f"\n❌  {exc}")
+            sys.exit(1)
+
+        # Athleticism LLM (may be a different, smaller model)
+        athl_model = args.athleticism_model or ATHLETICISM_MODEL or model
+        if athl_model != model:
+            try:
+                athleticism_llm_obj = build_langchain_llm(mc_backend, athl_model)
+                print(f"  Multi-chain athleticism LLM: backend='{mc_backend}' model='{athl_model}'.")
+            except (ImportError, ValueError) as exc:
+                print(f"\n❌  {exc}")
+                sys.exit(1)
+        else:
+            # Reuse the same LLM instance
+            athleticism_llm_obj = langchain_llm
+            print(f"  Multi-chain athleticism LLM: same as skills LLM ('{model}').")
+
     # ── Resume / checkpoint logic ──
     rated_list: list[dict] = []
     completed_names: set[str] = set()
@@ -774,6 +1204,7 @@ def main():
                     verbose=args.verbose,
                     provider=provider,
                     langchain_llm=langchain_llm,
+                    athleticism_llm=athleticism_llm_obj,
                 )
             except ConnectionError as ce:
                 print(f"\n❌  {ce}")

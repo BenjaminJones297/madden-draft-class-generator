@@ -76,20 +76,22 @@ data/output/2026_draft_class.draftclass
 python3 run.py [options]
 
 Options:
-  --ros PATH          Path to Madden 26 .ros roster file
-                      (optional — improves rating calibration)
-  --provider PROVIDER LLM provider for step 5 (default: ollama)
-                      ollama           — direct Ollama call (no extra deps)
-                      ollama-langchain — Ollama via LangChain
-                      openai           — OpenAI API via LangChain
-  --model MODEL       LLM model (default: llama3:8b / gpt-4o-mini for openai)
-  --out DIR           Output directory (default: data/output)
-  --prospects N       Max prospects to generate (default: all)
-  --skip-fetch        Skip steps 1 & 4 — reuse existing downloaded data
-  --skip-calibration  Skip step 2 — reuse existing calibration_set.json
-  --resume            Resume an interrupted step 5 rating generation
-  --start-from N      Start from step N (1–6), skip earlier steps
-  --help              Show this help message
+  --ros PATH                Path to Madden 26 .ros roster file
+                            (optional — improves rating calibration)
+  --provider PROVIDER       LLM provider for step 5 (default: ollama)
+                            ollama           — direct Ollama call (no extra deps)
+                            ollama-langchain — Ollama via LangChain
+                            openai           — OpenAI API via LangChain
+                            multi-chain      — 3-chain decomposition (best quality)
+  --model MODEL             LLM model (default: llama3:8b / gpt-4o-mini for openai)
+  --athleticism-model MODEL Smaller model for athleticism chain in multi-chain mode
+  --out DIR                 Output directory (default: data/output)
+  --prospects N             Max prospects to generate (default: all)
+  --skip-fetch              Skip steps 1 & 4 — reuse existing downloaded data
+  --skip-calibration        Skip step 2 — reuse existing calibration_set.json
+  --resume                  Resume an interrupted step 5 rating generation
+  --start-from N            Start from step N (1–6), skip earlier steps
+  --help                    Show this help message
 ```
 
 ### Examples
@@ -104,8 +106,17 @@ python3 run.py --ros ~/Documents/"Madden NFL 26"/saves/ROSTER_FILE.ros
 # Use a larger Ollama model for higher-quality ratings
 python3 run.py --model llama3:70b
 
+# Multi-chain: 3 specialised LLM calls, chains 1+2 run in parallel
+python3 run.py --provider multi-chain
+
+# Multi-chain: fast model for physical attributes, large model for skills
+python3 run.py --provider multi-chain --athleticism-model llama3:8b --model llama3:70b
+
 # Use OpenAI GPT-4o-mini instead of Ollama (requires OPENAI_API_KEY in .env)
 python3 run.py --provider openai
+
+# Use OpenAI with multi-chain decomposition
+python3 run.py --provider multi-chain --model gpt-4o-mini
 
 # Use Ollama via the LangChain abstraction layer
 python3 run.py --provider ollama-langchain
@@ -213,18 +224,22 @@ Copy `.env.example` to `.env` to set persistent defaults:
 # Path to your Madden 26 .ros roster file (optional)
 ROSTER_FILE=
 
-# LLM provider: ollama | ollama-langchain | openai  (default: ollama)
+# LLM provider: ollama | ollama-langchain | openai | multi-chain  (default: ollama)
 LLM_PROVIDER=ollama
 
 # Ollama host (default: http://localhost:11434)
 OLLAMA_HOST=http://localhost:11434
 
-# Ollama model to use (for ollama / ollama-langchain providers)
+# Ollama model to use (for ollama / ollama-langchain / multi-chain providers)
 OLLAMA_MODEL=llama3:8b
 
-# OpenAI API key and model (only needed when LLM_PROVIDER=openai)
+# OpenAI API key and model (only needed when LLM_PROVIDER=openai or multi-chain + OPENAI_API_KEY)
 # OPENAI_API_KEY=sk-...
 # OPENAI_MODEL=gpt-4o-mini
+
+# Athleticism chain model for multi-chain mode (default: same as OLLAMA_MODEL)
+# Use a smaller/faster model — physical mapping is nearly deterministic
+# ATHLETICISM_MODEL=llama3:8b
 
 # Max prospects to generate (default: all)
 NUM_PROSPECTS=250
@@ -248,20 +263,74 @@ Step 5 uses [LangChain](https://www.langchain.com/) to abstract the LLM backend.
 | `ollama` | Direct Ollama call | **Default.** No extra deps; fastest for local use |
 | `ollama-langchain` | Ollama via LangChain (`langchain-ollama`) | Same local model, routed through LangChain's chain abstraction |
 | `openai` | OpenAI API via LangChain (`langchain-openai`) | Requires `OPENAI_API_KEY` in `.env`; no local GPU needed |
+| `multi-chain` | 3-chain decomposition via LangChain | **Best quality.** Breaks the problem into specialised sub-tasks |
 
-### How LangChain is used
+### Multi-chain strategy
 
-For the `ollama-langchain` and `openai` providers, the rating-generation chain in `scripts/5_generate_ratings.py` is composed with LangChain's **LCEL (LangChain Expression Language)**:
+The `multi-chain` provider decomposes what was previously a single monolithic prompt into three specialised LLM calls. Each chain has a narrow, well-defined responsibility — yielding more reliable outputs, shorter prompts, and the opportunity to use different (cheaper/faster) models per sub-task.
+
+```
+                          ┌── Chain 1: Athleticism ──┐
+    prospect context ─────┤                          ├─► merge ─► Chain 3: Overall + DevTrait
+                          └── Chain 2: Skills ───────┘
+```
+
+| Chain | Model | Input | Output |
+|---|---|---|---|
+| **1 — Athleticism** | `ATHLETICISM_MODEL` (fast) | Combine measurables (40-time, bench, vertical…) | `speed`, `acceleration`, `agility`, `jumping`, `strength`, `stamina`, `toughness`, `injury` |
+| **2 — Skills** | main `--model` | Position, calibration examples, NFL comp | All position-specific skill ratings |
+| **3 — Dev/Overall** | main `--model` | Draft capital + merged chain 1+2 ratings | `overall`, `devTrait` |
+
+Chains 1 and 2 are independent and run **in parallel** via LangChain's `RunnableParallel`. Chain 3 runs sequentially once both results are available.
+
+**Why this is better:**
+
+- **Shorter, focused prompts** — each chain asks the LLM to do one thing well, reducing hallucinations on the fields it doesn't specialise in
+- **Different models per sub-task** — physical attribute mapping from measurables is nearly deterministic; a cheap/fast model (e.g. `llama3:8b`) works just as well as a large one for Chain 1, while Chain 2 benefits from a more capable model
+- **Parallel execution** — Chains 1 and 2 run simultaneously, reducing total latency per prospect
+- **Independent retry** — if one chain fails, only that chain needs to be retried
+
+### LangChain LCEL chain pattern
+
+All providers (except `ollama`) use LangChain's **LCEL (LangChain Expression Language)** to compose the LLM calls:
 
 ```python
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableParallel, RunnableLambda
 
+# Single-chain providers (ollama-langchain, openai):
 chain = ChatPromptTemplate.from_messages([("human", "{input}")]) | llm | StrOutputParser()
-response_text = chain.invoke({"input": prompt})
+
+# Multi-chain: parallel chains feeding into a sequential chain
+parallel_step = RunnableParallel(
+    athleticism=athleticism_chain,  # Chain 1 — fast model
+    skills=skills_chain,            # Chain 2 — main model
+    prospect=RunnableLambda(lambda ctx: ctx["prospect"]),
+)
+full_pipeline = parallel_step | dev_trait_chain  # Chain 3
 ```
 
-This makes it straightforward to extend the pipeline with additional LangChain features in the future, such as structured output parsers, memory, or retrieval-augmented generation.
+### Using multi-chain
+
+```bash
+# Local Ollama — same model for all chains
+python3 run.py --provider multi-chain
+
+# Local Ollama — fast model for athleticism, larger model for skills
+python3 run.py --provider multi-chain --athleticism-model llama3:8b --model llama3:70b
+
+# OpenAI backend (auto-detected when OPENAI_API_KEY is set)
+python3 run.py --provider multi-chain --model gpt-4o-mini
+```
+
+Or set it permanently in `.env`:
+
+```dotenv
+LLM_PROVIDER=multi-chain
+OLLAMA_MODEL=llama3:70b         # skills + dev-trait model
+ATHLETICISM_MODEL=llama3:8b     # fast model for physical attributes
+```
 
 ### Using OpenAI
 

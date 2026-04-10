@@ -117,13 +117,24 @@ Examples:
         "--provider",
         metavar="PROVIDER",
         default=None,
-        choices=["ollama", "ollama-langchain", "openai"],
+        choices=["ollama", "ollama-langchain", "openai", "multi-chain"],
         help=(
             "LLM provider for step 5 rating generation "
             "(default: from LLM_PROVIDER in .env, or 'ollama').\n"
             "  ollama           — Direct Ollama call (no extra deps)\n"
             "  ollama-langchain — Ollama via LangChain\n"
-            "  openai           — OpenAI API via LangChain (requires OPENAI_API_KEY)"
+            "  openai           — OpenAI API via LangChain (requires OPENAI_API_KEY)\n"
+            "  multi-chain      — 3-chain decomposition strategy (best quality)"
+        ),
+    )
+    parser.add_argument(
+        "--athleticism-model",
+        metavar="MODEL",
+        default=None,
+        help=(
+            "Smaller/faster model for the athleticism chain in multi-chain mode "
+            "(default: same as --model). Physical attribute mapping is nearly "
+            "formulaic so a smaller model works well here."
         ),
     )
     parser.add_argument(
@@ -254,6 +265,8 @@ def main() -> int:
         model = args.model or dotenv.get("OPENAI_MODEL") or "gpt-4o-mini"
     else:
         model = args.model or dotenv.get("OLLAMA_MODEL") or "llama3:8b"
+    # Optional smaller model for the athleticism chain in multi-chain mode
+    athleticism_model = args.athleticism_model or dotenv.get("ATHLETICISM_MODEL") or None
     output_dir = args.out or dotenv.get("OUTPUT_DIR") or os.path.join(PROJECT_ROOT, "data", "output")
     output_dir = os.path.expanduser(output_dir)
 
@@ -283,7 +296,9 @@ def main() -> int:
     print(f"  Node     : {node}")
     print(f"  Provider : {provider}")
     print(f"  Model    : {model}")
-    if provider in ("ollama", "ollama-langchain"):
+    if provider == "multi-chain" and athleticism_model:
+        print(f"  Athl.Mdl : {athleticism_model}")
+    if provider in ("ollama", "ollama-langchain", "multi-chain"):
         print(f"  Ollama   : {ollama_host}")
     print(f"  Output   : {output_dir}")
     if ros_path:
@@ -412,6 +427,8 @@ def main() -> int:
             "--model", model,
             "--provider", provider,
         ]
+        if athleticism_model:
+            cmd.extend(["--athleticism-model", athleticism_model])
         if args.resume:
             cmd.append("--resume")
         if args.prospects:
