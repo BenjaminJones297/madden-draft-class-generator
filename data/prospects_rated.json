@@ -73,8 +73,8 @@
       "stamina": 81,
       "toughness": 81,
       "injury": 75,
-      "morale": 78,
-      "personality": 80,
+      "morale": 50,
+      "personality": 90,
       "devTrait": 2,
       "unkRating1": 50
     }
@@ -153,8 +153,8 @@
       "stamina": 82,
       "toughness": 85,
       "injury": 70,
-      "morale": 75,
-      "personality": 65,
+      "morale": 50,
+      "personality": 90,
       "devTrait": 2,
       "unkRating1": 50
     }
@@ -233,8 +233,8 @@
       "stamina": 80,
       "toughness": 85,
       "injury": 40,
-      "morale": 75,
-      "personality": 70,
+      "morale": 50,
+      "personality": 90,
       "devTrait": 2,
       "unkRating1": 50
     }
@@ -313,8 +313,8 @@
       "stamina": 81,
       "toughness": 82,
       "injury": 40,
-      "morale": 70,
-      "personality": 60,
+      "morale": 50,
+      "personality": 90,
       "devTrait": 2,
       "unkRating1": 50
     }
@@ -393,8 +393,8 @@
       "stamina": 80,
       "toughness": 85,
       "injury": 20,
-      "morale": 75,
-      "personality": 70,
+      "morale": 50,
+      "personality": 86,
       "devTrait": 2,
       "unkRating1": 0
     }
@@ -473,8 +473,8 @@
       "stamina": 81,
       "toughness": 85,
       "injury": 75,
-      "morale": 78,
-      "personality": 70,
+      "morale": 50,
+      "personality": 86,
       "devTrait": 2,
       "unkRating1": 0
     }
@@ -553,8 +553,8 @@
       "stamina": 80,
       "toughness": 85,
       "injury": 70,
-      "morale": 75,
-      "personality": 72,
+      "morale": 50,
+      "personality": 86,
       "devTrait": 2,
       "unkRating1": 50
     }
@@ -633,8 +633,8 @@
       "stamina": 82,
       "toughness": 86,
       "injury": 30,
-      "morale": 60,
-      "personality": 50,
+      "morale": 50,
+      "personality": 86,
       "devTrait": 2,
       "unkRating1": 0
     }
@@ -713,8 +713,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 40,
-      "morale": 65,
-      "personality": 70,
+      "morale": 50,
+      "personality": 86,
       "devTrait": 2,
       "unkRating1": 50
     }
@@ -793,8 +793,8 @@
       "stamina": 70,
       "toughness": 81,
       "injury": 40,
-      "morale": 60,
-      "personality": 50,
+      "morale": 50,
+      "personality": 86,
       "devTrait": 2,
       "unkRating1": 0
     }
@@ -873,8 +873,8 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 40,
-      "morale": 70,
-      "personality": 72,
+      "morale": 50,
+      "personality": 86,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -953,8 +953,8 @@
       "stamina": 82,
       "toughness": 85,
       "injury": 40,
-      "morale": 75,
-      "personality": 60,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -1033,8 +1033,8 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 25,
-      "morale": 70,
-      "personality": 40,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -1113,8 +1113,8 @@
       "stamina": 85,
       "toughness": 81,
       "injury": 20,
-      "morale": 75,
-      "personality": 70,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -1193,8 +1193,8 @@
       "stamina": 81,
       "toughness": 81,
       "injury": 65,
-      "morale": 66,
-      "personality": 67,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -1273,8 +1273,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 60,
-      "morale": 75,
-      "personality": 0,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -1353,8 +1353,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 40,
-      "morale": 68,
-      "personality": 66,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -1433,8 +1433,8 @@
       "stamina": 75,
       "toughness": 81,
       "injury": 60,
-      "morale": 70,
-      "personality": 72,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -1513,8 +1513,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 65,
-      "morale": 66,
-      "personality": 67,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -1593,8 +1593,8 @@
       "stamina": 85,
       "toughness": 95,
       "injury": 60,
-      "morale": 80,
-      "personality": 75,
+      "morale": 50,
+      "personality": 80,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -1673,8 +1673,8 @@
       "stamina": 80,
       "toughness": 85,
       "injury": 40,
-      "morale": 70,
-      "personality": 60,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -1753,8 +1753,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 40,
-      "morale": 80,
-      "personality": 60,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -1807,9 +1807,9 @@
       "catching": 78,
       "catchInTraffic": 80,
       "spectacularCatch": 66,
-      "shortRouteRunning": 40,
-      "mediumRouteRunning": 41,
-      "deepRouteRunning": 43,
+      "shortRouteRunning": 49,
+      "mediumRouteRunning": 54,
+      "deepRouteRunning": 60,
       "release": 36,
       "runBlock": 58,
       "passBlock": 56,
@@ -1833,8 +1833,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 40,
-      "morale": 58,
-      "personality": 55,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -1876,8 +1876,8 @@
       "tackle": 27,
       "hitPower": 35,
       "blockShedding": 78,
-      "finesseMoves": 20,
-      "powerMoves": 28,
+      "finesseMoves": 38,
+      "powerMoves": 48,
       "pursuit": 26,
       "zoneCoverage": 29,
       "manCoverage": 30,
@@ -1913,8 +1913,8 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 63,
-      "morale": 64,
-      "personality": 65,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -1961,7 +1961,7 @@
       "pursuit": 30,
       "zoneCoverage": 82,
       "manCoverage": 80,
-      "pressCoverage": 16,
+      "pressCoverage": 52,
       "playRecognition": 76,
       "jumping": 74,
       "catching": 70,
@@ -1993,8 +1993,8 @@
       "stamina": 75,
       "toughness": 81,
       "injury": 70,
-      "morale": 75,
-      "personality": 0,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -2073,8 +2073,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 65,
-      "morale": 80,
-      "personality": 0,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -2153,8 +2153,8 @@
       "stamina": 81,
       "toughness": 85,
       "injury": 20,
-      "morale": 75,
-      "personality": 70,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 50
     }
@@ -2226,15 +2226,15 @@
       "breakTackle": 92,
       "ballCarrierVision": 92,
       "changeOfDirection": 96,
-      "carrying": 98,
+      "carrying": 96,
       "kickPower": 28,
       "kickAccuracy": 30,
       "kickReturn": 32,
       "stamina": 81,
       "toughness": 81,
       "injury": 38,
-      "morale": 40,
-      "personality": 42,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -2313,8 +2313,8 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 40,
-      "morale": 60,
-      "personality": 50,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -2355,9 +2355,9 @@
       "breakSack": 32,
       "tackle": 30,
       "hitPower": 35,
-      "blockShedding": 40,
+      "blockShedding": 58,
       "finesseMoves": 50,
-      "powerMoves": 25,
+      "powerMoves": 48,
       "pursuit": 27,
       "zoneCoverage": 0,
       "manCoverage": 0,
@@ -2393,8 +2393,8 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 60,
-      "morale": 65,
-      "personality": 0,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -2473,7 +2473,7 @@
       "stamina": 75,
       "toughness": 81,
       "injury": 77,
-      "morale": 78,
+      "morale": 50,
       "personality": 79,
       "devTrait": 1,
       "unkRating1": 50
@@ -2553,8 +2553,8 @@
       "stamina": 82,
       "toughness": 86,
       "injury": 60,
-      "morale": 70,
-      "personality": 40,
+      "morale": 50,
+      "personality": 76,
       "devTrait": 1,
       "unkRating1": 0
     }
@@ -2595,9 +2595,9 @@
       "breakSack": 39,
       "tackle": 33,
       "hitPower": 37,
-      "blockShedding": 42,
-      "finesseMoves": 25,
-      "powerMoves": 41,
+      "blockShedding": 58,
+      "finesseMoves": 38,
+      "powerMoves": 48,
       "pursuit": 32,
       "zoneCoverage": 28,
       "manCoverage": 30,
@@ -2633,8 +2633,8 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 40,
-      "morale": 65,
-      "personality": 60,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -2713,8 +2713,8 @@
       "stamina": 75,
       "toughness": 81,
       "injury": 37,
-      "morale": 38,
-      "personality": 39,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 40
     }
@@ -2793,8 +2793,8 @@
       "stamina": 79,
       "toughness": 83,
       "injury": 76,
-      "morale": 77,
-      "personality": 78,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 79
     }
@@ -2873,8 +2873,8 @@
       "stamina": 80,
       "toughness": 78,
       "injury": 65,
-      "morale": 75,
-      "personality": 0,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -2953,8 +2953,8 @@
       "stamina": 80,
       "toughness": 81,
       "injury": 60,
-      "morale": 75,
-      "personality": 0,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -3033,8 +3033,8 @@
       "stamina": 80,
       "toughness": 82,
       "injury": 60,
-      "morale": 70,
-      "personality": 0,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -3114,7 +3114,7 @@
       "toughness": 81,
       "injury": 40,
       "morale": 50,
-      "personality": 60,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -3193,8 +3193,8 @@
       "stamina": 81,
       "toughness": 81,
       "injury": 52,
-      "morale": 53,
-      "personality": 54,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -3273,8 +3273,8 @@
       "stamina": 85,
       "toughness": 82,
       "injury": 60,
-      "morale": 75,
-      "personality": 0,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -3315,9 +3315,9 @@
       "breakSack": 39,
       "tackle": 32,
       "hitPower": 38,
-      "blockShedding": 42,
-      "finesseMoves": 25,
-      "powerMoves": 35,
+      "blockShedding": 58,
+      "finesseMoves": 38,
+      "powerMoves": 48,
       "pursuit": 29,
       "zoneCoverage": 0,
       "manCoverage": 0,
@@ -3353,8 +3353,8 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 40,
-      "morale": 60,
-      "personality": 50,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -3433,8 +3433,8 @@
       "stamina": 81,
       "toughness": 85,
       "injury": 70,
-      "morale": 75,
-      "personality": 0,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -3513,8 +3513,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 70,
-      "morale": 75,
-      "personality": 80,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -3593,8 +3593,8 @@
       "stamina": 79,
       "toughness": 83,
       "injury": 71,
-      "morale": 72,
-      "personality": 73,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -3673,8 +3673,8 @@
       "stamina": 81,
       "toughness": 81,
       "injury": 72,
-      "morale": 76,
-      "personality": 74,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -3727,9 +3727,9 @@
       "catching": 78,
       "catchInTraffic": 75,
       "spectacularCatch": 66,
-      "shortRouteRunning": 41,
-      "mediumRouteRunning": 43,
-      "deepRouteRunning": 45,
+      "shortRouteRunning": 54,
+      "mediumRouteRunning": 58,
+      "deepRouteRunning": 63,
       "release": 42,
       "runBlock": 61,
       "passBlock": 59,
@@ -3753,8 +3753,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 52,
-      "morale": 53,
-      "personality": 54,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -3833,8 +3833,8 @@
       "stamina": 80,
       "toughness": 85,
       "injury": 20,
-      "morale": 70,
-      "personality": 40,
+      "morale": 50,
+      "personality": 68,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -3913,8 +3913,8 @@
       "stamina": 75,
       "toughness": 82,
       "injury": 60,
-      "morale": 70,
-      "personality": 0,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -3993,8 +3993,8 @@
       "stamina": 80,
       "toughness": 81,
       "injury": 60,
-      "morale": 70,
-      "personality": 50,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -4073,8 +4073,8 @@
       "stamina": 81,
       "toughness": 85,
       "injury": 20,
-      "morale": 75,
-      "personality": 70,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -4153,7 +4153,7 @@
       "stamina": 79,
       "toughness": 83,
       "injury": 40,
-      "morale": 60,
+      "morale": 50,
       "personality": 62,
       "devTrait": 0,
       "unkRating1": 0
@@ -4233,7 +4233,7 @@
       "stamina": 73,
       "toughness": 82,
       "injury": 60,
-      "morale": 62,
+      "morale": 50,
       "personality": 64,
       "devTrait": 0,
       "unkRating1": 50
@@ -4281,7 +4281,7 @@
       "pursuit": 30,
       "zoneCoverage": 60,
       "manCoverage": 66,
-      "pressCoverage": 10,
+      "pressCoverage": 65,
       "playRecognition": 72,
       "jumping": 80,
       "catching": 0,
@@ -4313,8 +4313,8 @@
       "stamina": 75,
       "toughness": 81,
       "injury": 60,
-      "morale": 65,
-      "personality": 0,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -4393,8 +4393,8 @@
       "stamina": 75,
       "toughness": 81,
       "injury": 36,
-      "morale": 37,
-      "personality": 38,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 39
     }
@@ -4473,8 +4473,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 40,
-      "morale": 80,
-      "personality": 0,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -4553,8 +4553,8 @@
       "stamina": 77,
       "toughness": 80,
       "injury": 60,
-      "morale": 65,
-      "personality": 50,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -4633,8 +4633,8 @@
       "stamina": 80,
       "toughness": 81,
       "injury": 40,
-      "morale": 60,
-      "personality": 45,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -4681,7 +4681,7 @@
       "pursuit": 30,
       "zoneCoverage": 60,
       "manCoverage": 60,
-      "pressCoverage": 14,
+      "pressCoverage": 52,
       "playRecognition": 72,
       "jumping": 78,
       "catching": 0,
@@ -4713,8 +4713,8 @@
       "stamina": 70,
       "toughness": 81,
       "injury": 40,
-      "morale": 60,
-      "personality": 50,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -4793,8 +4793,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 48,
-      "morale": 49,
-      "personality": 50,
+      "morale": 50,
+      "personality": 65,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -4841,7 +4841,7 @@
       "pursuit": 30,
       "zoneCoverage": 60,
       "manCoverage": 60,
-      "pressCoverage": 11,
+      "pressCoverage": 52,
       "playRecognition": 72,
       "jumping": 78,
       "catching": 40,
@@ -4954,7 +4954,7 @@
       "toughness": 78,
       "injury": 30,
       "morale": 50,
-      "personality": 40,
+      "personality": 62,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -5033,7 +5033,7 @@
       "stamina": 81,
       "toughness": 79,
       "injury": 50,
-      "morale": 55,
+      "morale": 50,
       "personality": 58,
       "devTrait": 0,
       "unkRating1": 50
@@ -5113,7 +5113,7 @@
       "stamina": 85,
       "toughness": 81,
       "injury": 60,
-      "morale": 70,
+      "morale": 50,
       "personality": 65,
       "devTrait": 0,
       "unkRating1": 50
@@ -5161,7 +5161,7 @@
       "pursuit": 30,
       "zoneCoverage": 85,
       "manCoverage": 60,
-      "pressCoverage": 14,
+      "pressCoverage": 52,
       "playRecognition": 72,
       "jumping": 78,
       "catching": 60,
@@ -5193,8 +5193,8 @@
       "stamina": 80,
       "toughness": 85,
       "injury": 20,
-      "morale": 75,
-      "personality": 0,
+      "morale": 50,
+      "personality": 62,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -5247,9 +5247,9 @@
       "catching": 78,
       "catchInTraffic": 75,
       "spectacularCatch": 66,
-      "shortRouteRunning": 43,
-      "mediumRouteRunning": 45,
-      "deepRouteRunning": 47,
+      "shortRouteRunning": 54,
+      "mediumRouteRunning": 58,
+      "deepRouteRunning": 63,
       "release": 49,
       "runBlock": 59,
       "passBlock": 56,
@@ -5273,8 +5273,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 40,
-      "morale": 55,
-      "personality": 50,
+      "morale": 50,
+      "personality": 62,
       "devTrait": 0,
       "unkRating1": 25
     }
@@ -5353,8 +5353,8 @@
       "stamina": 77,
       "toughness": 80,
       "injury": 40,
-      "morale": 60,
-      "personality": 50,
+      "morale": 50,
+      "personality": 62,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -5433,8 +5433,8 @@
       "stamina": 81,
       "toughness": 81,
       "injury": 66,
-      "morale": 67,
-      "personality": 68,
+      "morale": 50,
+      "personality": 62,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -5513,8 +5513,8 @@
       "stamina": 81,
       "toughness": 79,
       "injury": 40,
-      "morale": 60,
-      "personality": 50,
+      "morale": 50,
+      "personality": 62,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -5594,7 +5594,7 @@
       "toughness": 81,
       "injury": 30,
       "morale": 50,
-      "personality": 40,
+      "personality": 58,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -5673,7 +5673,7 @@
       "stamina": 82,
       "toughness": 85,
       "injury": 40,
-      "morale": 70,
+      "morale": 50,
       "personality": 60,
       "devTrait": 0,
       "unkRating1": 50
@@ -5715,9 +5715,9 @@
       "breakSack": 39,
       "tackle": 32,
       "hitPower": 38,
-      "blockShedding": 41,
-      "finesseMoves": 25,
-      "powerMoves": 40,
+      "blockShedding": 58,
+      "finesseMoves": 38,
+      "powerMoves": 48,
       "pursuit": 33,
       "zoneCoverage": 28,
       "manCoverage": 29,
@@ -5753,7 +5753,7 @@
       "stamina": 81,
       "toughness": 80,
       "injury": 56,
-      "morale": 57,
+      "morale": 50,
       "personality": 58,
       "devTrait": 0,
       "unkRating1": 50
@@ -5833,8 +5833,8 @@
       "stamina": 81,
       "toughness": 81,
       "injury": 70,
-      "morale": 71,
-      "personality": 72,
+      "morale": 50,
+      "personality": 58,
       "devTrait": 0,
       "unkRating1": 73
     }
@@ -5913,8 +5913,8 @@
       "stamina": 79,
       "toughness": 78,
       "injury": 40,
-      "morale": 55,
-      "personality": 50,
+      "morale": 50,
+      "personality": 58,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -5993,8 +5993,8 @@
       "stamina": 75,
       "toughness": 81,
       "injury": 37,
-      "morale": 38,
-      "personality": 39,
+      "morale": 50,
+      "personality": 58,
       "devTrait": 0,
       "unkRating1": 0
     }
@@ -6073,8 +6073,8 @@
       "stamina": 79,
       "toughness": 83,
       "injury": 66,
-      "morale": 67,
-      "personality": 68,
+      "morale": 50,
+      "personality": 58,
       "devTrait": 0,
       "unkRating1": 50
     }
@@ -6153,8 +6153,8 @@
       "stamina": 81,
       "toughness": 81,
       "injury": 74,
-      "morale": 76,
-      "personality": 78,
+      "morale": 50,
+      "personality": 58,
       "devTrait": 0,
       "unkRating1": 50
     }
