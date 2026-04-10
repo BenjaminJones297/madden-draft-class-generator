@@ -408,15 +408,44 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
         "C": {"blockShedding": 30, "powerMoves": 22, "finesseMoves": 17, "tackle": 30, "hitPower": 31, "pursuit": 31},
     }
     OL_ACC_FLOOR = {"T": 68, "G": 68, "C": 70}
+    # Speed/agility floors derived from calibration (DE group = OL players).
+    # Speed table: (forty, speed) pairs from real M26 OL ratings.
+    OL_SPEED_TABLE = [(4.95, 74), (5.11, 69), (5.20, 67), (5.38, 60)]
+    OL_SPD_FLOOR  = {"T": 60, "G": 58, "C": 60}
+    OL_AGI_FLOOR  = {"T": 55, "G": 55, "C": 58}
 
     if pos in OL_DL_CAPS:
         caps = OL_DL_CAPS[pos]
         for stat, cap in caps.items():
             if r.get(stat, 0) > cap:
                 r[stat] = cap
+        # Acceleration floor
         floor = OL_ACC_FLOOR.get(pos, 68)
         if r.get("acceleration", 0) < floor:
             r["acceleration"] = floor
+        # Speed floor: interpolate from forty time, fall back to position floor
+        spd = r.get("speed", 0)
+        spd_floor = OL_SPD_FLOOR.get(pos, 58)
+        if forty is not None:
+            t_vals = [t for t, _ in OL_SPEED_TABLE]
+            s_vals = [s for _, s in OL_SPEED_TABLE]
+            if forty <= t_vals[0]:
+                expected_spd = s_vals[0]
+            elif forty >= t_vals[-1]:
+                expected_spd = s_vals[-1]
+            else:
+                for i in range(len(t_vals) - 1):
+                    if t_vals[i] <= forty <= t_vals[i + 1]:
+                        frac = (forty - t_vals[i]) / (t_vals[i + 1] - t_vals[i])
+                        expected_spd = round(s_vals[i] + frac * (s_vals[i + 1] - s_vals[i]))
+                        break
+            spd_floor = max(spd_floor, expected_spd - 2)
+        if spd < spd_floor:
+            r["speed"] = spd_floor
+        # Agility floor
+        agi_floor = OL_AGI_FLOOR.get(pos, 55)
+        if r.get("agility", 0) < agi_floor:
+            r["agility"] = agi_floor
 
     # WR speed correction: use calibration-derived table; only correct upward when
     # the LLM undershot the expected WR speed for a given forty time.
