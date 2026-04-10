@@ -433,6 +433,7 @@ def main() -> int:
         "polish_ratings9.js",
         "polish_ratings10.js",
         "polish_ratings11.js",
+        "polish_ratings12.js",
     ]
     if args.start_from <= step and not args.skip_polish:
         print_step_header(step, TOTAL_STEPS, "Apply calibration polish passes")

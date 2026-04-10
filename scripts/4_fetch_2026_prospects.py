@@ -491,7 +491,7 @@ HARDCODED_PROSPECTS = [
     #  name                        pos    school                 ht     wt   40     bench  vert  broad  cone   shuttle grade
     ("Fernando Mendoza",           "QB",  "Indiana",            "6-5", 236, 4.68,  None,  None, None,  None,  None,   "A+"),
     ("Caleb Downs",                "FS",  "Ohio State",         "6-0", 206, 4.46,  None,  None, None,  None,  None,   "A+"),
-    ("Arvell Reese",               "OLB", "Ohio State",         "6-4", 241, 4.46,  None,  None, None,  None,  None,   "A+"),
+    ("Arvell Reese",               "DE",  "Ohio State",         "6-4", 241, 4.46,  None,  None, None,  None,  None,   "A+"),
     ("Jeremiyah Love",             "HB",  "Notre Dame",         "6-0", 212, 4.36,  None,  None, None,  None,  None,   "A+"),
     ("David Bailey",               "DE",  "Texas Tech",         "6-4", 251, 4.50,  None,  None, None,  None,  None,   "A"),
     ("Francis Mauigoa",            "T",   "Miami (FL)",         "6-6", 329, 5.20,  None,  None, None,  None,  None,   "A"),
@@ -545,7 +545,6 @@ HARDCODED_PROSPECTS = [
     ("Malachi Lawrence",           "DE",  "UCF",                "6-4", 248, 4.52,  None,  None, None,  None,  None,   "B-"),
     ("Trey Zuhn III",              "T",   "Texas A&M",          "6-5", 315, 5.22,  None,  None, None,  None,  None,   "B-"),
     ("Kamari Ramsey",              "SS",  "USC",                "5-11",195, 4.47,  None,  None, None,  None,  None,   "B-"),
-    ("Jake Golday",                "OLB", "Cincinnati",         "6-3", 240, 4.62,  None,  None, None,  None,  None,   "B-"),
     ("Chandler Rivers",            "CB",  "Duke",               "5-11",185, 4.40,  None,  None, None,  None,  None,   "B-"),
     ("Josh Josephs",               "DE",  "Tennessee",          "6-3", 250, 4.68,  None,  None, None,  None,  None,   "B-"),
     ("Bryce Lance",                "WR",  "North Dakota State", "6-0", 190, 4.34,  None,  None, None,  None,  None,   "B-"),
@@ -653,8 +652,6 @@ HARDCODED_NOTES: dict[str, str] = {
     "Malachi Lawrence": "Athletic DE from UCF with a good motor and developing pass-rush tools. Strong effort level and run-containment ability. Smaller school competition is a concern; needs to prove consistency and power against higher-level offensive linemen.",
     "Trey Zuhn III": "Big offensive tackle with good length and pass protection potential. Above-average size and arm length provide a natural edge in alignment. Footwork consistency needs refinement; anchor strength against bull rushers needs to improve for NFL-level action.",
     "Kamari Ramsey": "Versatile safety from USC with zone coverage instincts and solid run support ability. Good athletic base and awareness in post-snap reads. Needs to develop ball production and man-coverage consistency against NFL-caliber routes.",
-    "Jake Golday": "Athletic OLB from Cincinnati with good pass-rush production and solid run-defense ability. Effective motor and quickness off the snap. Coverage skills are still developing; needs to improve in zone assignments and man coverage for three-down value.",
-    "Chandler Rivers": "Quick, instinctive CB from Duke with good zone anticipation and route recognition ability. Short-area burst helps him close on the ball. Undersized against big physical receivers; press coverage technique needs development; needs to show he can handle elite WRs.",
     "Josh Josephs": "Athletic DE from Tennessee with developing pass-rush tools and a good motor. Shows flashes of quick hands and ability to defeat blocks. Consistency across full games is a concern; needs to develop a deeper rush repertoire and add play strength.",
     "Bryce Lance": "Elite speed burner (4.34 40) from North Dakota State with explosive vertical separation ability and reliable hands. Natural deep-ball tracker who quickly creates separation with acceleration. Small school competition concern; route tree and overall polish need development against high-level competition.",
     "Jake Slaughter": "Experienced center from Florida with solid technique, good snap-to-handoff consistency, and NFL-ready football IQ. Reliable anchor and able to handle pass-protection assignments cleanly. Limited athleticism for pulling or reaching defenders in space; center-only role projection.",
@@ -687,8 +684,7 @@ HARDCODED_NOTES: dict[str, str] = {
 COMBINE_FORTIES: dict[str, float] = {
     "Jeremiyah Love":      4.36,
     "David Bailey":        4.50,
-    "Arvell Reese":        4.46,
-    "Sonny Styles":        4.46,
+    "Arvell Reese":        4.46,    "Sonny Styles":        4.46,
     "Carnell Tate":        4.53,
     "Dillon Thieneman":    4.35,
     "Spencer Fano":        4.91,
@@ -704,7 +700,6 @@ COMBINE_FORTIES: dict[str, float] = {
     "Jacob Rodriguez":     4.57,
     "Cashius Howell":      4.59,
     "Kamari Ramsey":       4.47,
-    "Jake Golday":         4.62,
     "Bryce Lance":         4.34,
     "Jadarian Price":      4.49,
     "Malachi Lawrence":    4.52,
@@ -762,7 +757,6 @@ COMBINE_VERTICAL: dict[str, float] = {
     "Skyler Bell":         41.0,
     "Dillon Thieneman":    41.0,
     "Malachi Lawrence":    40.0,
-    "Jake Golday":         39.0,
     "Chandler Rivers":     39.0,
     "Mike Washington Jr.": 39.0,
     "Jacob Rodriguez":     38.5,
@@ -796,7 +790,6 @@ COMBINE_BROAD: dict[str, int] = {
     "Chris Johnson":       126,   # 10'6"
     "Anthony Hill Jr.":    125,   # 10'5"
     "Dillon Thieneman":    125,   # 10'5"
-    "Jake Golday":         125,   # 10'5"
     "Jadarian Price":      124,   # 10'4"
     "Avieon Terrell":      123,   # 10'3"
     "Jacob Rodriguez":     121,   # 10'1"
@@ -809,7 +802,6 @@ COMBINE_BROAD: dict[str, int] = {
 # 3-cone drill (seconds) — maps to changeOfDirection
 COMBINE_CONE: dict[str, float] = {
     "Jacob Rodriguez":     6.90,
-    "Jake Golday":         7.02,
     "Sam Roush":           7.08,
     "Sonny Styles":        7.09,
     "Spencer Fano":        7.34,
@@ -821,7 +813,6 @@ COMBINE_SHUTTLE: dict[str, float] = {
     "Jacob Rodriguez":     4.19,
     "Sonny Styles":        4.26,
     "Denzel Boston":       4.28,
-    "Jake Golday":         4.34,
     "Sam Roush":           4.37,
     "Spencer Fano":        4.67,
 }
@@ -844,7 +835,6 @@ COMBINE_TEN_SPLIT: dict[str, float] = {
     # LB/OLB/MLB
     "Sonny Styles":        1.56,
     "Anthony Hill Jr.":    1.58,
-    "Jake Golday":         1.60,
     "Jacob Rodriguez":     1.60,
     # DE/EDGE
     "Arvell Reese":        1.58,
