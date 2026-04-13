@@ -327,6 +327,21 @@ def main() -> int:
         )
         if not ok:
             return 1
+
+        # 2b — Extract reference draft class (community file, optional)
+        ref_file = os.path.join(PROJECT_ROOT, "data", "raw", "CAREERDRAFT-NFLDRAFT2026")
+        if os.path.isfile(ref_file):
+            print("  ↳ Extracting community reference draft class ...")
+            cmd_ref = [node, os.path.join(PROJECT_ROOT, "scripts", "extract_reference_class.js")]
+            run_step(
+                label="extract reference class",
+                cmd=cmd_ref,
+                step_num=step,
+                optional=True,
+                hint="Optional — provides community ratings as a reference anchor in the LLM prompt.",
+            )
+        else:
+            print("  ↳ No CAREERDRAFT-NFLDRAFT2026 file found — skipping community reference extraction.")
     elif args.skip_calibration:
         print(f"\n--- Step 2/7: Skipped (--skip-calibration) ---")
     else:

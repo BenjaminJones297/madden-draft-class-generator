@@ -41,6 +41,8 @@ DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 PROSPECTS_FILE = os.path.join(DATA_DIR, "prospects_2026.json")
 CALIBRATION_FILE = os.path.join(DATA_DIR, "calibration_set.json")
 CURRENT_RATINGS_FILE = os.path.join(DATA_DIR, "current_player_ratings.json")
+ROSTER_PLAYERS_FILE  = os.path.join(DATA_DIR, "roster_players_rated.json")
+REFERENCE_CLASS_FILE = os.path.join(DATA_DIR, "reference_draft_class.json")
 OUTPUT_FILE = os.path.join(DATA_DIR, "prospects_rated.json")
 CHECKPOINT_FILE = os.path.join(DATA_DIR, "prospects_rated_checkpoint.json")
 
@@ -138,6 +140,77 @@ def get_calibration_examples(pos: str, prospect: dict, calibration: dict, max_ex
     return candidates[:max_examples]
 
 
+# ── Roster players loader ─────────────────────────────────────────────────────
+def load_roster_players(path: str) -> dict:
+    """
+    Load roster_players_rated.json (flat player array) and return a
+    position-grouped dict compatible with get_current_anchors().
+
+    The 'overall' field in that file is unreliable (all ~67-68), so we compute
+    a pseudo-overall by averaging the position's key rating fields, then store
+    it back under 'overall' for ranking.  Top 10 per position are kept.
+    """
+    with open(path, "r", encoding="utf-8") as f:
+        players: list = json.load(f)
+
+    # Fields to exclude when computing pseudo-overall
+    _SKIP = {"overall", "devTrait", "morale", "personality", "injury",
+             "stamina", "toughness", "kickReturn", "unkRating1"}
+
+    grouped: dict = {}
+    for player in players:
+        pos      = player.get("pos", "")
+        ratings  = player.get("ratings")
+        raw_name = player.get("playerName") or player.get("name", "")
+        if not ratings or not raw_name or not pos:
+            continue
+
+        canon      = canonical_pos(pos)
+        key_fields = [f for f in POSITION_KEY_FIELDS.get(canon, [])
+                      if f not in _SKIP and f in ratings]
+        vals       = [ratings[f] for f in key_fields]
+        pseudo_ovr = round(sum(vals) / len(vals)) if vals else 60
+
+        entry = {
+            "name":    raw_name,
+            "ratings": {**ratings, "overall": pseudo_ovr},
+        }
+        grouped.setdefault(pos, []).append(entry)
+
+    # Sort each position by pseudo-overall desc, keep top 10
+    for pos in grouped:
+        grouped[pos].sort(key=lambda p: p["ratings"]["overall"], reverse=True)
+        grouped[pos] = grouped[pos][:10]
+
+    return grouped
+
+
+# ── Reference draft class loader ──────────────────────────────────────────────
+def load_reference_class(path: str) -> dict:
+    """
+    Load reference_draft_class.json — a community-created 2026 draft class.
+    Returns a dict keyed by normalized player name (lowercase, letters+spaces only).
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_reference_ratings(prospect: dict, reference_class: dict) -> dict | None:
+    """
+    Look up a prospect in the reference draft class by name.
+    Returns the rating dict if found, else None.
+    """
+    first = prospect.get("firstName", "")
+    last  = prospect.get("lastName", "")
+    full  = prospect.get("name", f"{first} {last}".strip())
+    key   = full.lower().replace(r"[^a-z ]", "").strip()
+    import re
+    key   = re.sub(r"[^a-z ]", "", full.lower()).strip()
+    return reference_class.get(key)
+
+
 # ── Current player anchor selection ──────────────────────────────────────────
 def get_current_anchors(pos: str, current_ratings: dict, max_anchors: int = 3) -> list:
     """
@@ -172,7 +245,7 @@ def _key_ratings_str(ratings: dict, pos: str) -> str:
     return ", ".join(parts)
 
 
-def build_prompt(prospect: dict, calibration_examples: list, current_anchors: list) -> str:
+def build_prompt(prospect: dict, calibration_examples: list, current_anchors: list, reference_ratings: dict | None = None) -> str:
     pos = prospect["pos"]
     canon = canonical_pos(pos)
     key_fields = POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
@@ -214,6 +287,20 @@ def build_prompt(prospect: dict, calibration_examples: list, current_anchors: li
             ovr = rats.get("overall", "N/A")
             key_str = _key_ratings_str(rats, pos)
             lines.append(f"• {name} | OVR {ovr} | {key_str}")
+        lines.append("")
+
+    # ── Community reference ratings ──
+    if reference_ratings:
+        ref_pos = reference_ratings.get("pos", pos)
+        ref_name = reference_ratings.get("name", "")
+        ref_ovr = reference_ratings.get("overall", "?")
+        key_fields = POSITION_KEY_FIELDS.get(canonical_pos(pos), POSITION_KEY_FIELDS["QB"])
+        ref_key_str = ", ".join(
+            f"{f}={reference_ratings[f]}" for f in key_fields if f in reference_ratings
+        )
+        lines.append(f"COMMUNITY REFERENCE — Another Madden creator rated this same prospect:")
+        lines.append(f"• {ref_name} | pos: {ref_pos} | OVR {ref_ovr} | {ref_key_str}")
+        lines.append("Use this as a directional reference — adjust if your calibration examples or NFL comp suggest otherwise.")
         lines.append("")
 
     # ── Prospect to rate ──
@@ -284,11 +371,27 @@ def build_prompt(prospect: dict, calibration_examples: list, current_anchors: li
         lines.append("- Calibration WR speed reference: 4.30→96, 4.37→93, 4.40→92, 4.44→91, 4.46→90, 4.48→90, 4.51→89, 4.59→86, 4.61→85")
         lines.append("- Use the table above to set speed; do NOT apply a blanket bonus — fast WRs (sub-4.40) get no extra bump")
         lines.append("- shortRouteRunning, mediumRouteRunning, deepRouteRunning are all KEY stats — do not leave any below 70 for a starter")
+        lines.append("- blockShedding, powerMoves, finesseMoves are PASS RUSH stats for DL — keep them 15-35 for a WR")
+        lines.append("- tackle, hitPower, pursuit are DEFENSIVE stats — keep them 20-38 for a WR")
+        lines.append("- zoneCoverage, manCoverage, pressCoverage are DB stats — keep them 20-38 for a WR")
+        lines.append("")
+    elif pos in ("HB", "FB"):
+        lines.append(f"IMPORTANT for {pos}:")
+        lines.append("- blockShedding, powerMoves, finesseMoves are PASS RUSH stats for DL — keep them 15-40 for a RB")
+        lines.append("- zoneCoverage, manCoverage, pressCoverage are DB coverage stats — keep them 20-40 for a RB")
         lines.append("")
     elif pos in ("DE", "OLB") and pos not in ("T", "G", "C"):
         lines.append(f"IMPORTANT for {pos} (edge/pass rusher):")
         lines.append("- blockShedding, powerMoves, finesseMoves are KEY pass-rush stats — these should be HIGH (65-85)")
         lines.append("- passBlock, runBlock, impactBlocking should be LOW (15-30) — those are offensive stats")
+        lines.append("")
+    elif pos in ("DT", "NT"):
+        lines.append("IMPORTANT for DT (interior defensive lineman):")
+        lines.append("- speed should be 60-82: even the biggest DTs have speed 60+; do NOT set below 60")
+        lines.append("- acceleration should be 62-82: do NOT set below 62")
+        lines.append("- agility should be 55-82: do NOT set below 55")
+        lines.append("- blockShedding, powerMoves, finesseMoves, tackle, hitPower are KEY stats")
+        lines.append("- passBlock, runBlock, catching, route running are offensive stats — keep them 15-35")
         lines.append("")
 
     lines.append(f"Return ONLY a valid JSON object with ALL of these exact keys, no extra text:")
@@ -372,8 +475,10 @@ def validate_ratings(ratings: dict, pos: str) -> tuple[dict, list]:
         if field == "devTrait":
             val = max(0, min(3, val))
         else:
-            # Clamp 0-99
+            # Clamp 0-99; treat 0 as invalid — use default minimum
             val = max(0, min(99, val))
+            if val == 0:
+                val = defaults.get(field, 15)
 
         cleaned[field] = val
 
@@ -496,7 +601,7 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
     # Speed table: (forty, speed) pairs from real M26 OL ratings.
     OL_SPEED_TABLE = [(4.95, 74), (5.11, 69), (5.20, 67), (5.38, 60)]
     OL_SPD_FLOOR  = {"T": 60, "G": 58, "C": 60}
-    OL_AGI_FLOOR  = {"T": 55, "G": 55, "C": 58}
+    OL_AGI_FLOOR  = {"T": 63, "G": 62, "C": 63}
 
     if pos in OL_DL_CAPS:
         caps = OL_DL_CAPS[pos]
@@ -585,6 +690,16 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             if spd < expected:
                 r["speed"] = expected
 
+    # Agility floor for skill positions: calibration shows no TE/WR/HB/etc has
+    # agility more than ~15 points below their speed. Floor = max(65, speed - 15).
+    SKILL_AGI_POSITIONS = {"QB", "HB", "FB", "WR", "TE", "CB", "FS", "SS", "MLB", "OLB", "DE"}
+    if pos in SKILL_AGI_POSITIONS:
+        spd = r.get("speed", 0)
+        agi = r.get("agility", 0)
+        agi_floor = max(65, spd - 15) if spd > 65 else 65
+        if agi < agi_floor:
+            r["agility"] = agi_floor
+
     # Safety coverage floor: if coverage stats look like defaults, bump them
     if pos in ("FS", "SS"):
         if r.get("zoneCoverage", 0) < 60:
@@ -593,6 +708,8 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             r["strength"] = 65
         if r.get("playRecognition", 0) < 55:
             r["playRecognition"] = max(r.get("playRecognition", 0), 65)
+        if r.get("awareness", 0) < 62:
+            r["awareness"] = max(r.get("awareness", 0), 65)
 
     # CB: cap DL stats (calibration group is misaligned — contains DTs, not CBs)
     if pos == "CB":
@@ -603,6 +720,58 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             r["manCoverage"] = max(r.get("manCoverage", 0), 60)
         if r.get("zoneCoverage", 0) < 55:
             r["zoneCoverage"] = max(r.get("zoneCoverage", 0), 60)
+        if r.get("playRecognition", 0) < 62:
+            r["playRecognition"] = max(r.get("playRecognition", 0), 65)
+
+    # MLB: zone coverage and awareness floor
+    if pos == "MLB":
+        if r.get("zoneCoverage", 0) < 58:
+            r["zoneCoverage"] = max(r.get("zoneCoverage", 0), 62)
+        if r.get("awareness", 0) < 60:
+            r["awareness"] = max(r.get("awareness", 0), 63)
+
+    # Offensive skill positions: cap defensive-specific stats the LLM inflates.
+    # blockShedding/finesseMoves/powerMoves are DL pass-rush stats.
+    # tackle/hitPower/pursuit/coverage are defensive stats.
+    PASS_RUSH_STATS  = ("blockShedding", "finesseMoves", "powerMoves")
+    DEF_SKILL_STATS  = ("tackle", "hitPower", "pursuit")
+    COVERAGE_STATS   = ("zoneCoverage", "manCoverage", "pressCoverage")
+
+    if pos in ("QB", "WR"):
+        for stat in PASS_RUSH_STATS:
+            r[stat] = min(r.get(stat, 28), 38)
+        for stat in DEF_SKILL_STATS:
+            r[stat] = min(r.get(stat, 28), 42)
+        for stat in COVERAGE_STATS:
+            r[stat] = min(r.get(stat, 28), 42)
+
+    elif pos in ("HB", "FB"):
+        for stat in PASS_RUSH_STATS:
+            r[stat] = min(r.get(stat, 28), 42)
+        for stat in DEF_SKILL_STATS:
+            r[stat] = min(r.get(stat, 28), 50)
+        for stat in COVERAGE_STATS:
+            r[stat] = min(r.get(stat, 28), 42)
+        # Cap ball-carry stats: even elite rookie HBs rarely exceed 88-90
+        for stat in ("carrying", "breakTackle", "stiffArm", "trucking"):
+            if r.get(stat, 0) > 90:
+                r[stat] = 90
+
+    elif pos == "TE":
+        for stat in PASS_RUSH_STATS:
+            r[stat] = min(r.get(stat, 28), 42)
+
+    # DT/NT athletic floors: calibration min is speed=60, accel≈62, agility=51.
+    # Any value below these is a ghost/fallback the LLM invented.
+    if pos in ("DT", "NT"):
+        if r.get("speed", 0) < 60:
+            r["speed"] = 60
+        if r.get("acceleration", 0) < 62:
+            r["acceleration"] = 62
+        spd = r.get("speed", 0)
+        agi_floor = max(55, spd - 15)
+        if r.get("agility", 0) < agi_floor:
+            r["agility"] = agi_floor
 
     # Acceleration floor: calibration shows accel is almost always >= speed for
     # skill positions. For all non-OL/K/P/LS, never allow accel to be more than
@@ -631,6 +800,7 @@ def rate_prospect(
     model: str,
     calibration: dict,
     current_ratings: dict,
+    reference_class: dict | None = None,
     verbose: bool = False,
 ) -> dict:
     """
@@ -645,9 +815,10 @@ def rate_prospect(
     # Gather context
     cal_examples = get_calibration_examples(pos, prospect, calibration)
     anchors = get_current_anchors(pos, current_ratings) if current_ratings else []
+    ref_ratings = get_reference_ratings(prospect, reference_class) if reference_class else None
 
     # Build primary prompt
-    prompt = build_prompt(prospect, cal_examples, anchors)
+    prompt = build_prompt(prospect, cal_examples, anchors, ref_ratings)
 
     text = ""
     ratings_raw = None
@@ -749,8 +920,20 @@ def main():
         print(f"Loading current player ratings from {CURRENT_RATINGS_FILE} ...")
         with open(CURRENT_RATINGS_FILE, "r", encoding="utf-8") as f:
             current_ratings = json.load(f)
+    elif os.path.exists(ROSTER_PLAYERS_FILE):
+        print(f"Loading roster anchors from {ROSTER_PLAYERS_FILE} ...")
+        current_ratings = load_roster_players(ROSTER_PLAYERS_FILE)
+        pos_counts = {p: len(v) for p, v in current_ratings.items()}
+        print(f"  {sum(pos_counts.values())} players loaded across {len(pos_counts)} positions.")
     else:
-        print("  (No current_player_ratings.json found — skipping anchors)")
+        print("  (No current_player_ratings.json or roster_players_rated.json found — skipping anchors)")
+
+    # ── Load community reference draft class ──
+    reference_class: dict = load_reference_class(REFERENCE_CLASS_FILE)
+    if reference_class:
+        print(f"Loaded reference draft class: {len(reference_class)} prospects from {REFERENCE_CLASS_FILE}")
+    else:
+        print("  (No reference_draft_class.json found — skipping community reference)")
 
     # ── Check Ollama connectivity early ──
     try:
@@ -797,6 +980,7 @@ def main():
                     model=model,
                     calibration=calibration,
                     current_ratings=current_ratings,
+                    reference_class=reference_class,
                     verbose=args.verbose,
                 )
             except ConnectionError as ce:

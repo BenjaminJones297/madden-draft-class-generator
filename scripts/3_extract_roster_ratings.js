@@ -375,7 +375,7 @@ async function main() {
     let franchise;
 
     try {
-      franchise = new Franchise(rosPath);
+      franchise = new Franchise(rosPath, { gameYearOverride: 26 });
     } catch (err) {
       reject(new Error(`Failed to open roster file: ${err.message}`));
       return;
