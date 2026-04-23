@@ -1,7 +1,22 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wc -l /c/Users/benja/repos/madden-draft-class-generator/scripts/*.py /c/Users/benja/repos/madden-draft-class-generator/scripts/*.js)"
+      "Bash(wc -l /c/Users/benja/repos/madden-draft-class-generator/scripts/*.py /c/Users/benja/repos/madden-draft-class-generator/scripts/*.js)",
+      "Bash(node applyRatings.mjs --franchise \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-APR22-05h15m03p-AUTOSAVE\" --source \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-OFFICIAL\")",
+      "Bash(node applyRosters.mjs --franchise \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-APR22-05h15m03p-AUTOSAVE\")",
+      "Bash(node applyRatings.mjs --franchise \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/updated-franchise\" --source \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-OFFICIAL\")",
+      "Bash(node applyRosters.mjs --franchise \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/updated-franchise\")",
+      "Bash(node applyRatings.mjs --franchise \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-UPDATED\" --source \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-OFFICIAL\")",
+      "Bash(node applyRosters.mjs --franchise \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-UPDATED\")",
+      "Bash(node inspectContracts.mjs)",
+      "Bash(rm -f \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-UPDATED.bak\")",
+      "Bash(node -e ' *)",
+      "Bash(node listUnmatched.mjs)",
+      "Bash(./.venv/Scripts/python.exe scripts/10_fetch_current_rosters.py)",
+      "Bash(PYTHONIOENCODING=utf-8 ./.venv/Scripts/python.exe scripts/10_fetch_current_rosters.py)",
+      "Bash(rm -f \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-UPDATED\" \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-UPDATED.bak\")",
+      "Bash(cp \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-APR22-05h29m08p-AUTOSAVE\" \"C:/Users/benja/OneDrive/Documents/Madden NFL 26/saves/CAREER-UPDATED\")",
+      "Bash(node checkTargets.mjs)"
     ]
   }
 }
