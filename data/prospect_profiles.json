@@ -1,0 +1,612 @@
+{
+  "fernando mendoza": {
+    "pos": "QB",
+    "play_style": "Polished pocket passer with prototype 6-5/225 frame. Heisman winner who led Indiana to 16-0 CFP championship; FBS-leading 41 passing TDs, 72% completion, 9.3 Y/A in Big Ten (on par with recent #1s Caleb Williams and Cam Ward).",
+    "strengths": [
+      "Elite post-snap processing — reads defenses quickly, anticipates zone windows before they open",
+      "Ball placement and accuracy are his best trait — 93.3 PFF passing grade over the middle (#2 among draft-eligible QBs)",
+      "Prototype pocket-passer build and polished passing skill set that translates directly to the NFL",
+      "Dissects coverages, finds the open man, throws with anticipation"
+    ],
+    "weaknesses": [
+      "Almost no under-center experience (3% of snaps in 2025, mostly shotgun)",
+      "Indiana's RPO-heavy scheme limited the NFL-style throws he put on tape",
+      "Pocket presence / feel needs NFL-level refinement early"
+    ],
+    "nfl_comp": "Pocket-passer template with #1-overall production profile",
+    "source": "espn.com/nfl/draft2026, pff.com, nfl.com/prospects"
+  },
+  "david bailey": {
+    "pos": "DE",
+    "play_style": "Twitched-up speed rusher (6-3/250, 4.5 forty, 1.62 ten-split) — unanimous All-American and Big 12 DPOY with 14.5 sacks (led FBS) at Texas Tech. Elite first step, multiple pass-rush moves, but built more on speed than power.",
+    "strengths": [
+      "Elite first step / get-off — among the best in the class; 4.5 forty with 1.62-second 10-yard split",
+      "Long arms (33 3/4\") and 79 3/4\" wingspan, elite closing burst",
+      "Quick, active hands — deep arsenal: swipe, rip, ghost, inside spin, long-arm",
+      "Pure speed-to-edge is his hallmark; quarterbacks are in trouble once he clears the corner"
+    ],
+    "weaknesses": [
+      "Run defense concerns — gets displaced at point of attack, anchor strength lacking",
+      "Slightly undersized for full-time NFL edge (came up from 238 to 250 lbs; may have maxed frame)",
+      "Lacks power in his rush — over-relies on speed; needs to develop power counters",
+      "Speed-to-power conversion weak when tackles get hands inside frame"
+    ],
+    "nfl_comp": "Speed rusher / pass-rush specialist profile",
+    "source": "bleacherreport, nfl.com, foxsports, theringer"
+  },
+  "jeremiyah love": {
+    "pos": "HB",
+    "play_style": "Elite three-down workhorse with rare speed/explosiveness/contact balance combo. Jahmyr Gibbs comps. Ran 4.36 at combine at his weight. 2,882 rush yds / 36 TDs + 63 catches at Notre Dame. #3 overall pick (Cardinals) — first top-5 RB since 2018.",
+    "strengths": [
+      "Legitimately rare speed, explosiveness, quickness, agility (4.36 forty)",
+      "Elite contact balance and vision",
+      "Zone-scheme natural — patience behind the line with burst to hit the hole",
+      "Receiver-like hands and ball skills out of the backfield — 63 rec / 594 yds in college",
+      "Three-down capable (run between tackles, catch, protect)",
+      "Take-it-to-the-house home-run ability"
+    ],
+    "weaknesses": [
+      "Pass protection still developing (though he contributes)",
+      "Minor refinement needed in pass-pro technique and inside running patience"
+    ],
+    "nfl_comp": "Jahmyr Gibbs",
+    "source": "nfl.com, bleacherreport, foxsports, yahoo"
+  },
+  "carnell tate": {
+    "pos": "WR",
+    "play_style": "Polished, technical 6-2/192 WR. Wins with precision, body control, and coverage recognition. Drafted #4 overall (Titans). Chris Olave / George Pickens comps. Route technician who saw favorable matchups opposite Jeremiah Smith at OSU.",
+    "strengths": [
+      "Route-running technician — runs every branch on the tree, manipulates DBs",
+      "Elite ball tracking and hands — extends and plucks away from frame, very soft hands",
+      "Outstanding body control — 'The Great Adjuster'; twists/turns to finish contested catches",
+      "Climbs the ladder well; bouncy athlete with large catch radius",
+      "High football IQ — reads coverage, finds space vs zone, mistake-free",
+      "Willing blocker; high character"
+    ],
+    "weaknesses": [
+      "Production modest for a top-5 pick (51-875-9 in 11 games as junior)",
+      "Untested as a true WR1 — saw favorable coverage opposite Jeremiah Smith",
+      "Smaller than listed (measured 6-2/192 at combine vs 6-3/195 billed)",
+      "Not a burner — wins with technique more than pure speed"
+    ],
+    "nfl_comp": "Chris Olave / George Pickens (with better hands)",
+    "source": "cbssports, bleacherreport, nfl.com, steelersdepot"
+  },
+  "arvell reese": {
+    "pos": "DE",
+    "play_style": "Converted LB turned edge — tall, long, twitched-up with explosive get-off. Drafted #5 overall by Giants. High-ceiling athlete with uncommon Front-7 versatility; can drop into zone coverage. Still raw as a pass rusher.",
+    "strengths": [
+      "Explosive, twitched-up athlete with above-average length and sculpted frame",
+      "Stronger than frame suggests — converts speed to power vs tackles",
+      "Agility + explosiveness to blow past unprepared blockers",
+      "Rare zone-coverage fluency for an edge — pedal-to-drive, matches TEs/RBs in space",
+      "Converted from LB — Pro Bowl upside with high athletic ceiling"
+    ],
+    "weaknesses": [
+      "Short arms for edge (32.5\") — concern at top-5 slot",
+      "Pass-rush plan/arsenal still developing — only rushed on ~25% of pass snaps",
+      "Weak lateral movement / short-area quickness — struggles in man vs TEs/RBs",
+      "Bad eyes in zone at times — covers grass; late reacting to play-action"
+    ],
+    "nfl_comp": "Hybrid edge/OLB with coverage versatility",
+    "source": "giants.com, bigblueview, theringer, sportsinfosolutions"
+  },
+  "mansoor delane": {
+    "pos": "CB",
+    "play_style": "Scheme-independent press/zone corner. 4.38 speed erased long-speed concerns. LSU transfer with 0 TDs allowed and <27% completion on 200+ coverage snaps in 2025. High-floor, instinctive technician. #6 to Chiefs (trade-up).",
+    "strengths": [
+      "Elite coverage production — zero TDs allowed, sub-27% completion, only 2 rec 20+ yds",
+      "4.38 forty — recovery burst to carry vertical routes",
+      "Scheme-versatile — thrived in VT zone + LSU man looks",
+      "Advanced technique and hasty click-and-close ability in zone",
+      "Triggers downhill in run support, wraps up despite lean frame",
+      "Instinctive ball-hawk with 'hammer mentality' at catch point"
+    ],
+    "weaknesses": [
+      "Below-average arm length (30\") — disrupted less vs tall boundary WRs",
+      "Lean frame (190 lbs) — durability / bigger-slot / TE matchup questions",
+      "Eyes can get manipulated by pump fakes and double moves",
+      "Needs to clean up grabbiness in coverage (penalty risk)",
+      "Functional strength still developing for a 17-game season"
+    ],
+    "nfl_comp": "Scheme-versatile CB2 with CB1 floor",
+    "source": "nfl.com, foxsports, readoptional, arrowheadpride"
+  },
+  "sonny styles": {
+    "pos": "MLB",
+    "play_style": "6-5/244 converted-safety LB with rare athletic profile (92nd%ile wingspan, 99th%ile vert, 98th%ile broad). Fred Warner comps. First-team All-American at Ohio State. #7 overall. Elite coverage LB with blitz upside still untapped.",
+    "strengths": [
+      "Rare size/length/explosiveness combo for a LB — 6-5/244 with elite jumps",
+      "Excellent coverage awareness, positioning, and range on passing downs",
+      "Executes multiple coverage assignments comfortably (zone, man on TEs/RBs)",
+      "Team captain / green-dot wearer for CFP program — leadership/IQ",
+      "Blitz reps show real burst and power — untapped pass-rush upside"
+    ],
+    "weaknesses": [
+      "Tackle form — attempts get high, long frame creates leverage issues vs NFL RBs",
+      "Bites on play-action and boot fakes; vacates gap early",
+      "Play strength at POA vs climbing interior OL still developing",
+      "Not a ballhawk — only 1 career INT at OSU",
+      "Can over-rely on athleticism in space"
+    ],
+    "nfl_comp": "Fred Warner (coverage-first LB)",
+    "source": "nfl.com, bleacherreport, yahoo, foxsports"
+  },
+  "jordyn tyson": {
+    "pos": "WR",
+    "play_style": "Twitchy 6-2/200 matchup WR from Arizona State. Big 12 Offensive Newcomer of the Year with 75-1101-10 in 2024. Drafted #8 by Saints. Nuanced route runner; can line up anywhere. Injury history is the main red flag.",
+    "strengths": [
+      "Smooth, nuanced route runner — manipulates DB leverage, uses tempo to create separation",
+      "Elite vs man coverage — 89.0 PFF receiving grade vs man in 2025, 4.63 YPRR vs man",
+      "Strong hands — 1.6% drop rate in 2025; tracks ball well; contested-catch capable",
+      "Versatile — can win at every level and play any WR spot",
+      "Physical run blocker for a WR; competitive demeanor"
+    ],
+    "weaknesses": [
+      "Serious injury history — torn ACL/MCL/PCL at Colorado (2022), broken collarbone (2024), hamstring (2025)",
+      "Lack of play strength for his size — doesn't dominate through contact as expected",
+      "Can struggle vs physical press coverage",
+      "Questions about top-end speed / ability to play faster"
+    ],
+    "nfl_comp": "Matchup X receiver with WR1 upside",
+    "source": "bleacherreport, 247sports, readoptional, nfl.com"
+  },
+  "spencer fano": {
+    "pos": "T",
+    "play_style": "Utah RT — unanimous All-American, Outland Trophy winner. Elite combine testing (93 athleticism / 85 production / 89 total — all best among OTs). #9 to Browns. Technically polished pass protector; frame questions on POA power.",
+    "strengths": [
+      "Top athletic testing among OTs — elite feet, demeanor, and recovery balance",
+      "Dominant 2025 pass protection — 0 sacks allowed, 5 pressures / 5 hurries on 357 snaps",
+      "NFL-ready footwork and kick slide; rarely beaten cleanly",
+      "Unanimous All-American — consistent against SEC/Big 12 level competition"
+    ],
+    "weaknesses": [
+      "Core strength / pad level issues — gets overtaken late in reps as a drive blocker",
+      "Effort blocker in run game but can be walked back by elite power",
+      "NFL projection may be scheme/matchup dependent until he adds functional strength"
+    ],
+    "nfl_comp": "Technically sound zone-scheme RT",
+    "source": "bleacherreport, clevelandbrowns.com, readoptional, on3"
+  },
+  "francis mauigoa": {
+    "pos": "T",
+    "play_style": "Massive 6-5/329 Miami RT — widely considered the top OL prospect in the class. Power-based anchor who halts bull rush and generates displacement in the run game. #10 overall (Giants). Herniated-disk health flag.",
+    "strengths": [
+      "Elite play strength and point-of-attack power — named ESPN's best anchor",
+      "Commanding bull-rush defender; generates displacement in run game",
+      "PFF 87.0 pass-blocking grade (7th among OTs); 83.6 overall",
+      "Densely built, NFL-ready frame — called the 'most NFL-ready OT' in class by Randy Cross",
+      "Versatile projection — can kick inside to guard if needed"
+    ],
+    "weaknesses": [
+      "Range / redirect ability closer to adequate — shorter corners when rushers gain width",
+      "Inside-shoulder exposure to counters vs quicker rushers",
+      "Not the quickest or most agile OT in the class",
+      "Herniated disk concern — may require surgery, could miss rookie-season time"
+    ],
+    "nfl_comp": "Power RT / guard-convertible anchor",
+    "source": "readoptional, bleacherreport, 247sports, fantasypros"
+  },
+  "caleb downs": {
+    "pos": "FS",
+    "play_style": "Ohio State safety drafted #11 by Cowboys (trade-up). Elite football IQ and versatility — played all three secondary spots. Did not allow a TD in two seasons; cerebral, coverage-first prospect. Athletic profile more good than elite.",
+    "strengths": [
+      "Elite football IQ — 'step ahead of QBs', cerebral processor",
+      "Zero TDs allowed over two seasons at OSU; sub-53.5 NFL QBR when targeted",
+      "Tackles with controlled aggression and textbook technique",
+      "Versatile — plays deep, slot, and box equally well",
+      "CB-level hip fluidity for a safety — mirrors route breaks in-phase"
+    ],
+    "weaknesses": [
+      "Not the biggest or fastest safety — athletic profile good, not elite",
+      "Some injury-history concerns raised privately",
+      "Play-speed on tape outstrips measured speed; depends on processing edge"
+    ],
+    "nfl_comp": "Cerebral do-it-all safety",
+    "source": "dallascowboys.com, elevenwarriors, atozsports, profootballnetwork"
+  },
+  "kadyn proctor": {
+    "pos": "T",
+    "play_style": "Alabama LT — mountain (352 lbs) with rare size and natural power. Drafted #12 (Dolphins). Road-grader run blocker with heavy hands and strong anchor. Pass-pro technique inconsistent; possible guard convert long-term.",
+    "strengths": [
+      "Rare size/power combo — arguably best physical traits in class",
+      "Elite anchor — power rushers go nowhere when he drops it",
+      "Road-grader in the run game; strong hands + thick base",
+      "Outstanding combine testing for his mass — 32.5\" vert, 109\" broad"
+    ],
+    "weaknesses": [
+      "Pass-protection is a roller coaster — some snaps great, others raw",
+      "Top-heavy play style, inconsistent technique — clean losses on island reps",
+      "Lack of ideal foot speed and arm length — potential guard projection",
+      "High ceiling but low floor early; Round 2 grade despite Round 1 capital"
+    ],
+    "nfl_comp": "Massive power LT with guard fallback",
+    "source": "readoptional, bleacherreport, pff.com, nfl.com"
+  },
+  "ty simpson": {
+    "pos": "QB",
+    "play_style": "Alabama QB drafted #13 by Rams. Polished, repeatable mechanics — arguably more pro-ready than Mendoza mechanically. Only 15 career starts (sat behind Milroe). High-floor / low-ceiling projection; size concerns.",
+    "strengths": [
+      "One of the best pre- and post-snap processors in class — works 1-2-3 reads",
+      "Tight, compact release with smooth, repeatable mechanics",
+      "Quality thrower on the move — excellent on bootlegs / rollouts",
+      "Controls defenders with his eyes; gets to checkdowns; pro-style concept mastery",
+      "Good lower-body strength — generates velocity and power"
+    ],
+    "weaknesses": [
+      "Limited starting experience (15 career starts); tape got worse as DCs adjusted",
+      "Anticipation from pocket needs work — late on out-breaking routes",
+      "Stares down predetermined reads — turnover risk",
+      "Under 6-1 and <215 lbs — historical size/durability concern",
+      "Gunslinger mentality — passes on checkdowns for downfield shots"
+    ],
+    "nfl_comp": "High-floor / limited-ceiling starter",
+    "source": "bleacherreport, cbssports, readoptional, nfl.com"
+  },
+  "olaivavega ioane": {
+    "pos": "G",
+    "play_style": "Penn State — top pure guard in the class. 6-4/320 power-based IOL. Drafted #14 by Ravens. Light-footed anchor who stonewalls bull rushers; limitations show up in space.",
+    "strengths": [
+      "Top pure guard in class — halts bull rush with firm anchor",
+      "Light-footed for his size — mirrors athletic interior rushers",
+      "Stonewalls power DTs; rarely gives ground in pass protection",
+      "Allowed 0 hits / 0 sacks in 2025; patient, balanced footwork",
+      "Tone-setter in downhill or balanced run schemes"
+    ],
+    "weaknesses": [
+      "Average movement skills — limited winning in space",
+      "Struggles as a move blocker on reach blocks and second-level climbs",
+      "5.35 forty (42nd %ile) shows up vs LBs beating him to spot",
+      "Redirect ability vs quicker interior rushers grades average"
+    ],
+    "nfl_comp": "Power-based starting guard",
+    "source": "bleacherreport, blackshoediaries, baltimoreravens.com, bigblueview"
+  },
+  "rueben bain": {
+    "pos": "DE",
+    "play_style": "Miami edge — 6-3/270 thickly built power rusher. Drafted #15 by Buccaneers. 20.5 career sacks. Violent hands, elite run defender, bull-rush base with a devastating move arsenal.",
+    "strengths": [
+      "Bursts off the line — beats tackles to the punch with violent hands",
+      "Power-based edge — collapses pockets; jolts blockers back",
+      "Elite run defender — gap/scheme-disciplined, great ball location",
+      "Deep move arsenal — devastating swim, bull rush, counters",
+      "Unusual bend for his mass — maintains balance at extreme angles",
+      "Modern NFL DL — can line up anywhere on the front"
+    ],
+    "weaknesses": [
+      "Short arms (30 7/8\") — major concern at high-impact NFL edge",
+      "Lacks some suddenness / redirect quickness",
+      "Leaves sacks on the field when initial move doesn't connect"
+    ],
+    "nfl_comp": "Thick-bodied power edge",
+    "source": "tankathon, bleacherreport, bucsnation, sportsinfosolutions"
+  },
+  "kenyon sadiq": {
+    "pos": "TE",
+    "play_style": "Oregon TE drafted #16 by Jets. Ran 4.39 at combine — fastest TE time in 14 years. Elite Y/F flex athlete with real blocking chops. Drop-rate concerns the main flaw.",
+    "strengths": [
+      "Blazing 4.39 forty — best TE time in 14 Combines",
+      "Dangerous 3-level receiver with quick cuts and agility",
+      "One of most physical/versatile blockers in the class — great pad level",
+      "Elite body control and burst off snap",
+      "Tenacious competitor as a blocker; good technique"
+    ],
+    "weaknesses": [
+      "Drop-rate regression in 2025 (9.0%, 5th-highest among 50+ target TEs)",
+      "Inconsistent catch mechanics — fights routine catches at times",
+      "Slightly undersized for in-line dirty work",
+      "Height/length may limit TE1 usage in some schemes"
+    ],
+    "nfl_comp": "Speed-flex TE with blocking upside",
+    "source": "nfl.com, bleacherreport, cbssports, jonledyard"
+  },
+  "blake miller": {
+    "pos": "T",
+    "play_style": "Clemson RT — 6-7/317, broke Clemson career-snaps record (3,778 snaps, 54 starts). Drafted #17 by Lions. Durable, experienced, safe prospect. Grit Index #1 among OTs.",
+    "strengths": [
+      "Durable and consistent — 54 career starts, all at RT",
+      "Top-tier work ethic — Grit Index 9.67 (#1 among OTs)",
+      "Good athletic ability, arm length, quick proactive hands",
+      "PFF pass-blocking grade 81.6 (33rd of 632 qualified OTs in 2025)",
+      "Experienced, safe, alert starter-ready profile"
+    ],
+    "weaknesses": [
+      "Lacks high-end power — brings tenacity to finish but not dominance",
+      "Unproven versatility — played exclusively RT",
+      "Finisher more than road-grader"
+    ],
+    "nfl_comp": "Durable starting RT",
+    "source": "on3, bleacherreport, profootballnetwork, prideofdetroit"
+  },
+  "caleb banks": {
+    "pos": "DT",
+    "play_style": "Florida DT drafted #18 by Vikings. 6-6/327 with explosive first step and elite length. Chris Jones comps. Foot injury limited him to 3 games in 2025; cleared for June.",
+    "strengths": [
+      "6-6/327 with elite length and explosive first step",
+      "Violent hands + nimble feet — Chris Jones comp from Bucky Brooks",
+      "Delivers real knockback power; good pad level for his height",
+      "Near-sub-5 forty (5.04) despite fresh-cleat irritation at Combine",
+      "Game-wrecker upside if it clicks"
+    ],
+    "weaknesses": [
+      "Motor burns hot and dies fast — disappears on second-wave rush reps",
+      "Won't produce cleanup sacks if he doesn't win initially",
+      "2025 foot injury (fractured 4th metatarsal) — only 3 games, March surgery",
+      "Raw — development path longer than production profile suggests"
+    ],
+    "nfl_comp": "Chris Jones (upside comp)",
+    "source": "vikings.com, espn, zonecoverage, nfl.com"
+  },
+  "monroe freeling": {
+    "pos": "T",
+    "play_style": "Georgia LT — 6-7/315, 12 starts in 2025 (only year as full-time starter). Drafted #19 by Panthers. Plus-plus pass protector; run-game technique raw. Basketball-background athlete.",
+    "strengths": [
+      "Plus-plus pass blocker — minimal pressure on ~750 snaps in SEC",
+      "Basketball-athletic for 6-7 frame — quick first step out of stance",
+      "Climbs to second level effortlessly; nimble for size",
+      "Reaches spot before defender arrives in pass set"
+    ],
+    "weaknesses": [
+      "Struggles in the run game — trouble sealing defenders on outside runs",
+      "Upright drive-block style — overextends and falls off blocks",
+      "Lacks starting experience — only 12 career starts as full-time starter",
+      "Readiness to start Year 1 questioned by scouts"
+    ],
+    "nfl_comp": "Pass-first developmental LT",
+    "source": "bleacherreport, readoptional, catscratchreader, pff.com"
+  },
+  "makai lemon": {
+    "pos": "WR",
+    "play_style": "USC WR — Biletnikoff winner. Drafted #20 by Eagles. Compact, competitive slot receiver with elite hands and YAC ability. Led top WRs in tackle-avoided rate, explosive-catch rate, and YPRR.",
+    "strengths": [
+      "Biletnikoff winner — Best Receiver in college football",
+      "Elite hands, route feel, and run-after-catch ability",
+      "Led top WRs in tackle-avoided rate (26.6%), explosive-catch rate (28.7%), YPRR (3.22)",
+      "Very good contact balance; fights through tackles",
+      "Good play strength for size — holds up at catch point, sustains blocks",
+      "Toughness and versatility — chain-mover slot archetype"
+    ],
+    "weaknesses": [
+      "Pedestrian athletic profile — average explosiveness and long speed",
+      "Below-average size and catch radius; small hands",
+      "May need to add weight/strength to handle NFL DBs",
+      "Primarily slot projection — not a true X"
+    ],
+    "nfl_comp": "Slot chain-mover with elite hands",
+    "source": "bleacherreport, readoptional, cbssports, nfl.com"
+  },
+  "max iheanachor": {
+    "pos": "T",
+    "play_style": "Arizona State OT — traits-heavy ascending prospect, former high school hooper, late-comer to football. Drafted #21. Ideal length + lean mass; technique still catching up to tools.",
+    "strengths": [
+      "Ideal NFL size and length — elite lean mass",
+      "Explosive kick slide with natural knee bend",
+      "Excellent lateral mover — fits any run scheme",
+      "Strength anchors vs bull rush when set",
+      "Heavy hands when placed correctly"
+    ],
+    "weaknesses": [
+      "Late to punch — gives up his chest; punch placement too wide",
+      "Inconsistent anchor; lacks power in his punch",
+      "Speed rushers win the corner on him",
+      "Plays too high in pass pro — bendy rushers get under him",
+      "Not a road-grader in run game"
+    ],
+    "nfl_comp": "Traits-based developmental RT",
+    "source": "bleacherreport, pff.com, steelersdepot, walterfootball"
+  },
+  "akheem mesidor": {
+    "pos": "DE",
+    "play_style": "Miami edge — 6-3/259 Canadian product drafted #22 by Chargers. Quick-twitch rusher with excellent hand usage, versatility to kick inside. 17.5 TFL / 12.5 sacks / 4 FF in 2025 — elite production.",
+    "strengths": [
+      "Elite hand usage — wins around edge and across tackles' faces",
+      "Pass-rush production — 12.5 sacks / 17.5 TFL / 4 FF (only 2 FBS players with that stat line)",
+      "Good bend, closing burst, and power for his size",
+      "Versatile — can shade inside to DT and pressure the interior",
+      "High motor — keeps battling when initial move is thwarted",
+      "Impact vs both run and pass"
+    ],
+    "weaknesses": [
+      "Subpar strength vs anchored tackles — loses power-rush reps",
+      "Struggles to convert speed to power",
+      "Shoulders turn perpendicular when setting edge — run-D leverage concern",
+      "Not elite size for full-time NFL edge"
+    ],
+    "nfl_comp": "Versatile quick-twitch edge / inside reducer",
+    "source": "bleacherreport, chargers.com, on3, boltsfromtheblue"
+  },
+  "malachi lawrence": {
+    "pos": "DE",
+    "play_style": "UCF edge — 6-4/253, late riser after East-West Shrine + Combine. 4.52 forty. Drafted #23. Speed-and-bend specialist; small/light for run defense.",
+    "strengths": [
+      "Rare lateral agility for size — dances in and out of crevices",
+      "4.52 forty with explosive jumps — closes on QBs fast",
+      "Deep pass-rush move arsenal — wins inside and outside",
+      "Nice first step + bend to flatten rush angle",
+      "20 career sacks on 28 TFLs — productive and takeaway-threat"
+    ],
+    "weaknesses": [
+      "Below-average size and strength — plays soft vs the run",
+      "Wide hand placement vs run game — can't extend/escape blocks",
+      "Struggles to anchor; misses tackles in space",
+      "Designated pass rusher projection — not every-down yet",
+      "Needs to add mass to handle NFL tackles"
+    ],
+    "nfl_comp": "Sub-package speed rusher",
+    "source": "bleacherreport, readoptional, profootballnetwork, 247sports"
+  },
+  "kc concepcion": {
+    "pos": "WR",
+    "play_style": "Texas A&M WR drafted #24 by Browns. 5-11/196 YAC/slot weapon — led SEC in receiving TDs (9) and punt return yards (456). Shifty chess-piece; drop rate the main knock.",
+    "strengths": [
+      "Elite YAC / elusiveness — go-the-distance threat on any touch",
+      "Versatile usage — bubble screens, jet sweeps, motion, handoffs",
+      "Very strong for size — welcomes contact; understands leverage",
+      "Sudden, deceptive route runner vs man and zone",
+      "Strong release package; quick lateral footwork through press",
+      "Finds voids vs zone; manipulates spot droppers"
+    ],
+    "weaknesses": [
+      "Focus drops — 10.3% drop rate in 2025",
+      "Hand mechanics need NFL-level cleanup; eyes leave ball early",
+      "Functional wingspan limits contested-catch vs longer NFL CBs",
+      "Undersized — primarily a slot projection"
+    ],
+    "nfl_comp": "Shifty slot chess piece / return specialist",
+    "source": "bleacherreport, dawgsbynature, readoptional, nfl.com"
+  },
+  "dillon thieneman": {
+    "pos": "FS",
+    "play_style": "Oregon safety drafted #25 by Bears. One of the most athletic DBs in class — 4.3 speed, elite explosive testing. Ultra-instinctive, 8 career INTs. Size is the only real limitation.",
+    "strengths": [
+      "Elite athleticism — 4.3 speed, elite vert/broad, great quickness/agility",
+      "Ultra-instinctive — 'felt like a 12th player'; proactive, always a step ahead",
+      "True centerfielder range — gets off hash; deep-post comfort",
+      "Versatile — plays deep, robber, and box safety",
+      "Exceptional communicator — diagnoses pre-snap like he's in the huddle",
+      "8 INTs in three safety seasons — real ball production"
+    ],
+    "weaknesses": [
+      "Size — doesn't have elite frame to match elite athleticism",
+      "Needs more functional mass to take on blocks",
+      "Over-aggressive vs play-action at times",
+      "Man-coverage projection more limited than zone/hole",
+      "Not elite laterally"
+    ],
+    "nfl_comp": "Instinctive rangy free safety",
+    "source": "bigblueview, chicagobears.com, readoptional, profootballnetwork"
+  },
+  "keylan rutledge": {
+    "pos": "G",
+    "play_style": "Georgia Tech guard drafted #26 by Texans (trade-up). 6-3/316 mauler with mean streak. 9.53 RAS with elite agility testing. Broad-framed rag-doller who finishes blocks with bad intentions.",
+    "strengths": [
+      "Broad-framed mauler with heavy hands and mean streak",
+      "9.53 RAS — elite combine agility testing",
+      "Well-built, mobile guard with good anchor strength",
+      "Rag-dolls defenders at POA; elite finisher"
+    ],
+    "weaknesses": [
+      "Shorter than ideal (6-3) for some schemes",
+      "Technique still catching up to physical tools",
+      "Trade-up capital may exceed pure evaluator grade"
+    ],
+    "nfl_comp": "Power-scheme starting guard",
+    "source": "bleacherreport, nfl.com, readoptional, profootballnetwork"
+  },
+  "chris johnson": {
+    "pos": "CB",
+    "play_style": "San Diego State CB drafted #27 by Dolphins. 6-0/193. Posted highest NFL Next Gen Stats athleticism score (87) among CBs at Combine. Versatile boundary/slot projection.",
+    "strengths": [
+      "Elite athletic testing — 87 athleticism score (#1 CB at Combine)",
+      "1.54 10-yard split; 10-foot-6 broad jump",
+      "6-0/193 with 30 5/8\" arms — adequate boundary size",
+      "Versatile — plays boundary or slot equally well",
+      "Disciplined, controlled in coverage — reacts without overcommitting"
+    ],
+    "weaknesses": [
+      "Non-Power-5 competition — small-school jump to NFL",
+      "Technical discipline strong but may need scheme stability early",
+      "Projects as Byron Murphy-type CB2 rather than CB1"
+    ],
+    "nfl_comp": "Byron Murphy (Lance Zierlein)",
+    "source": "atozsports, sports.mynorthwest, timesofsandiego, nfl.com"
+  },
+  "caleb lomu": {
+    "pos": "T",
+    "play_style": "Utah LT drafted #28 by Patriots. 6-7/313 with 33 3/8\" arms; 9.77 RAS (elite). Redshirt sophomore with only 24 career starts but elite pass-pro traits — 0 sacks allowed, 2.3% pressure rate on 359 snaps in 2025.",
+    "strengths": [
+      "Elite pass-protection production — 0 sacks, 2.3% pressure rate on 359 snaps",
+      "9.77 RAS — elite testing: 4.99 forty, 32.5\" vert, 9'5\" broad, 25 bench",
+      "Ideal size/length — 6-7 1/4 with 33 3/8\" arms",
+      "Quick out of stance — foot speed, balance, redirect quickness",
+      "Can stay mirrored on an island; keen feel in pass pro",
+      "First-team All-Big 12"
+    ],
+    "weaknesses": [
+      "Young / developmental — redshirt sophomore, only 24 career starts",
+      "Still filling out frame; physical development incomplete",
+      "Technique raw in run game — needs NFL coaching",
+      "Not NFL-ready-strong yet at POA"
+    ],
+    "nfl_comp": "Developmental LT with high pass-pro ceiling",
+    "source": "nfl.com, bleacherreport, patriots.com, pff.com"
+  },
+  "peter woods": {
+    "pos": "DT",
+    "play_style": "Clemson DT drafted #29 by Chiefs. 6-3/298. AP All-American as junior (first Clemson DT since Wilkins). 4.75 forty — remarkable DT speed. Still filling frame.",
+    "strengths": [
+      "Rare DT speed — 4.75 forty with quick first step",
+      "Size/athleticism combo — beats blockers with bull rush",
+      "Chases down ball carriers in run game; fights out of double teams",
+      "AP All-American at DT — high-level performance on loaded Clemson DL"
+    ],
+    "weaknesses": [
+      "Needs to add play strength as he fills out frame",
+      "Not a pure 1-tech or 3-tech — scheme-fit uncertain",
+      "Inconsistent — faced constant double/triple teams in 2025",
+      "Counting stats modest; flashes > sustained dominance"
+    ],
+    "nfl_comp": "Versatile athletic interior DL",
+    "source": "aol, on3, espn, clevelandbrowns.com"
+  },
+  "omar cooper": {
+    "pos": "WR",
+    "play_style": "Indiana WR drafted #30 by Jets (trade-up). 6-0/202 physical possession receiver. 4.42 forty. Strong hands (5 drops in 3 seasons), fearless over middle, YAC monster.",
+    "strengths": [
+      "One of the most physical WRs in class — tough tackle after catch",
+      "Elite hands — only 5 drops in 3 college seasons",
+      "Fearless over the middle; makes collision catches",
+      "4.42 forty — better than film speed; eased athletic concerns",
+      "Played boundary AND slot at high level — NFL chess-piece value",
+      "Willing blocker; competitive demeanor"
+    ],
+    "weaknesses": [
+      "Route tree limited — Indiana's RPO scheme hid full route diversity",
+      "Catch-point toughness vs elite NFL corners unproven",
+      "Run blocking needs polish despite willingness",
+      "Good but not elite long speed — not a pure burner"
+    ],
+    "nfl_comp": "Physical boundary-slot chess piece",
+    "source": "bleacherreport, theringer, profootballnetwork, cover1"
+  },
+  "keldric faulk": {
+    "pos": "DE",
+    "play_style": "Auburn DL drafted #31 by Titans. 6-6/275 with NFL-ready body at age 20. Strong-side power edge — best as a run defender first, pass rush still developing.",
+    "strengths": [
+      "Great size/length — NFL-ready 6-6/275 frame at age 20",
+      "Elite POA strength — 700 squat / 415 bench; gets extension on blocks",
+      "NFL-caliber run defense — 62 run stops lead all FBS edges over 3 years",
+      "High-motor rusher — chases cleanup sacks",
+      "Sheds blocks well in run game"
+    ],
+    "weaknesses": [
+      "Hand usage as pass rusher raw — lets OTs land first contact",
+      "Gets chest-to-chest; doesn't work tackles' hands or counter",
+      "Subpar bend — some lower-body stiffness to turn corner",
+      "Relies on power without Plan B — NFL anchors will control him",
+      "Coverage sack profile more than primary creator early"
+    ],
+    "nfl_comp": "Strong-side power edge (5-tech)",
+    "source": "readoptional, bleacherreport, steelersdepot, 247sports"
+  },
+  "jadarian price": {
+    "pos": "HB",
+    "play_style": "Notre Dame RB drafted #32 by Seahawks. 5-11/210 with elite speed/explosiveness. Played behind Love — only 6.2 YPC in 2025, zero career starts. Scheme-versatile, vision-first.",
+    "strengths": [
+      "Natural, instinctive patient runner with elite vision",
+      "Scheme-versatile — zone and gap concepts equally comfortable",
+      "Explosive speed — one of fastest/most explosive backs in class",
+      "6.2 YPC in 2025 — efficient when given carries",
+      "Contributes in pass game; combines vision + acceleration + physicality",
+      "Between-the-tackles physical runner despite speed profile"
+    ],
+    "weaknesses": [
+      "Zero career starts — backup role behind Love limited reps",
+      "Early-career injury recovery — durability question",
+      "Less contact balance than top RB prospects in class",
+      "Production profile thinner — depth-chart reality at ND"
+    ],
+    "nfl_comp": "Speed-and-vision rotational RB with starter upside",
+    "source": "bleacherreport, nfl.com, fieldgulls, seahawks.com"
+  }
+}

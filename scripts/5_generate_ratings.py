@@ -43,6 +43,7 @@ CALIBRATION_FILE = os.path.join(DATA_DIR, "calibration_set.json")
 CURRENT_RATINGS_FILE = os.path.join(DATA_DIR, "current_player_ratings.json")
 ROSTER_PLAYERS_FILE  = os.path.join(DATA_DIR, "roster_players_rated.json")
 REFERENCE_CLASS_FILE = os.path.join(DATA_DIR, "reference_draft_class.json")
+PROFILES_FILE        = os.path.join(DATA_DIR, "prospect_profiles.json")
 OUTPUT_FILE = os.path.join(DATA_DIR, "prospects_rated.json")
 CHECKPOINT_FILE = os.path.join(DATA_DIR, "prospects_rated_checkpoint.json")
 
@@ -211,6 +212,15 @@ def get_reference_ratings(prospect: dict, reference_class: dict) -> dict | None:
     return reference_class.get(key)
 
 
+def norm_name(name: str) -> str:
+    """Lowercase, strip Jr/Sr/III suffixes and non-letters for profile lookup."""
+    n = (name or "").lower().strip()
+    n = re.sub(r"\s+(ii|iii|iv|v|jr|sr)\.?$", "", n)
+    n = re.sub(r"[^a-z ]", "", n).strip()
+    n = re.sub(r"\s+", " ", n)
+    return n
+
+
 # ── Tier anchor selection ───────────────────────────────────────────────────
 # For each prospect, find the 2025 rookie at the same position whose actual
 # draft pick is closest to this prospect's projected rank.  This is the
@@ -339,11 +349,29 @@ def _key_avg(ratings: dict, pos: str) -> float:
     return sum(vals) / len(vals) if vals else 0.0
 
 
+def pick_slot_floor(actual_pick: int | None) -> int:
+    """Minimum OVR tier by real-life 2026 draft position.
+
+    Ensures top picks can't sink below a reasonable floor even when their
+    tier anchor was undervalued by Madden at launch.
+    """
+    if not actual_pick:
+        return 0
+    if actual_pick <= 5:   return 76
+    if actual_pick <= 12:  return 74
+    if actual_pick <= 22:  return 72
+    if actual_pick <= 32:  return 70
+    return 0
+
+
 def compute_ovr(
     ratings: dict,
     pos: str,
     formulas: dict,
     tier_anchor: dict | None = None,
+    actual_pick: int | None = None,
+    prior_ovr: int | None = None,
+    clamp_window: int = 2,
 ) -> int:
     """
     Deterministic OVR.
@@ -372,7 +400,16 @@ def compute_ovr(
                 # than raw attribute deltas (per user feedback). 0.6 keeps the
                 # anchor's tier while letting strong/weak attributes nudge OVR.
                 # Hard cap at 80 — Madden launch rookies don't exceed that.
-                return max(40, min(80, round(anchor_ovr + delta * 0.6)))
+                # Floor by draft position so top picks can't sink below tier.
+                ovr = round(anchor_ovr + delta * 0.6)
+                floor = pick_slot_floor(actual_pick)
+                ovr = max(40, floor, min(80, ovr))
+                # Stability clamp — don't swing the OVR more than ±clamp_window
+                # from the prior rating (prevents profile tweaks from moving
+                # numbers dramatically between runs).
+                if prior_ovr is not None:
+                    ovr = max(prior_ovr - clamp_window, min(prior_ovr + clamp_window, ovr))
+                return ovr
 
     # ── Fallback: fitted formula ─────────────────────────────────────────────
     canon   = canonical_pos(pos)
@@ -432,7 +469,7 @@ def _key_ratings_str(ratings: dict, pos: str) -> str:
     return ", ".join(parts)
 
 
-def build_prompt(prospect: dict, calibration_examples: list, current_anchors: list, reference_ratings: dict | None = None, tier_anchor: dict | None = None) -> str:
+def build_prompt(prospect: dict, calibration_examples: list, current_anchors: list, reference_ratings: dict | None = None, tier_anchor: dict | None = None, profile: dict | None = None) -> str:
     pos = prospect["pos"]
     canon = canonical_pos(pos)
     key_fields = POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
@@ -454,7 +491,6 @@ def build_prompt(prospect: dict, calibration_examples: list, current_anchors: li
         ta_pk   = _fmt_val(ta_prof.get("draft_pick"), "?")
         ta_wt   = _fmt_val(ta_prof.get("wt"), "N/A")
         ta_forty = _fmt_val(ta_prof.get("forty"), "N/A")
-        ta_key  = _key_ratings_str(ta_rats, pos)
         actual_pk = prospect.get("actual_draft_pick")
         slot_str  = (f"actual 2026 pick #{actual_pk}"
                      if actual_pk else
@@ -464,13 +500,42 @@ def build_prompt(prospect: dict, calibration_examples: list, current_anchors: li
             f"• {ta_name} | Round {ta_rnd}, Pick {ta_pk} | {ta_wt}lbs, 40yd: {ta_forty} | "
             f"**Madden 26 Overall: {ta_ovr}**"
         )
-        lines.append(f"  Key ratings: {ta_key}")
+        lines.append(
+            "  (Anchor's per-attribute numbers are intentionally withheld — derive "
+            "this prospect's specific attributes from the SCOUTING PROFILE and "
+            "measurables, not by mimicking the anchor.)"
+        )
         lines.append(
             f"This prospect's {slot_str} places them in the same tier as the anchor. "
             f"Their overall rating should typically be within ±5 of {ta_ovr}, but "
             "real-world draft position (earlier pick = higher OVR) and measurables "
             "take precedence. Do NOT compress toward the median."
         )
+        lines.append("")
+
+    # ── Scouting profile (hand-curated traits from NFL.com/ESPN/PFF) ──
+    if profile:
+        lines.append("SCOUTING PROFILE — use these traits to set specific attribute values:")
+        ps = profile.get("play_style")
+        if ps:
+            lines.append(f"Play style: {ps}")
+        strengths = profile.get("strengths") or []
+        if strengths:
+            lines.append("Strengths (bump the relevant attributes UP):")
+            for s in strengths:
+                lines.append(f"  + {s}")
+        weaknesses = profile.get("weaknesses") or []
+        if weaknesses:
+            lines.append("Weaknesses (mark the relevant attributes DOWN):")
+            for w in weaknesses:
+                lines.append(f"  - {w}")
+        comp = profile.get("nfl_comp")
+        if comp:
+            lines.append(f"NFL comp / archetype: {comp}")
+        lines.append("Your attribute outputs MUST reflect these scouting notes — e.g. if "
+                     "'elite accuracy' is a strength, throw-accuracy fields should be high; "
+                     "if 'pocket presence concerns' is a weakness, PAC/throw-under-pressure "
+                     "should be lower.")
         lines.append("")
 
     # ── Calibration examples ──
@@ -1018,6 +1083,8 @@ def rate_prospect(
     current_ratings: dict,
     reference_class: dict | None = None,
     ovr_formulas: dict | None = None,
+    profiles: dict | None = None,
+    prior_ovrs: dict | None = None,
     verbose: bool = False,
 ) -> dict:
     """
@@ -1035,8 +1102,14 @@ def rate_prospect(
     ref_ratings  = get_reference_ratings(prospect, reference_class) if reference_class else None
     tier_anchor  = get_tier_anchor(prospect, calibration)
 
+    # Hand-curated scouting profile (strengths/weaknesses) — keyed by normalized name
+    profile = None
+    if profiles:
+        pkey = norm_name(prospect.get("name") or f"{prospect.get('firstName','')} {prospect.get('lastName','')}")
+        profile = profiles.get(pkey)
+
     # Build primary prompt
-    prompt = build_prompt(prospect, cal_examples, anchors, ref_ratings, tier_anchor)
+    prompt = build_prompt(prospect, cal_examples, anchors, ref_ratings, tier_anchor, profile)
 
     text = ""
     ratings_raw = None
@@ -1101,7 +1174,13 @@ def rate_prospect(
     # attribute output.  Recompute deterministically, anchored to the 2025
     # rookie at the same draft tier when available.
     if ovr_formulas is not None:
-        cleaned["overall"] = compute_ovr(cleaned, pos, ovr_formulas, tier_anchor)
+        pkey_ovr = norm_name(prospect.get("name") or f"{prospect.get('firstName','')} {prospect.get('lastName','')}")
+        prior = (prior_ovrs or {}).get(pkey_ovr)
+        cleaned["overall"] = compute_ovr(
+            cleaned, pos, ovr_formulas, tier_anchor,
+            actual_pick=prospect.get("actual_draft_pick"),
+            prior_ovr=prior,
+        )
 
     return cleaned
 
@@ -1145,6 +1224,31 @@ def main():
     print("Fitting OVR formulas from calibration ...")
     ovr_formulas = build_ovr_formulas(calibration)
     print(f"  Fitted {len(ovr_formulas)} position formulas.")
+
+    # Hand-curated scouting profiles (strengths/weaknesses from NFL.com/ESPN/PFF)
+    profiles: dict = {}
+    if os.path.exists(PROFILES_FILE):
+        try:
+            with open(PROFILES_FILE, "r", encoding="utf-8") as f:
+                profiles = json.load(f)
+            print(f"Loaded {len(profiles)} scouting profiles from {PROFILES_FILE}")
+        except Exception as e:
+            print(f"  WARN: could not load profiles: {e}")
+
+    # Prior OVRs (for stability clamp — prevents large swings between runs)
+    prior_ovrs: dict = {}
+    if os.path.exists(OUTPUT_FILE):
+        try:
+            with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+                prior_rated = json.load(f)
+            for p in prior_rated:
+                nm = norm_name(p.get("name") or f"{p.get('firstName','')} {p.get('lastName','')}")
+                ovr = p.get("ratings", {}).get("overall")
+                if nm and ovr:
+                    prior_ovrs[nm] = ovr
+            print(f"Loaded {len(prior_ovrs)} prior OVRs from {OUTPUT_FILE} (stability clamp ±2)")
+        except Exception as e:
+            print(f"  WARN: could not load prior ratings: {e}")
 
     current_ratings: dict = {}
     if os.path.exists(CURRENT_RATINGS_FILE):
@@ -1213,6 +1317,8 @@ def main():
                     current_ratings=current_ratings,
                     reference_class=reference_class,
                     ovr_formulas=ovr_formulas,
+                    profiles=profiles,
+                    prior_ovrs=prior_ovrs,
                     verbose=args.verbose,
                 )
             except ConnectionError as ce:
