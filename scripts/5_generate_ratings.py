@@ -211,6 +211,193 @@ def get_reference_ratings(prospect: dict, reference_class: dict) -> dict | None:
     return reference_class.get(key)
 
 
+# ── Tier anchor selection ───────────────────────────────────────────────────
+# For each prospect, find the 2025 rookie at the same position whose actual
+# draft pick is closest to this prospect's projected rank.  This is the
+# strongest signal for "what OVR should this player be?" — it pins the model
+# to the actual OVR distribution of last year's class at the same tier.
+
+def get_tier_anchor(prospect: dict, calibration: dict) -> dict | None:
+    """
+    Return the calibration entry at the same position whose actual
+    `draft_pick` is closest to this prospect's real-life draft pick (preferred)
+    or internal rank (fallback).
+    Falls back to POSITION_FALLBACKS when no entries exist at the primary pos.
+    Returns the raw calibration entry (with 'profile' and 'ratings' keys) or None.
+    """
+    pos  = prospect.get("pos", "")
+    # Prefer the real 2026 draft pick (overall) over our internal rank — it's a
+    # much stronger signal for comparable-tier calibration. Falls back to rank.
+    # Both are treated as "overall pick numbers" (1..~260).
+    rank = prospect.get("actual_draft_pick") or prospect.get("rank") or 9999
+
+    # Gather candidate entries across primary + fallback positions.
+    # Calibration uses ILB for MLB-style inside LBs, so add MLB→ILB explicitly.
+    _extra_fb = {"MLB": ["ILB"], "ILB": ["MLB"]}
+    positions_to_try = [pos] + POSITION_FALLBACKS.get(pos, []) + _extra_fb.get(pos, [])
+    candidates: list = []
+    seen_names: set = set()
+    for p in positions_to_try:
+        for entry in calibration.get(p, []):
+            name = entry.get("profile", {}).get("name", "")
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            prof      = entry.get("profile", {})
+            pick      = prof.get("draft_pick")
+            rnd       = prof.get("draft_round")
+            if pick is None or rnd is None:
+                continue
+            # Calibration stores pick-within-round; convert to overall so
+            # cross-round comparisons vs. prospect's overall pick work.
+            overall_pick = (int(rnd) - 1) * 32 + int(pick)
+            candidates.append((abs(overall_pick - int(rank)), entry))
+        if candidates:
+            break  # primary-position candidates are strictly preferred
+
+    if not candidates:
+        return None
+    candidates.sort(key=lambda t: t[0])
+    return candidates[0][1]
+
+
+# ── Deterministic OVR from calibration ──────────────────────────────────────
+# Fit a tiny per-position linear regression (intercept + weights on key fields)
+# against the 2025 calibration set so that OVR is reproducible from attributes.
+# This replaces the LLM's self-reported "overall" (which frequently violates its
+# own attribute outputs) with a deterministic value.
+
+def _fit_linear(X: list[list[float]], y: list[float]) -> tuple[list[float], float]:
+    """
+    Ordinary least squares with no external dependencies.
+    Returns (weights, intercept).  Weights are aligned with columns of X.
+    Falls back to mean-of-y as intercept and zero weights if fit is degenerate.
+    """
+    try:
+        import numpy as np
+    except ImportError:
+        # Degenerate fallback: intercept = mean(y), w = 0
+        mean_y = sum(y) / len(y) if y else 60.0
+        return [0.0] * (len(X[0]) if X else 0), mean_y
+
+    A = np.array(X, dtype=float)
+    b = np.array(y, dtype=float)
+    # Prepend ones column for intercept
+    A1 = np.hstack([np.ones((A.shape[0], 1)), A])
+    try:
+        coef, *_ = np.linalg.lstsq(A1, b, rcond=None)
+        intercept = float(coef[0])
+        weights   = [float(c) for c in coef[1:]]
+        return weights, intercept
+    except Exception:
+        mean_y = float(b.mean()) if len(b) else 60.0
+        return [0.0] * A.shape[1], mean_y
+
+
+def build_ovr_formulas(calibration: dict) -> dict:
+    """
+    For each position in calibration, fit OVR = intercept + Σ w_i · rating_i
+    where rating_i are the position's key non-overall fields.
+    Returns { pos: { 'fields': [..], 'weights': [..], 'intercept': float } }.
+    """
+    formulas: dict = {}
+    for pos, entries in calibration.items():
+        canon = canonical_pos(pos)
+        key_fields = [
+            f for f in POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
+            if f != "overall"
+        ]
+        X, y = [], []
+        for e in entries:
+            r = e.get("ratings", {})
+            ovr = r.get("overall")
+            if ovr is None or ovr <= 0:
+                continue
+            row = [float(r.get(f, 0) or 0) for f in key_fields]
+            if any(v > 0 for v in row):
+                X.append(row)
+                y.append(float(ovr))
+        if len(X) < 4:
+            # Too few samples to fit — use simple mean of key fields
+            formulas[pos] = {"fields": key_fields, "weights": None, "intercept": None}
+            continue
+        weights, intercept = _fit_linear(X, y)
+        formulas[pos] = {
+            "fields":    key_fields,
+            "weights":   weights,
+            "intercept": intercept,
+        }
+    return formulas
+
+
+def _key_avg(ratings: dict, pos: str) -> float:
+    """Mean of the position's key non-overall ratings (used as an OVR proxy)."""
+    canon = canonical_pos(pos)
+    fields = [f for f in POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
+              if f != "overall" and f != "devTrait"]
+    vals = [float(ratings.get(f, 0) or 0) for f in fields if ratings.get(f, 0)]
+    return sum(vals) / len(vals) if vals else 0.0
+
+
+def compute_ovr(
+    ratings: dict,
+    pos: str,
+    formulas: dict,
+    tier_anchor: dict | None = None,
+) -> int:
+    """
+    Deterministic OVR.
+
+    Strategy (in order of preference):
+    1. If a tier anchor is provided, use its actual Madden OVR as the reference
+       point and adjust by the delta between this prospect's key-rating average
+       and the anchor's key-rating average.  This is the most reliable method
+       because it pins the output to the 2025 rookie OVR distribution at the
+       same draft tier.
+    2. Otherwise, fall back to the fitted linear formula.
+    3. Last resort: unweighted mean of the position's key fields.
+
+    Clamped to [40, 99].
+    """
+    # ── Primary: anchor-relative delta ────────────────────────────────────────
+    if tier_anchor:
+        anchor_rats = tier_anchor.get("ratings", {})
+        anchor_ovr  = anchor_rats.get("overall")
+        if anchor_ovr:
+            prospect_avg = _key_avg(ratings,    pos)
+            anchor_avg   = _key_avg(anchor_rats, pos)
+            if prospect_avg > 0 and anchor_avg > 0:
+                delta = prospect_avg - anchor_avg
+                # Dampen meaningfully — draft position should carry more weight
+                # than raw attribute deltas (per user feedback). 0.6 keeps the
+                # anchor's tier while letting strong/weak attributes nudge OVR.
+                # Hard cap at 80 — Madden launch rookies don't exceed that.
+                return max(40, min(80, round(anchor_ovr + delta * 0.6)))
+
+    # ── Fallback: fitted formula ─────────────────────────────────────────────
+    canon   = canonical_pos(pos)
+    formula = formulas.get(pos) or formulas.get(canon)
+    if not formula:
+        for fb in POSITION_FALLBACKS.get(pos, []):
+            formula = formulas.get(fb)
+            if formula:
+                break
+
+    if formula:
+        fields    = formula["fields"]
+        weights   = formula.get("weights")
+        intercept = formula.get("intercept")
+        if weights and intercept is not None and any(abs(w) > 1e-6 for w in weights):
+            ovr = intercept + sum(
+                w * float(ratings.get(f, 0) or 0) for w, f in zip(weights, fields)
+            )
+            return max(40, min(80, round(ovr)))
+
+    # ── Last resort: mean of key fields ──────────────────────────────────────
+    avg = _key_avg(ratings, pos)
+    return max(40, min(80, round(avg))) if avg > 0 else 60
+
+
 # ── Current player anchor selection ──────────────────────────────────────────
 def get_current_anchors(pos: str, current_ratings: dict, max_anchors: int = 3) -> list:
     """
@@ -245,7 +432,7 @@ def _key_ratings_str(ratings: dict, pos: str) -> str:
     return ", ".join(parts)
 
 
-def build_prompt(prospect: dict, calibration_examples: list, current_anchors: list, reference_ratings: dict | None = None) -> str:
+def build_prompt(prospect: dict, calibration_examples: list, current_anchors: list, reference_ratings: dict | None = None, tier_anchor: dict | None = None) -> str:
     pos = prospect["pos"]
     canon = canonical_pos(pos)
     key_fields = POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
@@ -256,6 +443,35 @@ def build_prompt(prospect: dict, calibration_examples: list, current_anchors: li
     # ── Header ──
     lines.append("You are a Madden NFL 26 ratings expert calibrating a 2026 NFL Draft class.")
     lines.append("")
+
+    # ── Tier anchor (strongest signal — pin OVR to the same-pick 2025 rookie) ──
+    if tier_anchor:
+        ta_prof = tier_anchor.get("profile", {})
+        ta_rats = tier_anchor.get("ratings", {})
+        ta_name = ta_prof.get("name", "Unknown")
+        ta_ovr  = ta_rats.get("overall", "?")
+        ta_rnd  = _fmt_val(ta_prof.get("draft_round"), "?")
+        ta_pk   = _fmt_val(ta_prof.get("draft_pick"), "?")
+        ta_wt   = _fmt_val(ta_prof.get("wt"), "N/A")
+        ta_forty = _fmt_val(ta_prof.get("forty"), "N/A")
+        ta_key  = _key_ratings_str(ta_rats, pos)
+        actual_pk = prospect.get("actual_draft_pick")
+        slot_str  = (f"actual 2026 pick #{actual_pk}"
+                     if actual_pk else
+                     f"projected board rank #{_fmt_val(prospect.get('rank'),'?')}")
+        lines.append(f"TIER ANCHOR — the 2025 rookie at {pos} drafted closest to this prospect's slot:")
+        lines.append(
+            f"• {ta_name} | Round {ta_rnd}, Pick {ta_pk} | {ta_wt}lbs, 40yd: {ta_forty} | "
+            f"**Madden 26 Overall: {ta_ovr}**"
+        )
+        lines.append(f"  Key ratings: {ta_key}")
+        lines.append(
+            f"This prospect's {slot_str} places them in the same tier as the anchor. "
+            f"Their overall rating should typically be within ±5 of {ta_ovr}, but "
+            "real-world draft position (earlier pick = higher OVR) and measurables "
+            "take precedence. Do NOT compress toward the median."
+        )
+        lines.append("")
 
     # ── Calibration examples ──
     if calibration_examples:
@@ -801,6 +1017,7 @@ def rate_prospect(
     calibration: dict,
     current_ratings: dict,
     reference_class: dict | None = None,
+    ovr_formulas: dict | None = None,
     verbose: bool = False,
 ) -> dict:
     """
@@ -814,11 +1031,12 @@ def rate_prospect(
 
     # Gather context
     cal_examples = get_calibration_examples(pos, prospect, calibration)
-    anchors = get_current_anchors(pos, current_ratings) if current_ratings else []
-    ref_ratings = get_reference_ratings(prospect, reference_class) if reference_class else None
+    anchors      = get_current_anchors(pos, current_ratings) if current_ratings else []
+    ref_ratings  = get_reference_ratings(prospect, reference_class) if reference_class else None
+    tier_anchor  = get_tier_anchor(prospect, calibration)
 
     # Build primary prompt
-    prompt = build_prompt(prospect, cal_examples, anchors, ref_ratings)
+    prompt = build_prompt(prospect, cal_examples, anchors, ref_ratings, tier_anchor)
 
     text = ""
     ratings_raw = None
@@ -878,6 +1096,13 @@ def rate_prospect(
         ten_split = prospect.get("ten_split"),
     )
 
+    # ── Deterministic OVR ────────────────────────────────────────────────────
+    # The LLM's self-reported 'overall' is often inconsistent with its own
+    # attribute output.  Recompute deterministically, anchored to the 2025
+    # rookie at the same draft tier when available.
+    if ovr_formulas is not None:
+        cleaned["overall"] = compute_ovr(cleaned, pos, ovr_formulas, tier_anchor)
+
     return cleaned
 
 
@@ -914,6 +1139,12 @@ def main():
     print(f"Loading calibration set from {CALIBRATION_FILE} ...")
     with open(CALIBRATION_FILE, "r", encoding="utf-8") as f:
         calibration: dict = json.load(f)
+
+    # Fit per-position OVR formulas from the 2025 calibration.  These give us
+    # a deterministic, reproducible OVR in place of the LLM's self-reported value.
+    print("Fitting OVR formulas from calibration ...")
+    ovr_formulas = build_ovr_formulas(calibration)
+    print(f"  Fitted {len(ovr_formulas)} position formulas.")
 
     current_ratings: dict = {}
     if os.path.exists(CURRENT_RATINGS_FILE):
@@ -981,6 +1212,7 @@ def main():
                     calibration=calibration,
                     current_ratings=current_ratings,
                     reference_class=reference_class,
+                    ovr_formulas=ovr_formulas,
                     verbose=args.verbose,
                 )
             except ConnectionError as ce:
