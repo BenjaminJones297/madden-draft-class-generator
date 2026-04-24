@@ -971,6 +971,33 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             if spd < expected:
                 r["speed"] = expected
 
+    # DE / OLB / DT speed ceiling from forty — LLM systematically over-rates
+    # edge speed (e.g. 4.5 forty → 92 spd, but calibration shows ~88).
+    # Applies both ways: floor to avoid over-penalizing, cap to prevent LLM inflation.
+    EDGE_SPEED_TABLE = [
+        (4.35, 94), (4.40, 92), (4.45, 90), (4.50, 88),
+        (4.55, 86), (4.60, 84), (4.65, 82), (4.70, 80),
+        (4.80, 77), (4.90, 73),
+    ]
+    DT_SPEED_TABLE = [
+        (4.70, 85), (4.80, 82), (4.90, 78), (5.00, 74),
+        (5.10, 70), (5.20, 67),
+    ]
+    if forty is not None and pos in ("DE", "OLB", "DT"):
+        table = DT_SPEED_TABLE if pos == "DT" else EDGE_SPEED_TABLE
+        expected = _lerp(float(forty), table)
+        spd = r.get("speed", 0)
+        # Cap at expected + 1 (allow minor LLM deviation upward)
+        if spd > expected + 1:
+            r["speed"] = expected + 1
+        # Also floor at expected - 3 (don't under-sell clear testers)
+        elif spd < expected - 3:
+            r["speed"] = expected - 3
+        # Acceleration: cap ~3 above speed (calibration pattern for front 7)
+        acc = r.get("acceleration", 0)
+        if acc > r["speed"] + 4:
+            r["acceleration"] = r["speed"] + 4
+
     # Agility floor for skill positions: calibration shows no TE/WR/HB/etc has
     # agility more than ~15 points below their speed. Floor = max(65, speed - 15).
     SKILL_AGI_POSITIONS = {"QB", "HB", "FB", "WR", "TE", "CB", "FS", "SS", "MLB", "OLB", "DE"}
@@ -1205,6 +1232,13 @@ def main():
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint if available")
     parser.add_argument("--verbose", action="store_true", help="Print field-fix details")
     parser.add_argument("--max-prospects", type=int, default=None, help="Limit number of prospects to rate (for testing)")
+    parser.add_argument("--only", default=None,
+        help="Only regenerate ratings for these names (comma-separated). "
+             "Matches by normalized name, last-name, or first+last substring. "
+             "All other existing ratings are preserved.")
+    parser.add_argument("--positions", default=None,
+        help="Only regenerate ratings for these positions (comma-separated, e.g. DE,OLB,DT). "
+             "All other existing ratings are preserved.")
     args = parser.parse_args()
 
     model = args.model or DEFAULT_MODEL
@@ -1298,6 +1332,52 @@ def main():
         print(f"  ↳ Resuming from checkpoint: {len(rated_list)} prospects already rated.")
 
     remaining = [p for p in prospects if p.get("name", "") not in completed_names]
+
+    # ── Selective-regeneration filters (--only / --positions) ──────────────
+    # When either filter is set, preserve prior rated entries for everyone
+    # NOT in the filter, and only re-rate the matching subset.
+    preserved_records: list[dict] = []
+    filter_active = bool(args.only or args.positions)
+    if filter_active:
+        only_tokens = [norm_name(x) for x in (args.only or "").split(",") if x.strip()]
+        pos_tokens  = [p.strip().upper()  for p in (args.positions or "").split(",") if p.strip()]
+
+        def _matches(p: dict) -> bool:
+            if pos_tokens and (p.get("pos") or "").upper() in pos_tokens:
+                return True
+            if only_tokens:
+                nm = norm_name(p.get("name") or f"{p.get('firstName','')} {p.get('lastName','')}")
+                last = norm_name(p.get("lastName",""))
+                for tok in only_tokens:
+                    if not tok:
+                        continue
+                    if tok == nm or tok == last or tok in nm or nm in tok:
+                        return True
+            return False
+
+        matched = [p for p in remaining if _matches(p)]
+        matched_keys = {
+            norm_name(p.get("name") or f"{p.get('firstName','')} {p.get('lastName','')}")
+            for p in matched
+        }
+
+        # Preserve every prior-rated prospect NOT in the matched set
+        if os.path.exists(OUTPUT_FILE):
+            try:
+                with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+                    prior_rated = json.load(f)
+                for p in prior_rated:
+                    k = norm_name(p.get("name") or f"{p.get('firstName','')} {p.get('lastName','')}")
+                    if k not in matched_keys:
+                        preserved_records.append(p)
+                print(f"  Selective mode: preserving {len(preserved_records)} prior-rated records.")
+            except Exception as e:
+                print(f"  WARN: could not preload prior ratings for preservation: {e}")
+
+        remaining = matched
+        print(f"  Filter matched {len(remaining)} prospect(s) "
+              f"(only={args.only!r}, positions={args.positions!r})")
+
     if args.max_prospects and args.max_prospects < len(remaining):
         remaining = remaining[:args.max_prospects]
     print(f"\nGenerating ratings for {len(remaining)} prospect(s) using model '{model}' ...")
@@ -1346,6 +1426,12 @@ def main():
             save_checkpoint(rated_list)
             pbar.update(1)
 
+    # ── Merge preserved (non-filtered) records back in ──
+    if filter_active and preserved_records:
+        rated_list = preserved_records + rated_list
+        print(f"  Merged {len(preserved_records)} preserved records with "
+              f"{len(rated_list) - len(preserved_records)} newly-rated = {len(rated_list)} total.")
+
     # ── Write final output ──
     print(f"\nSaving {len(rated_list)} rated prospects to {OUTPUT_FILE} ...")
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
@@ -1356,7 +1442,7 @@ def main():
         os.remove(CHECKPOINT_FILE)
         print("  Checkpoint removed (run complete).")
 
-    print(f"\n✅  Done! {OUTPUT_FILE} written with {len(rated_list)} records.")
+    print(f"\n[OK]  Done! {OUTPUT_FILE} written with {len(rated_list)} records.")
 
 
 if __name__ == "__main__":
