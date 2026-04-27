@@ -15,6 +15,10 @@ import os
 import re
 import sys
 
+# Force UTF-8 stdout on Windows so unicode in print statements doesn't crash.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from dotenv import load_dotenv
 from tqdm import tqdm
 
@@ -863,6 +867,32 @@ def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle,
     return r
 
 
+def apply_dev_trait_by_pick(ratings: dict, actual_pick: int | None) -> dict:
+    """
+    Deterministic devTrait floor based on actual draft slot. The LLM tends to
+    park everyone at Normal/Impact, so we anchor elite picks upward.
+
+    Encoding: 0=Normal, 1=Impact, 2=Star, 3=XFactor.
+    """
+    r = dict(ratings)
+    if not actual_pick:
+        return r
+    cur = int(r.get("devTrait", 0) or 0)
+    if actual_pick == 1:
+        floor = 3                          # XFactor for #1 overall
+    elif actual_pick <= 5:
+        floor = 2                          # Star for top-5
+    elif actual_pick <= 12:
+        floor = 2                          # Star for rest of top-12
+    elif actual_pick <= 32:
+        floor = 1                          # Impact for R1
+    else:
+        floor = 0
+    if cur < floor:
+        r["devTrait"] = floor
+    return r
+
+
 def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> dict:
     """
     Apply rule-based post-processing to fix known LLM systematic errors:
@@ -916,6 +946,14 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
         agi_floor = OL_AGI_FLOOR.get(pos, 55)
         if r.get("agility", 0) < agi_floor:
             r["agility"] = agi_floor
+        # OL accel/speed should track closely (usually within ~4). If the LLM
+        # produced a wide gap (e.g. spd=63 / acc=72), pull them together.
+        spd = r.get("speed", 0)
+        acc = r.get("acceleration", 0)
+        if spd and acc and acc - spd > 4:
+            r["acceleration"] = spd + 4
+        elif spd and acc and spd - acc > 4:
+            r["speed"] = acc + 4
 
     # WR speed correction: use calibration-derived table; only correct upward when
     # the LLM undershot the expected WR speed for a given forty time.
@@ -1150,7 +1188,7 @@ def rate_prospect(
                 f"Cannot reach Ollama at {OLLAMA_HOST}. "
                 "Please start Ollama with: ollama serve"
             ) from e
-        print(f"  ⚠ Ollama error on first attempt: {e}")
+        print(f"  [WARN] Ollama error on first attempt: {e}")
 
     if text:
         ratings_raw = extract_json(text)
@@ -1172,11 +1210,11 @@ def rate_prospect(
         except ConnectionError:
             raise
         except Exception as e:
-            print(f"  ⚠ Ollama error on retry: {e}")
+            print(f"  [WARN] Ollama error on retry: {e}")
 
     # ── Final fallback: use defaults entirely ──
     if ratings_raw is None:
-        print(f"  ✗ Could not parse ratings for {prospect.get('name')} — using defaults")
+        print(f"  [ERR] Could not parse ratings for {prospect.get('name')} — using defaults")
         return dict(defaults)
 
     # ── Validate / clamp ──
@@ -1187,6 +1225,7 @@ def rate_prospect(
               + (" ..." if len(issues) > 5 else ""))
 
     cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
+    cleaned = apply_dev_trait_by_pick(cleaned, prospect.get("actual_draft_pick"))
     cleaned = apply_combine_corrections(
         cleaned, pos,
         bench     = prospect.get("bench"),
@@ -1313,14 +1352,14 @@ def main():
         err_str = str(e).lower()
         if "connection" in err_str or "refused" in err_str or "connect" in err_str:
             print(
-                f"\n❌  Cannot connect to Ollama at {OLLAMA_HOST}.\n"
+                f"\n[X]  Cannot connect to Ollama at {OLLAMA_HOST}.\n"
                 "    Please start Ollama first:\n"
                 "        ollama serve\n"
                 "    Or set OLLAMA_HOST in your .env file.\n"
             )
             sys.exit(1)
         # Non-connection error (e.g. API version mismatch) — warn but continue
-        print(f"  ⚠ Ollama connectivity check warning: {e}")
+        print(f"  [WARN] Ollama connectivity check warning: {e}")
 
     # ── Resume / checkpoint logic ──
     rated_list: list[dict] = []
@@ -1402,12 +1441,12 @@ def main():
                     verbose=args.verbose,
                 )
             except ConnectionError as ce:
-                print(f"\n❌  {ce}")
+                print(f"\n[X]  {ce}")
                 print("Saving progress to checkpoint before exit ...")
                 save_checkpoint(rated_list)
                 sys.exit(1)
             except Exception as exc:
-                print(f"\n  ✗ Unexpected error for {name}: {exc} — using defaults")
+                print(f"\n  [ERR] Unexpected error for {name}: {exc} — using defaults")
                 ratings = get_defaults(canonical_pos(prospect.get("pos", "QB")))
 
             # Build output record (all original fields + inferred draftPick + ratings)
@@ -1447,3 +1486,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
