@@ -946,6 +946,14 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
         agi_floor = OL_AGI_FLOOR.get(pos, 55)
         if r.get("agility", 0) < agi_floor:
             r["agility"] = agi_floor
+        # leadBlock floor — the LLM consistently undershoots this stat for OL
+        # (treats it as FB-only).  Real M26 starting OL sit in 80-95 lead-block;
+        # rookies typically 60-75.  Madden's OVR formula weights leadBlock for
+        # G/T/C, so leaving it at 20-30 collapses the displayed OVR.
+        ovr = r.get("overall", 0)
+        lb_floor = max(55, ovr - 12) if ovr else 55
+        if r.get("leadBlock", 0) < lb_floor:
+            r["leadBlock"] = lb_floor
         # OL accel/speed should track closely (usually within ~4). If the LLM
         # produced a wide gap (e.g. spd=63 / acc=72), pull them together.
         spd = r.get("speed", 0)
