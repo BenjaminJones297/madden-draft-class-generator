@@ -26,5 +26,17 @@ data/output/
 # Checkpoint files (resume state)
 data/checkpoint_*.json
 
+# Pipeline run logs
+data/raw/*.log
+data/raw/*.err
+data/raw/_*.html
+
+# Hand-saved backup snapshots before destructive runs
+data/*_backup_*.json
+data/raw/CAREERDRAFT-NFLDRAFT2026
+
+# Claude-Code transient lock
+.claude/scheduled_tasks.lock
+
 # OS
 .DS_Store
