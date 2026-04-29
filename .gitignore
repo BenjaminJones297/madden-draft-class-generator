@@ -35,6 +35,12 @@ data/raw/_*.html
 data/*_backup_*.json
 data/raw/CAREERDRAFT-NFLDRAFT2026
 
+# Franchise-extracted ratings (regenerable, large)
+data/franchise_ratings.json
+data/full_solution_2_ratings.json
+data/rookie_ratings_from_franchise.json
+data/rookie_ratings_post_madden.json
+
 # Claude-Code transient lock
 .claude/scheduled_tasks.lock
 
