@@ -997,6 +997,46 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             if spd < expected:
                 r["speed"] = expected
 
+    # CB tackle / hitPower floor.  The LLM defaults both to ~30 across every
+    # CB, treating them as non-CB stats.  Real M26 CB rookies tackle in the
+    # 50-65 range and hit-power 45-60 (cover corners need some run support).
+    if pos == "CB":
+        ovr = r.get("overall", 0)
+        tk_floor = max(48, ovr - 16)
+        hp_floor = max(42, ovr - 22)
+        if r.get("tackle", 0) < tk_floor:
+            r["tackle"] = tk_floor
+        if r.get("hitPower", 0) < hp_floor:
+            r["hitPower"] = hp_floor
+
+    # TE shortRouteRunning / release floor.  The LLM under-rates pass-catching
+    # TEs' route-running, treating them as primarily blockers.  Real M26 TE
+    # rookies short-route-run 60-75 and release 55-70.
+    if pos == "TE":
+        ovr = r.get("overall", 0)
+        sr_floor = max(58, ovr - 12)
+        rl_floor = max(52, ovr - 18)
+        if r.get("shortRouteRunning", 0) < sr_floor:
+            r["shortRouteRunning"] = sr_floor
+        if r.get("release", 0) < rl_floor:
+            r["release"] = rl_floor
+
+    # QB throwAccuracy aggregate sync.  Madden's display logic sometimes uses
+    # the aggregate `throwAccuracy` instead of the individual short/mid/deep,
+    # and the LLM frequently sets the aggregate lower than the avg of the
+    # three (unclear why — token-prediction bias).  Force the aggregate to be
+    # the mean so the displayed OVR reflects the per-range stats.
+    if pos == "QB":
+        s = r.get("throwAccuracyShort", 0)
+        m = r.get("throwAccuracyMid",   0)
+        d = r.get("throwAccuracyDeep",  0)
+        if s and m and d:
+            avg = round((s + m + d) / 3)
+            cur = r.get("throwAccuracy", 0)
+            # Only correct upward — don't lower a self-rated high aggregate.
+            if cur < avg:
+                r["throwAccuracy"] = avg
+
     # TE speed correction: modern TEs are trending faster; only correct upward.
     # Anchored so a 4.39 (Kenyon Sadiq) yields 92, tapering to calibration range
     # (~87) by 4.50 and below 80 for true blocking TEs.
