@@ -867,6 +867,151 @@ def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle,
     return r
 
 
+def apply_profile_corrections(ratings: dict, pos: str, notes: str | None) -> dict:
+    """
+    Position-aware keyword bumps from the Lance Zierlein scouting prose.
+
+    The LLM systematically under-rates stats it considers "off-position" even
+    when the scouting profile explicitly highlights them.  This pass scans
+    `notes` for position-relevant phrases and pushes the matching attributes
+    UPWARD (never down).
+
+    Examples this fixes:
+      - CB Julian Neal's profile says "talent as a run defender and tackler"
+        AND "size NFL teams desire for a press corner" — but the LLM left
+        him at tackle=53 / press=62.
+      - Safety profiles that mention "thumper" / "in-the-box" stay at
+        hitPower=55 unless we bump them.
+    """
+    if not notes:
+        return ratings
+    r = dict(ratings)
+    text = notes.lower()
+
+    def bump(stat: str, delta: int, ceil: int = 95):
+        cur = r.get(stat, 0)
+        new = min(ceil, cur + delta)
+        if new > cur:
+            r[stat] = new
+
+    def has_any(*phrases):
+        return any(p in text for p in phrases)
+
+    if pos == "CB":
+        if has_any("run defender", "run support", "willing tackler",
+                   "sticky tackler", "tackler", "tackling", "open-field tackler"):
+            bump("tackle",   8)
+            bump("hitPower", 4)
+        if has_any("physical", "physicality", "toughness",
+                   "violent", "punisher", "thumper"):
+            bump("hitPower", 6)
+        if has_any("press corner", "press coverage", "physical press",
+                   "weighted blanket", "jam at the line"):
+            bump("pressCoverage", 8)
+        if has_any("closing speed", "closes well", "rangy", "sideline-to-sideline"):
+            bump("pursuit", 6)
+        if has_any("ball-hawking", "ball skills", "ball production", "ballhawk", "interceptions"):
+            bump("zoneCoverage", 4)
+
+    elif pos in ("FS", "SS"):
+        if has_any("tackler", "tackling", "run support", "willing tackler"):
+            bump("tackle", 6)
+        if has_any("thumper", "punisher", "violent", "physical hitter",
+                   "explosive hits", "in-the-box", "in the box"):
+            bump("hitPower", 7)
+        if has_any("ball-hawking", "ballhawk", "ball skills", "centerfield",
+                   "rangy", "deep middle"):
+            bump("zoneCoverage", 5)
+        if has_any("instincts", "play recognition", "diagnoses"):
+            bump("playRecognition", 4)
+
+    elif pos in ("OLB", "MLB"):
+        if has_any("tackler", "willing tackler", "downhill tackler"):
+            bump("tackle", 5)
+        if has_any("thumper", "explosive hits", "punishing", "violent"):
+            bump("hitPower", 6)
+        if has_any("instincts", "play recognition", "diagnoses",
+                   "key-and-diagnose"):
+            bump("playRecognition", 5)
+        if has_any("blitzer", "blitz", "pass rush", "rusher"):
+            bump("powerMoves", 4)
+            bump("finesseMoves", 4)
+
+    elif pos in ("DE",):
+        if has_any("bend", "dip", "ghost", "pass-rush moves", "swim", "rip"):
+            bump("finesseMoves", 6)
+        if has_any("bull rush", "speed-to-power", "powerful", "violent hands"):
+            bump("powerMoves", 6)
+        if has_any("run defender", "stout against the run", "anchor",
+                   "edge setter", "sets the edge"):
+            bump("blockShedding", 5)
+            bump("tackle", 4)
+
+    elif pos == "DT":
+        if has_any("bull rush", "speed-to-power", "powerful", "violent hands"):
+            bump("powerMoves", 6)
+        if has_any("first step", "burst", "penetrator", "gap-shooter"):
+            bump("finesseMoves", 5)
+        if has_any("anchor", "stout against the run", "two-gap", "stack and shed"):
+            bump("blockShedding", 5)
+
+    elif pos == "WR":
+        if has_any("sure-handed", "reliable hands", "natural hands"):
+            bump("catching", 4)
+        if has_any("contested-catch", "contested catch", "high-pointer", "physical receiver"):
+            bump("spectacularCatch", 5)
+            bump("catchInTraffic", 5)
+        if has_any("route runner", "route running", "precise routes",
+                   "savvy route runner"):
+            bump("shortRouteRunning", 5)
+            bump("mediumRouteRunning", 4)
+        if has_any("yac", "after the catch", "elusive", "shifty"):
+            bump("changeOfDirection", 4)
+
+    elif pos == "TE":
+        if has_any("blocker", "willing blocker", "in-line blocker"):
+            bump("runBlock", 6)
+            bump("impactBlocking", 4)
+        if has_any("seam", "vertical threat", "mismatch"):
+            bump("mediumRouteRunning", 4)
+            bump("deepRouteRunning", 4)
+        if has_any("contested-catch", "high-pointer"):
+            bump("spectacularCatch", 5)
+
+    elif pos == "HB":
+        if has_any("vision", "patient runner", "decisive cuts"):
+            bump("ballCarrierVision", 4)
+        if has_any("contact balance", "tough runner", "powerful", "punishing"):
+            bump("trucking", 5)
+            bump("breakTackle", 5)
+        if has_any("shifty", "elusive", "make-you-miss", "elusiveness"):
+            bump("jukeMove", 5)
+            bump("spinMove", 4)
+
+    elif pos == "QB":
+        if has_any("accuracy", "accurate", "ball placement", "pinpoint"):
+            bump("throwAccuracyShort", 3)
+            bump("throwAccuracyMid", 3)
+        if has_any("arm strength", "live arm", "cannon", "big arm"):
+            bump("throwPower", 4)
+        if has_any("anticipation", "processor", "pre-snap", "high football iq"):
+            bump("awareness", 4)
+            bump("playRecognition", 4)
+        if has_any("mobile", "athletic qb", "dual-threat", "scrambler"):
+            bump("throwOnTheRun", 4)
+
+    elif pos in ("T", "G", "C"):
+        if has_any("mauler", "powerful", "drive blocker", "finishes blocks"):
+            bump("runBlockPower", 5)
+            bump("impactBlocking", 4)
+        if has_any("anchor", "anchors", "stout"):
+            bump("passBlockPower", 4)
+        if has_any("agile", "light feet", "quick feet", "athletic"):
+            bump("passBlockFinesse", 4)
+
+    return r
+
+
 def apply_dev_trait_by_pick(ratings: dict, actual_pick: int | None) -> dict:
     """
     Deterministic devTrait floor based on actual draft slot. The LLM tends to
@@ -997,17 +1142,20 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             if spd < expected:
                 r["speed"] = expected
 
-    # CB tackle / hitPower floor.  The LLM defaults both to ~30 across every
-    # CB, treating them as non-CB stats.  Real M26 CB rookies tackle in the
-    # 50-65 range and hit-power 45-60 (cover corners need some run support).
+    # CB tackle / hitPower / pursuit floor.  The LLM defaults all three to
+    # ~30 across every CB, treating them as non-CB stats.  Real M26 CB rookies
+    # tackle 50-65, hit-power 45-60, pursuit 60-75.
     if pos == "CB":
         ovr = r.get("overall", 0)
         tk_floor = max(48, ovr - 16)
         hp_floor = max(42, ovr - 22)
+        pu_floor = max(55, ovr - 12)
         if r.get("tackle", 0) < tk_floor:
             r["tackle"] = tk_floor
         if r.get("hitPower", 0) < hp_floor:
             r["hitPower"] = hp_floor
+        if r.get("pursuit", 0) < pu_floor:
+            r["pursuit"] = pu_floor
 
     # TE shortRouteRunning / release floor.  The LLM under-rates pass-catching
     # TEs' route-running, treating them as primarily blockers.  Real M26 TE
@@ -1111,9 +1259,11 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
         if r.get("awareness", 0) < 62:
             r["awareness"] = max(r.get("awareness", 0), 65)
 
-    # CB: cap DL stats (calibration group is misaligned — contains DTs, not CBs)
+    # CB: cap TRUE DL stats only (calibration group is misaligned — contains
+    # DTs, not CBs).  tackle/hitPower/pursuit USED to be on this list but
+    # they're legitimate CB stats — capping them at 30 collapsed run support.
     if pos == "CB":
-        for stat in ("blockShedding", "powerMoves", "finesseMoves", "tackle", "hitPower", "pursuit"):
+        for stat in ("blockShedding", "powerMoves", "finesseMoves"):
             if r.get(stat, 0) > 30:
                 r[stat] = 30
         if r.get("manCoverage", 0) < 55:
@@ -1279,6 +1429,7 @@ def rate_prospect(
               + (" ..." if len(issues) > 5 else ""))
 
     cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
+    cleaned = apply_profile_corrections(cleaned, pos, prospect.get("notes"))
     cleaned = apply_dev_trait_by_pick(cleaned, prospect.get("actual_draft_pick"))
     cleaned = apply_combine_corrections(
         cleaned, pos,
