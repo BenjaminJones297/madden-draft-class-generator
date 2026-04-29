@@ -262,6 +262,7 @@ def build_prospect(p: dict, picks_by_pid: dict) -> dict:
         "grade":        p.get("grade"),   # numeric, e.g. 6.29
         "notes":        notes,
         "nfl_comp":     nfl_comp,
+        "college_class": p.get("collegeClass"),   # 'Senior', 'R-Junior', etc. — fallback age signal
         # Derived from NFL.com
         "draftRound":   actual_round,
         "nfl_id":       pid,
