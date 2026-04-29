@@ -30,6 +30,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from utils.enums import ALL_RATING_FIELDS, POSITION_KEY_FIELDS, POSITION_TO_ENUM
 from utils.defaults import get_defaults
+from scripts.lib.neighbor_sampler import sample_baseline_ratings
 
 # ── Load .env ────────────────────────────────────────────────────────────────
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
@@ -1385,6 +1386,7 @@ def rate_prospect(
     profiles: dict | None = None,
     prior_ovrs: dict | None = None,
     verbose: bool = False,
+    use_llm: bool = False,
 ) -> dict:
     """
     Generate Madden 26 ratings for a single prospect.
@@ -1407,56 +1409,73 @@ def rate_prospect(
         pkey = norm_name(prospect.get("name") or f"{prospect.get('firstName','')} {prospect.get('lastName','')}")
         profile = profiles.get(pkey)
 
-    # Build primary prompt
-    prompt = build_prompt(prospect, cal_examples, anchors, ref_ratings, tier_anchor, profile)
+    if use_llm:
+        # Legacy LLM path — kept for comparison / fallback.
+        prompt = build_prompt(prospect, cal_examples, anchors, ref_ratings, tier_anchor, profile)
 
-    text = ""
-    ratings_raw = None
-
-    # ── First attempt ──
-    try:
-        text = call_ollama(model, prompt)
-    except Exception as e:
-        if "Connection" in type(e).__name__ or "ConnectionRefused" in str(e) or "connect" in str(e).lower():
-            raise ConnectionError(
-                f"Cannot reach Ollama at {OLLAMA_HOST}. "
-                "Please start Ollama with: ollama serve"
-            ) from e
-        print(f"  [WARN] Ollama error on first attempt: {e}")
-
-    if text:
-        ratings_raw = extract_json(text)
-
-    # ── Count missing fields ──
-    missing_count = 0
-    if ratings_raw:
-        missing_count = sum(1 for f in ALL_RATING_FIELDS if f not in ratings_raw)
-
-    # ── Retry if parse failed or too many missing fields ──
-    if ratings_raw is None or missing_count > 10:
-        correction_prompt = build_correction_prompt(all_fields_str, text)
+        text = ""
+        ratings_raw = None
         try:
-            text2 = call_ollama(model, correction_prompt)
-            ratings_raw2 = extract_json(text2)
-            if ratings_raw2 is not None:
-                ratings_raw = ratings_raw2
-                text = text2
-        except ConnectionError:
-            raise
+            text = call_ollama(model, prompt)
         except Exception as e:
-            print(f"  [WARN] Ollama error on retry: {e}")
+            if "Connection" in type(e).__name__ or "ConnectionRefused" in str(e) or "connect" in str(e).lower():
+                raise ConnectionError(
+                    f"Cannot reach Ollama at {OLLAMA_HOST}. "
+                    "Please start Ollama with: ollama serve"
+                ) from e
+            print(f"  [WARN] Ollama error on first attempt: {e}")
 
-    # ── Final fallback: use defaults entirely ──
-    if ratings_raw is None:
-        print(f"  [ERR] Could not parse ratings for {prospect.get('name')} — using defaults")
-        return dict(defaults)
+        if text:
+            ratings_raw = extract_json(text)
 
-    # ── Validate / clamp ──
-    cleaned, issues = validate_ratings(ratings_raw, canon)
+        missing_count = 0
+        if ratings_raw:
+            missing_count = sum(1 for f in ALL_RATING_FIELDS if f not in ratings_raw)
 
-    if verbose and issues:
-        print(f"  ↳ Fixed {len(issues)} field(s): {', '.join(issues[:5])}"
-              + (" ..." if len(issues) > 5 else ""))
+        if ratings_raw is None or missing_count > 10:
+            correction_prompt = build_correction_prompt(all_fields_str, text)
+            try:
+                text2 = call_ollama(model, correction_prompt)
+                ratings_raw2 = extract_json(text2)
+                if ratings_raw2 is not None:
+                    ratings_raw = ratings_raw2
+                    text = text2
+            except ConnectionError:
+                raise
+            except Exception as e:
+                print(f"  [WARN] Ollama error on retry: {e}")
+
+        if ratings_raw is None:
+            print(f"  [ERR] Could not parse ratings for {prospect.get('name')} — using defaults")
+            return dict(defaults)
+
+        cleaned, issues = validate_ratings(ratings_raw, canon)
+
+        if verbose and issues:
+            print(f"  ↳ Fixed {len(issues)} field(s): {', '.join(issues[:5])}"
+                  + (" ..." if len(issues) > 5 else ""))
+    else:
+        # ── Statistical baseline (default): centroid of nearest 2025 rookies ──
+        # Pulls a similarity-weighted attribute vector from calibration_set.json
+        # so we start from REAL M26 rookie distributions instead of LLM
+        # hallucinations.  Post-processing (position/profile/combine/dev) still
+        # runs on top.
+        canon_key_fields = set(POSITION_KEY_FIELDS.get(canon, [])) | {"overall", "devTrait"}
+        baseline = sample_baseline_ratings(
+            prospect, calibration, ALL_RATING_FIELDS,
+            key_fields=canon_key_fields,
+        )
+        # Fill any field that the centroid couldn't produce (rare — only when
+        # NO neighbors had the field) with the position default.
+        for f in ALL_RATING_FIELDS:
+            if f not in baseline:
+                baseline[f] = defaults.get(f, 50)
+        # validate_ratings is still useful as a safety net (clamp into [0,99],
+        # devTrait into [0,3], handle non-numeric).
+        cleaned, issues = validate_ratings(baseline, canon)
+        if verbose and issues:
+            print(f"  ↳ Fixed {len(issues)} field(s): {', '.join(issues[:5])}"
+                  + (" ..." if len(issues) > 5 else ""))
 
     cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
     cleaned = apply_profile_corrections(cleaned, pos, prospect.get("notes"))
@@ -1513,9 +1532,16 @@ def main():
     parser.add_argument("--positions", default=None,
         help="Only regenerate ratings for these positions (comma-separated, e.g. DE,OLB,DT). "
              "All other existing ratings are preserved.")
+    parser.add_argument("--use-llm", action="store_true",
+        help="Use the legacy Ollama LLM pipeline. Default is statistical "
+             "neighbor sampling from data/calibration_set.json (no LLM, ~instant).")
+    parser.add_argument("--no-prior-clamp", action="store_true",
+        help="Bypass the prior_ovr ±2 stability clamp. Use this for a clean "
+             "baseline regen (e.g. when switching from LLM to statistical).")
     args = parser.parse_args()
 
     model = args.model or DEFAULT_MODEL
+    use_llm = bool(args.use_llm)
 
     # ── Load input data ──
     print(f"Loading prospects from {PROSPECTS_FILE} ...")
@@ -1543,9 +1569,10 @@ def main():
         except Exception as e:
             print(f"  WARN: could not load profiles: {e}")
 
-    # Prior OVRs (for stability clamp — prevents large swings between runs)
+    # Prior OVRs (for stability clamp — prevents large swings between runs).
+    # Skipped when --no-prior-clamp is set (used for from-scratch baseline regen).
     prior_ovrs: dict = {}
-    if os.path.exists(OUTPUT_FILE):
+    if not args.no_prior_clamp and os.path.exists(OUTPUT_FILE):
         try:
             with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
                 prior_rated = json.load(f)
@@ -1557,6 +1584,8 @@ def main():
             print(f"Loaded {len(prior_ovrs)} prior OVRs from {OUTPUT_FILE} (stability clamp ±2)")
         except Exception as e:
             print(f"  WARN: could not load prior ratings: {e}")
+    elif args.no_prior_clamp:
+        print("--no-prior-clamp set: skipping prior_ovr stability clamp.")
 
     current_ratings: dict = {}
     if os.path.exists(CURRENT_RATINGS_FILE):
@@ -1578,23 +1607,26 @@ def main():
     else:
         print("  (No reference_draft_class.json found — skipping community reference)")
 
-    # ── Check Ollama connectivity early ──
-    try:
-        import ollama
-        # Quick connectivity test — list models
-        ollama.list()
-    except Exception as e:
-        err_str = str(e).lower()
-        if "connection" in err_str or "refused" in err_str or "connect" in err_str:
-            print(
-                f"\n[X]  Cannot connect to Ollama at {OLLAMA_HOST}.\n"
-                "    Please start Ollama first:\n"
-                "        ollama serve\n"
-                "    Or set OLLAMA_HOST in your .env file.\n"
-            )
-            sys.exit(1)
-        # Non-connection error (e.g. API version mismatch) — warn but continue
-        print(f"  [WARN] Ollama connectivity check warning: {e}")
+    # ── Check Ollama connectivity early (only when LLM mode is requested) ──
+    if use_llm:
+        try:
+            import ollama
+            # Quick connectivity test — list models
+            ollama.list()
+        except Exception as e:
+            err_str = str(e).lower()
+            if "connection" in err_str or "refused" in err_str or "connect" in err_str:
+                print(
+                    f"\n[X]  Cannot connect to Ollama at {OLLAMA_HOST}.\n"
+                    "    Please start Ollama first:\n"
+                    "        ollama serve\n"
+                    "    Or set OLLAMA_HOST in your .env file.\n"
+                )
+                sys.exit(1)
+            # Non-connection error (e.g. API version mismatch) — warn but continue
+            print(f"  [WARN] Ollama connectivity check warning: {e}")
+    else:
+        print("Using statistical neighbor sampling (no Ollama). Pass --use-llm for legacy.")
 
     # ── Resume / checkpoint logic ──
     rated_list: list[dict] = []
@@ -1674,6 +1706,7 @@ def main():
                     profiles=profiles,
                     prior_ovrs=prior_ovrs,
                     verbose=args.verbose,
+                    use_llm=use_llm,
                 )
             except ConnectionError as ce:
                 print(f"\n[X]  {ce}")
