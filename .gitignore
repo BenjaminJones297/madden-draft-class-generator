@@ -35,11 +35,14 @@ data/raw/_*.html
 data/*_backup_*.json
 data/raw/CAREERDRAFT-NFLDRAFT2026
 
-# Franchise-extracted ratings (regenerable, large)
-data/franchise_ratings.json
+# Per-rookie diagnostic dumps from extractRookieRatings.mjs (regenerable)
 data/full_solution_2_ratings.json
 data/rookie_ratings_from_franchise.json
 data/rookie_ratings_post_madden.json
+data/rookie_ratings_post_fix.json
+
+# franchise_ratings.json IS tracked — the OG predictor depends on it
+# being present alongside the other pre-fetched data files.
 
 # Claude-Code transient lock
 .claude/scheduled_tasks.lock
