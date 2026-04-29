@@ -954,6 +954,12 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
         lb_floor = max(55, ovr - 12) if ovr else 55
         if r.get("leadBlock", 0) < lb_floor:
             r["leadBlock"] = lb_floor
+        # impactBlocking cap — the LLM consistently OVER-rates this for OL,
+        # producing 80-90s on rookies (which is starter-grade).  Real M26
+        # OL rookies live in the OVR-12 .. OVR+0 band.  Cap to OVR.
+        ib_cap = ovr if ovr else 75
+        if r.get("impactBlocking", 0) > ib_cap:
+            r["impactBlocking"] = ib_cap
         # OL accel/speed should track closely (usually within ~4). If the LLM
         # produced a wide gap (e.g. spd=63 / acc=72), pull them together.
         spd = r.get("speed", 0)
