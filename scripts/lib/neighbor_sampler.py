@@ -197,14 +197,62 @@ def select_neighbors(
     return [(c, w / total) for c, w in top]
 
 
+def compute_position_stats(calibration: dict) -> dict:
+    """
+    Per-(pos, attribute) mean + standard deviation across calibration entries.
+
+    Used by centroid_attributes() to apply variance-weighted blending: for
+    low-SD attributes (where everyone at the position clusters tightly), the
+    similarity-weighted neighbor centroid passes through unchanged. For
+    high-SD attributes (where individual prospects differ widely), the
+    centroid is partially regressed toward the position mean — leaving more
+    room for individual signals (profile keyword bumps, combine measurements)
+    to drive the final value.
+
+    Returns: {pos: {field: (mean, sd)}}
+    """
+    import statistics as _st
+    out: dict = {}
+    for pos, entries in calibration.items():
+        stats: dict = {}
+        # Collect all values per field
+        per_field: dict[str, list[float]] = {}
+        for e in entries:
+            r = e.get("ratings") or {}
+            for f, v in r.items():
+                if isinstance(v, (int, float)):
+                    per_field.setdefault(f, []).append(float(v))
+        for f, vals in per_field.items():
+            if len(vals) < 2:
+                stats[f] = (vals[0] if vals else 60.0, 0.0)
+            else:
+                stats[f] = (_st.mean(vals), _st.pstdev(vals))
+        out[pos] = stats
+    return out
+
+
+# SD threshold below which the centroid passes through unchanged. Above this,
+# centroid is partially regressed toward the position mean. Calibration SDs
+# typically range 1-15; 4 is roughly the median across (pos, field) pairs.
+SD_LOW_THRESHOLD = 4.0
+# Maximum regression strength: at very high SD, centroid is still 50% of final
+# (50% mean) so individual differentiation isn't lost entirely.
+MAX_REGRESS = 0.5
+
+
 def centroid_attributes(
     neighbors: Sequence[tuple[dict, float]],
     rating_fields: Iterable[str],
+    position_stats: dict | None = None,
+    pos: str | None = None,
 ) -> dict:
-    """Weighted mean per attribute, rounded to int.
+    """Weighted mean per attribute, with optional variance-weighted regression
+    toward position mean for high-SD attributes.
 
     devTrait clamped [0, 3]; everything else clamped [40, 99].
     """
+    pos_attr_stats = (position_stats or {}).get(pos, {}) if pos else {}
+
     out: dict = {}
     for field in rating_fields:
         acc = 0.0
@@ -221,6 +269,21 @@ def centroid_attributes(
         if wsum <= 0:
             continue   # skip fields nobody has
         avg = acc / wsum
+
+        # Variance-weighted regression: high-SD attributes get pulled toward
+        # the position mean so individual signals (profile/combine) have room
+        # to differentiate.
+        if pos_attr_stats and field not in ("overall", "devTrait"):
+            stat = pos_attr_stats.get(field)
+            if stat:
+                pos_mean, pos_sd = stat
+                if pos_sd > SD_LOW_THRESHOLD and pos_mean > 0:
+                    # regress strength scales 0..MAX_REGRESS as sd scales
+                    # SD_LOW_THRESHOLD..(2*SD_LOW_THRESHOLD)
+                    excess = min(1.0, (pos_sd - SD_LOW_THRESHOLD) / SD_LOW_THRESHOLD)
+                    regress = MAX_REGRESS * excess
+                    avg = avg * (1.0 - regress) + pos_mean * regress
+
         if field == "devTrait":
             out[field] = max(0, min(3, int(round(avg))))
         else:
@@ -262,6 +325,9 @@ def jitter_attributes(
     return out
 
 
+_POS_STATS_CACHE: dict | None = None
+
+
 def sample_baseline_ratings(
     prospect: dict,
     calibration: dict,
@@ -276,6 +342,10 @@ def sample_baseline_ratings(
     (apply_position_corrections / apply_profile_corrections / apply_combine_corrections
     / apply_dev_trait_by_pick / compute_ovr).
     """
+    global _POS_STATS_CACHE
+    if _POS_STATS_CACHE is None:
+        _POS_STATS_CACHE = compute_position_stats(calibration)
+
     pos = prospect.get("pos") or "QB"
     pool = build_candidate_pool(pos, calibration)
     if not pool:
@@ -283,7 +353,13 @@ def sample_baseline_ratings(
         # will fill from get_defaults().
         return {}
     neighbors = select_neighbors(prospect, pool)
-    ratings = centroid_attributes(neighbors, rating_fields)
+    # Use the prospect's actual position for variance lookup so the regression
+    # uses the true distribution (not the fallback pool's).
+    ratings = centroid_attributes(
+        neighbors, rating_fields,
+        position_stats=_POS_STATS_CACHE,
+        pos=pos,
+    )
     name = prospect.get("name") or f"{prospect.get('firstName','')} {prospect.get('lastName','')}".strip()
     ratings = jitter_attributes(ratings, name, key_fields=key_fields)
     return ratings

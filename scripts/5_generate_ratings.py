@@ -809,30 +809,68 @@ def _lerp(x: float, table: list[tuple]) -> int:
     return ys[-1]
 
 
-def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle, ten_split=None) -> dict:
+def _anchor(r: dict, field: str, expected: int, band: int = 4) -> None:
     """
-    Floor-only corrections driven by real combine measurements.
-    Never lowers a rating — only raises it if the measurement implies a higher floor.
+    Anchor an attribute to within ±band of expected.  Unlike a floor, this
+    will LOWER the rating if the centroid produced a value implausibly high
+    relative to the combine measurement (e.g. centroid speed=92 but the
+    prospect ran 4.65 → speed should be ~84).
+    """
+    cur = r.get(field, 0) or 0
+    if cur < expected - band:
+        r[field] = expected - band
+    elif cur > expected + band:
+        r[field] = expected + band
+
+
+def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle, ten_split=None, forty=None) -> dict:
+    """
+    Combine measurements anchor the relevant attributes to within ±band of
+    expected.  Anchor (not floor) — combine results are objective measurements
+    and SHOULD lower an inflated centroid value when the measurement disagrees.
 
     Mappings:
-      vertical   → jumping
-      bench      → strength  (position-grouped)
-      cone       → changeOfDirection  (lower time = higher CoD)
-      shuttle    → agility            (lower time = higher agility)
+      forty     → speed + acceleration  (universal, primary signal)
+      ten_split → acceleration
+      vertical  → jumping
+      bench     → strength               (position-grouped)
+      cone      → changeOfDirection
+      shuttle   → agility
+      broad jump (not used currently — would map to jumping/strength composite)
     """
     r = dict(r)
+
+    # ── 40-yard dash → Speed + Acceleration (universal anchor) ───────────────
+    # The strongest combine signal.  Centroid often overshoots speed for slower
+    # combine attendees because similar-pick neighbors had faster times.
+    if forty is not None:
+        FORTY_SPEED_TABLE = [
+            (4.30, 96), (4.35, 94), (4.40, 92), (4.45, 90), (4.50, 88),
+            (4.55, 86), (4.60, 84), (4.65, 82), (4.70, 80), (4.75, 77),
+            (4.80, 74), (4.90, 70), (5.00, 67), (5.10, 64), (5.20, 60),
+            (5.30, 57),
+        ]
+        expected = _lerp(float(forty), FORTY_SPEED_TABLE)
+        _anchor(r, "speed", expected, band=3)
+        # Acceleration tracks speed closely (within ±2 typically).
+        _anchor(r, "acceleration", expected, band=4)
+
+    # ── 10-yard split → Acceleration (overrides forty-derived if present) ────
+    if ten_split is not None:
+        TEN_TABLE = [(1.48, 98), (1.50, 96), (1.52, 94), (1.54, 92),
+                     (1.56, 90), (1.58, 88), (1.60, 85), (1.62, 82),
+                     (1.65, 78), (1.68, 74), (1.72, 68), (1.78, 62),
+                     (1.84, 55)]
+        _anchor(r, "acceleration", _lerp(float(ten_split), TEN_TABLE), band=3)
 
     # ── Vertical → Jumping ────────────────────────────────────────────────────
     if vertical is not None:
         VERT_TABLE = [(27.0, 62), (31.0, 72), (33.0, 78), (35.0, 82),
                       (37.0, 86), (39.0, 89), (41.0, 92), (43.5, 95), (45.5, 97)]
-        floor = _lerp(float(vertical), VERT_TABLE)
-        if r.get("jumping", 0) < floor:
-            r["jumping"] = floor
+        _anchor(r, "jumping", _lerp(float(vertical), VERT_TABLE), band=4)
 
     # ── Bench → Strength ─────────────────────────────────────────────────────
     if bench is not None:
-        # Position groups: heavy (OL/DT), mid (TE/HB/FB/LB/DE), skill (rest)
         HEAVY = {"T", "G", "C", "DT"}
         MID   = {"TE", "HB", "FB", "MLB", "OLB", "DE"}
         if pos in HEAVY:
@@ -841,39 +879,20 @@ def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle,
             BENCH_TABLE = [(9, 58), (13, 64), (17, 70), (21, 75), (25, 79), (30, 84)]
         else:
             BENCH_TABLE = [(8, 54), (12, 59), (15, 64), (20, 70), (25, 75)]
-        floor = _lerp(int(bench), BENCH_TABLE)
-        if r.get("strength", 0) < floor:
-            r["strength"] = floor
+        _anchor(r, "strength", _lerp(int(bench), BENCH_TABLE), band=4)
 
-    # ── 3-cone → changeOfDirection ────────────────────────────────────────────
+    # ── 3-cone → changeOfDirection ───────────────────────────────────────────
     if cone is not None:
-        # Invert: lower time = higher CoD → table sorted ascending (low time, high rating)
         CONE_TABLE = [(6.70, 94), (6.90, 90), (7.00, 87), (7.10, 84),
                       (7.20, 81), (7.40, 77), (7.60, 73), (8.00, 66)]
-        floor = _lerp(float(cone), CONE_TABLE)
-        if r.get("changeOfDirection", 0) < floor:
-            r["changeOfDirection"] = floor
+        _anchor(r, "changeOfDirection", _lerp(float(cone), CONE_TABLE), band=4)
 
-    # ── Shuttle → Agility ──────────────────────────────────────────────────────
+    # ── Shuttle → Agility ────────────────────────────────────────────────────
     if shuttle is not None:
         SHUTTLE_TABLE = [(4.10, 95), (4.18, 91), (4.25, 88), (4.30, 86),
                          (4.35, 84), (4.40, 82), (4.50, 78), (4.60, 74),
                          (4.70, 70), (5.00, 62)]
-        floor = _lerp(float(shuttle), SHUTTLE_TABLE)
-        if r.get("agility", 0) < floor:
-            r["agility"] = floor
-
-
-    # ── 10-yard split → Acceleration ─────────────────────────────────────────
-    if ten_split is not None:
-        # Lower time = higher acceleration (universal floor, all positions)
-        TEN_TABLE = [(1.48, 98), (1.50, 96), (1.52, 94), (1.54, 92),
-                     (1.56, 90), (1.58, 88), (1.60, 85), (1.62, 82),
-                     (1.65, 78), (1.68, 74), (1.72, 68), (1.78, 62),
-                     (1.84, 55)]
-        floor = _lerp(float(ten_split), TEN_TABLE)
-        if r.get("acceleration", 0) < floor:
-            r["acceleration"] = floor
+        _anchor(r, "agility", _lerp(float(shuttle), SHUTTLE_TABLE), band=4)
 
     return r
 
@@ -955,124 +974,327 @@ def apply_profile_corrections(ratings: dict, pos: str, notes: str | None) -> dic
     def has_any(*phrases):
         return any(p in text for p in phrases)
 
+    # ─── Universal qualitative bumps (any position) ───────────────────────
+    # These look for general scouting tone keywords and bump common attributes.
+    # Apply BEFORE the position-specific block so per-position keywords can
+    # stack on top.
+    if has_any("explosive", "explosiveness", "dynamic", "elite athlete",
+               "twitch", "twitchy", "burst", "bursty", "first step",
+               "elite burst", "elite athleticism"):
+        bump("acceleration", 3)
+        bump("agility", 2)
+    if has_any("instincts", "instinctive", "high football iq",
+               "football iq", "smart player", "cerebral", "high-iq",
+               "play recognition", "diagnoses", "pre-snap", "anticipation",
+               "advanced processor", "processor", "reads the field"):
+        bump("awareness", 4)
+        bump("playRecognition", 4)
+    if has_any("physical", "physicality", "toughness", "tough",
+               "violent", "punishing", "punishes", "punisher", "thumper",
+               "hits like a truck", "intimidator", "enforcer", "demolishes"):
+        bump("hitPower", 5)
+        bump("tackle", 2)
+    if has_any("durable", "rarely missed", "ironman", "iron man",
+               "no injury history", "available", "tough-as-nails"):
+        bump("toughness", 5)
+        bump("injury", 3)
+    if has_any("leader", "leadership", "team captain", "captain",
+               "commands the huddle", "alpha"):
+        bump("awareness", 3)
+    if has_any("nfl-ready", "nfl ready", "pro-ready", "polished",
+               "refined", "advanced technician", "technician"):
+        bump("awareness", 3)
+        bump("playRecognition", 2)
+
     if pos == "CB":
-        if has_any("run defender", "run support", "willing tackler",
-                   "sticky tackler", "tackler", "tackling", "open-field tackler"):
+        if has_any("tackler", "tackling", "tackle", "run defender",
+                   "run support", "willing tackler", "open-field tackler",
+                   "sure-tackler", "wraps up", "form tackler"):
             bump("tackle",   10)
             bump("hitPower",  6)
             bump("pursuit",   5)
-        if has_any("physical", "physicality", "toughness",
-                   "violent", "punisher", "thumper"):
-            bump("hitPower", 8)
-            bump("tackle",   3)
-        if has_any("press corner", "press coverage", "physical press",
-                   "weighted blanket", "jam at the line"):
+        if has_any("press", "press-coverage", "press corner",
+                   "weighted blanket", "jam at the line", "hand-fight",
+                   "physical press", "disrupts release"):
             bump("pressCoverage", 10)
             bump("hitPower",       3)
-        if has_any("closing speed", "closes well", "rangy", "sideline-to-sideline"):
+        if has_any("closing speed", "closes well", "rangy", "long stride",
+                   "sideline-to-sideline", "make-up speed", "recovery speed"):
             bump("pursuit", 7)
-        if has_any("ball-hawking", "ball skills", "ball production", "ballhawk", "interceptions"):
-            bump("zoneCoverage", 4)
+            bump("speed",   2)
+        if has_any("ball-hawk", "ball skills", "ball production",
+                   "ballhawk", "interceptions", "picks", "takeaway",
+                   "playmaker", "splash plays", "ball production"):
+            bump("zoneCoverage", 5)
+            bump("playRecognition", 3)
+        if has_any("man coverage", "mirror", "mirrors", "sticky in coverage",
+                   "lockdown", "shadow"):
+            bump("manCoverage", 6)
+        if has_any("zone", "zone awareness", "deep zone", "off-coverage",
+                   "deep middle"):
+            bump("zoneCoverage", 5)
         if has_any("strength", "strong corner", "shed perimeter blocks",
-                   "sheds blocks", "stack and shed"):
+                   "sheds blocks", "stack and shed", "physical at line"):
             bump("hitPower", 4)
             bump("blockShedding", 3)
+        if has_any("size", "length", "long arms", "wingspan", "tall", "frame"):
+            bump("pressCoverage", 4)
+            bump("jumping", 3)
 
     elif pos in ("FS", "SS"):
-        if has_any("tackler", "tackling", "run support", "willing tackler"):
+        if has_any("tackler", "tackling", "tackle", "run support",
+                   "willing tackler", "form tackler", "sure tackler"):
             bump("tackle", 6)
+            bump("hitPower", 3)
         if has_any("thumper", "punisher", "violent", "physical hitter",
-                   "explosive hits", "in-the-box", "in the box"):
+                   "explosive hits", "in-the-box", "in the box",
+                   "smashes", "delivers blows", "knockout hits"):
             bump("hitPower", 7)
-        if has_any("ball-hawking", "ballhawk", "ball skills", "centerfield",
-                   "rangy", "deep middle"):
+            bump("tackle", 3)
+        if has_any("ball-hawk", "ballhawk", "ball skills", "centerfield",
+                   "center field", "rangy", "deep middle", "interceptions",
+                   "picks"):
             bump("zoneCoverage", 5)
-        if has_any("instincts", "play recognition", "diagnoses"):
-            bump("playRecognition", 4)
+            bump("playRecognition", 3)
+        if has_any("range", "long stride", "covers ground", "sideline-to-sideline"):
+            bump("pursuit", 5)
+            bump("speed", 2)
+        if has_any("blitzer", "blitz", "pressure"):
+            bump("pursuit", 3)
 
     elif pos in ("OLB", "MLB"):
-        if has_any("tackler", "willing tackler", "downhill tackler"):
-            bump("tackle", 5)
-        if has_any("thumper", "explosive hits", "punishing", "violent"):
+        if has_any("tackler", "tackling", "tackle", "willing tackler",
+                   "downhill tackler", "form tackler", "sure tackler"):
+            bump("tackle", 6)
+            bump("pursuit", 3)
+        if has_any("thumper", "explosive hits", "punishing", "violent",
+                   "knockout hits", "delivers blows"):
             bump("hitPower", 6)
-        if has_any("instincts", "play recognition", "diagnoses",
-                   "key-and-diagnose"):
-            bump("playRecognition", 5)
-        if has_any("blitzer", "blitz", "pass rush", "rusher"):
-            bump("powerMoves", 4)
-            bump("finesseMoves", 4)
+        if has_any("blitzer", "blitz", "pass rush", "rusher",
+                   "pass-rush", "edge setter", "sack artist"):
+            bump("powerMoves", 5)
+            bump("finesseMoves", 5)
+        if has_any("coverage", "drops in coverage", "covers tight ends",
+                   "covers backs", "man coverage", "zone awareness"):
+            bump("manCoverage", 5)
+            bump("zoneCoverage", 5)
+        if has_any("sideline-to-sideline", "rangy", "covers ground", "range"):
+            bump("pursuit", 5)
+            bump("speed", 2)
+        if has_any("sheds blocks", "shed", "stack and shed",
+                   "block destruction", "takes on blocks"):
+            bump("blockShedding", 6)
 
-    elif pos in ("DE",):
-        if has_any("bend", "dip", "ghost", "pass-rush moves", "swim", "rip"):
-            bump("finesseMoves", 6)
-        if has_any("bull rush", "speed-to-power", "powerful", "violent hands"):
-            bump("powerMoves", 6)
+    elif pos == "DE":
+        if has_any("bend", "bender", "dip", "ghost", "pass-rush",
+                   "pass rush moves", "swim", "rip", "long-arm",
+                   "speed rush", "speed-rush"):
+            bump("finesseMoves", 7)
+            bump("acceleration", 2)
+        if has_any("bull rush", "speed-to-power", "powerful", "violent hands",
+                   "power rush", "long-arm", "drives blockers"):
+            bump("powerMoves", 7)
+            bump("strength", 2)
         if has_any("run defender", "stout against the run", "anchor",
-                   "edge setter", "sets the edge"):
-            bump("blockShedding", 5)
+                   "edge setter", "sets the edge", "strong against the run",
+                   "sheds blocks"):
+            bump("blockShedding", 6)
             bump("tackle", 4)
+            bump("strength", 2)
+        if has_any("relentless", "high motor", "motor", "non-stop",
+                   "never-quit"):
+            bump("pursuit", 5)
+            bump("stamina", 4)
+        if has_any("hand usage", "hand fighter", "active hands",
+                   "violent hands", "club", "swat"):
+            bump("blockShedding", 4)
+            bump("powerMoves", 3)
 
     elif pos == "DT":
-        if has_any("bull rush", "speed-to-power", "powerful", "violent hands"):
-            bump("powerMoves", 6)
-        if has_any("first step", "burst", "penetrator", "gap-shooter"):
+        if has_any("bull rush", "speed-to-power", "powerful",
+                   "violent hands", "powerful hands", "drives blockers",
+                   "forklift"):
+            bump("powerMoves", 7)
+            bump("strength", 3)
+        if has_any("first step", "burst", "quick first step", "penetrator",
+                   "gap-shooter", "shoots gaps", "explosive get-off"):
             bump("finesseMoves", 5)
-        if has_any("anchor", "stout against the run", "two-gap", "stack and shed"):
-            bump("blockShedding", 5)
+            bump("acceleration", 3)
+        if has_any("anchor", "stout against the run", "two-gap",
+                   "stack and shed", "immovable", "block-eater",
+                   "strength", "powerful", "leverage"):
+            bump("blockShedding", 6)
+            bump("strength", 3)
+        if has_any("relentless", "motor", "high motor", "constantly working"):
+            bump("pursuit", 5)
+            bump("stamina", 3)
 
     elif pos == "WR":
-        if has_any("sure-handed", "reliable hands", "natural hands"):
-            bump("catching", 4)
-        if has_any("contested-catch", "contested catch", "high-pointer", "physical receiver"):
-            bump("spectacularCatch", 5)
+        if has_any("sure-handed", "reliable hands", "natural hands",
+                   "soft hands", "snatches", "few drops", "low drop rate"):
+            bump("catching", 5)
+        if has_any("contested-catch", "contested catch", "high-pointer",
+                   "physical receiver", "go up and get it", "jump ball",
+                   "back-shoulder", "wins 50-50"):
+            bump("spectacularCatch", 6)
             bump("catchInTraffic", 5)
+            bump("jumping", 3)
         if has_any("route runner", "route running", "precise routes",
-                   "savvy route runner"):
+                   "savvy route runner", "sharp routes", "route tree",
+                   "creates separation", "separation", "footwork"):
             bump("shortRouteRunning", 5)
             bump("mediumRouteRunning", 4)
-        if has_any("yac", "after the catch", "elusive", "shifty"):
-            bump("changeOfDirection", 4)
+            bump("release", 3)
+        if has_any("yac", "after the catch", "after-the-catch", "elusive",
+                   "shifty", "make-you-miss", "broken tackle", "broken tackles"):
+            bump("changeOfDirection", 5)
+            bump("breakTackle", 4)
+            bump("jukeMove", 3)
+        if has_any("deep threat", "deep-threat", "field stretcher",
+                   "vertical threat", "track speed", "long speed", "burner"):
+            bump("deepRouteRunning", 5)
+            bump("speed", 3)
+        if has_any("slot", "shifty slot", "slot receiver", "quick separator"):
+            bump("shortRouteRunning", 4)
+            bump("agility", 3)
+        if has_any("size", "big-bodied", "tall", "frame", "physical at the catch"):
+            bump("strength", 3)
+            bump("catchInTraffic", 3)
+        if has_any("blocker", "willing blocker", "physical blocker"):
+            bump("runBlock", 4)
+            bump("impactBlocking", 3)
 
     elif pos == "TE":
-        if has_any("blocker", "willing blocker", "in-line blocker"):
-            bump("runBlock", 6)
-            bump("impactBlocking", 4)
-        if has_any("seam", "vertical threat", "mismatch"):
-            bump("mediumRouteRunning", 4)
-            bump("deepRouteRunning", 4)
-        if has_any("contested-catch", "high-pointer"):
+        if has_any("blocker", "willing blocker", "in-line blocker",
+                   "drive blocker", "Y-tight end", "lead blocker"):
+            bump("runBlock", 7)
+            bump("impactBlocking", 5)
+            bump("passBlock", 3)
+        if has_any("seam", "vertical threat", "mismatch", "field stretcher",
+                   "speed", "athletic tight end", "f-tight end"):
+            bump("mediumRouteRunning", 5)
+            bump("deepRouteRunning", 5)
+            bump("speed", 2)
+        if has_any("contested-catch", "high-pointer", "wins 50-50",
+                   "go up and get it"):
             bump("spectacularCatch", 5)
+            bump("catchInTraffic", 4)
+        if has_any("route", "route runner", "route running", "precise routes",
+                   "creates separation"):
+            bump("shortRouteRunning", 5)
+            bump("release", 3)
+        if has_any("hands", "soft hands", "reliable hands", "sure-handed"):
+            bump("catching", 4)
+        if has_any("after the catch", "yac", "shifty"):
+            bump("breakTackle", 3)
+            bump("changeOfDirection", 3)
 
     elif pos == "HB":
-        if has_any("vision", "patient runner", "decisive cuts"):
-            bump("ballCarrierVision", 4)
-        if has_any("contact balance", "tough runner", "powerful", "punishing"):
+        if has_any("vision", "patient runner", "decisive cuts",
+                   "patient", "sets up blocks", "find the cutback",
+                   "follows blocks", "field vision"):
+            bump("ballCarrierVision", 5)
+            bump("awareness", 2)
+        if has_any("contact balance", "tough runner", "powerful",
+                   "punishing", "runs through tackles", "lowers the boom"):
             bump("trucking", 5)
             bump("breakTackle", 5)
-        if has_any("shifty", "elusive", "make-you-miss", "elusiveness"):
-            bump("jukeMove", 5)
+            bump("strength", 2)
+        if has_any("shifty", "elusive", "make-you-miss", "elusiveness",
+                   "jump cut", "ankle breaker", "jukes", "spin",
+                   "lateral agility"):
+            bump("jukeMove", 6)
             bump("spinMove", 4)
+            bump("changeOfDirection", 3)
+        if has_any("speed", "burner", "track speed", "home-run hitter",
+                   "big-play", "explosive runner", "breakaway speed"):
+            bump("speed", 3)
+            bump("acceleration", 2)
+        if has_any("receiving", "pass-catching back", "third-down back",
+                   "receiving threat", "soft hands", "checkdown",
+                   "screen game"):
+            bump("catching", 6)
+            bump("shortRouteRunning", 4)
+            bump("release", 3)
+        if has_any("pass blocker", "pass protection", "blitz pickup"):
+            bump("passBlock", 4)
+            bump("impactBlocking", 3)
+        if has_any("ball security", "no fumbles", "rarely fumbles"):
+            bump("carrying", 4)
+        if has_any("bell-cow", "workhorse", "feature back", "every-down back"):
+            bump("stamina", 5)
+            bump("toughness", 3)
 
     elif pos == "QB":
-        if has_any("accuracy", "accurate", "ball placement", "pinpoint"):
-            bump("throwAccuracyShort", 3)
+        if has_any("accuracy", "accurate", "accurate passer",
+                   "ball placement", "pinpoint", "precision",
+                   "puts the ball where it needs to be"):
+            bump("throwAccuracyShort", 4)
+            bump("throwAccuracyMid", 4)
+            bump("throwAccuracyDeep", 3)
+        if has_any("arm strength", "live arm", "cannon", "big arm",
+                   "drives the ball", "fastball"):
+            bump("throwPower", 5)
+            bump("throwAccuracyDeep", 3)
+        if has_any("anticipation", "anticipates", "throws receivers open",
+                   "throws with timing", "rhythm passer"):
             bump("throwAccuracyMid", 3)
-        if has_any("arm strength", "live arm", "cannon", "big arm"):
-            bump("throwPower", 4)
-        if has_any("anticipation", "processor", "pre-snap", "high football iq"):
-            bump("awareness", 4)
-            bump("playRecognition", 4)
-        if has_any("mobile", "athletic qb", "dual-threat", "scrambler"):
-            bump("throwOnTheRun", 4)
+            bump("throwUnderPressure", 3)
+        if has_any("mobile", "athletic qb", "dual-threat", "scrambler",
+                   "mobility", "extends plays", "extends the play",
+                   "off-script", "improviser"):
+            bump("throwOnTheRun", 5)
+            bump("breakSack", 4)
+            bump("speed", 2)
+        if has_any("pocket presence", "navigates the pocket",
+                   "moves in the pocket", "stands in"):
+            bump("throwUnderPressure", 5)
+            bump("breakSack", 3)
+        if has_any("playaction", "play-action", "play action", "boot"):
+            bump("playAction", 5)
+        if has_any("decision-maker", "good decisions", "limits turnovers",
+                   "low interception"):
+            bump("awareness", 3)
 
     elif pos in ("T", "G", "C"):
-        if has_any("mauler", "powerful", "drive blocker", "finishes blocks"):
-            bump("runBlockPower", 5)
-            bump("impactBlocking", 4)
-        if has_any("anchor", "anchors", "stout"):
-            bump("passBlockPower", 4)
-        if has_any("agile", "light feet", "quick feet", "athletic"):
-            bump("passBlockFinesse", 4)
+        if has_any("mauler", "powerful", "drive blocker",
+                   "finishes blocks", "lowers the boom", "punisher",
+                   "tone-setter"):
+            bump("runBlockPower", 6)
+            bump("impactBlocking", 5)
+            bump("leadBlock", 4)
+            bump("strength", 2)
+        if has_any("anchor", "anchors", "stout", "rock-solid",
+                   "absorbs the bull rush", "immovable"):
+            bump("passBlockPower", 5)
+            bump("strength", 2)
+        if has_any("agile", "light feet", "quick feet", "athletic",
+                   "moves well", "dancing feet", "fluid", "quick set"):
+            bump("passBlockFinesse", 5)
+            bump("agility", 3)
+        if has_any("technician", "refined technique", "great hands",
+                   "hand placement", "polished"):
+            bump("passBlock", 4)
+            bump("runBlock", 3)
+        if has_any("zone blocker", "zone scheme", "second level",
+                   "climbs to second level", "pulls", "puller", "pulling"):
+            bump("runBlockFinesse", 5)
+            bump("agility", 3)
+        if has_any("smart", "intelligent", "communicates", "calls protections"):
+            bump("awareness", 4)
+            bump("playRecognition", 3)
+
+    elif pos == "K":
+        if has_any("strong leg", "big leg", "long-range"):
+            bump("kickPower", 6)
+        if has_any("accurate", "consistent", "automatic", "high accuracy"):
+            bump("kickAccuracy", 6)
+
+    elif pos == "P":
+        if has_any("strong leg", "big leg", "boomer"):
+            bump("kickPower", 6)
+        if has_any("directional", "pin-deep", "coffin corner", "place punter"):
+            bump("kickAccuracy", 6)
 
     return r
 
@@ -1545,6 +1767,7 @@ def rate_prospect(
         cone      = prospect.get("cone"),
         shuttle   = prospect.get("shuttle"),
         ten_split = prospect.get("ten_split"),
+        forty     = prospect.get("forty"),
     )
 
     # ── Deterministic OVR ────────────────────────────────────────────────────
