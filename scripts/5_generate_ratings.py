@@ -920,6 +920,91 @@ ATTRIBUTE_DAMPENER: dict[str, int] = {
 }
 
 
+def apply_top_pick_awareness_floor(ratings: dict, pos: str, actual_pick: int | None) -> dict:
+    """
+    Top picks need elite awareness / decision-making to register correctly
+    in Madden's archetype formulas (especially QB_FieldGeneral, MLB_FieldGeneral,
+    S_Zone, CB_Zone — all of which weight Awareness heavily).
+
+    The centroid pulls awareness from similar 2025 rookies, but rookie AWR
+    has high variance and the average tends low. Result: top-pick QBs like
+    Mendoza ended up with AWR=61, capping their displayed OVR around 65.
+
+    Per-pick floor structure:
+      Pick 1-3:    AWR floor 80  ("smart stats" floor 75)
+      Pick 4-12:   AWR floor 76  (75/70)
+      Pick 13-32:  AWR floor 72  (--)
+    QBs get a stricter AWR floor (FieldGeneral weights it most).
+    """
+    if not actual_pick:
+        return ratings
+    r = dict(ratings)
+
+    if actual_pick <= 3:
+        awr_floor = 82 if pos == "QB" else 78
+        smart_floor = 76
+    elif actual_pick <= 12:
+        awr_floor = 78 if pos == "QB" else 74
+        smart_floor = 72
+    elif actual_pick <= 32:
+        awr_floor = 74 if pos == "QB" else 70
+        smart_floor = 70
+    else:
+        return r
+
+    if r.get("awareness", 0) < awr_floor:
+        r["awareness"] = awr_floor
+    # Position-specific "smart" stats — those that drive archetype formulas
+    # for thinking-positions.
+    smart_stats = {
+        "QB":  ("playRecognition", "throwUnderPressure", "playAction"),
+        "MLB": ("playRecognition",),
+        "FS":  ("playRecognition", "zoneCoverage"),
+        "SS":  ("playRecognition",),
+        "CB":  ("playRecognition",),
+        "C":   ("playRecognition",),
+    }.get(pos, ())
+    for f in smart_stats:
+        if r.get(f, 0) < smart_floor:
+            r[f] = smart_floor
+
+    return r
+
+
+def apply_late_pick_dampener(ratings: dict, pos: str, actual_pick: int | None) -> dict:
+    """
+    Subtract a small amount from key attributes for late-round picks.
+    Applied AFTER position-overshoot dampener so they stack.
+
+    Pick 181-220 (R6 range): -1 to key fields
+    Pick 221-260 (R7 range): -2 to key fields
+
+    Madden's archetype recompute on inflated late-pick attributes lifts the
+    in-game OVR above what the tier should hit (we observed Andre Fuller
+    R7#236 CB go 69 -> 72 post-Madden because SPD=90, PUR=84, PRESS=81).
+    Trimming key attributes by 1-2 brings the recomputed OVR back into the
+    66-70 band typical of late R7 picks.
+    """
+    if not actual_pick or actual_pick <= 180:
+        return ratings
+    if actual_pick <= 220:
+        delta = -1
+    else:
+        delta = -2
+
+    canon = canonical_pos(pos)
+    key_fields = POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
+    r = dict(ratings)
+    for f in key_fields:
+        if f in ("overall", "devTrait"):
+            continue
+        v = r.get(f)
+        if not isinstance(v, (int, float)):
+            continue
+        r[f] = max(40, min(99, int(v) + delta))
+    return r
+
+
 def apply_position_overshoot_dampener(ratings: dict, pos: str) -> dict:
     """
     Subtract a per-position N from KEY attributes (the ones the position's
@@ -1759,6 +1844,8 @@ def rate_prospect(
     cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
     cleaned = apply_profile_corrections(cleaned, pos, prospect.get("notes"))
     cleaned = apply_position_overshoot_dampener(cleaned, pos)
+    cleaned = apply_top_pick_awareness_floor(cleaned, pos, prospect.get("actual_draft_pick"))
+    cleaned = apply_late_pick_dampener(cleaned, pos, prospect.get("actual_draft_pick"))
     cleaned = apply_dev_trait_by_pick(cleaned, prospect.get("actual_draft_pick"))
     cleaned = apply_combine_corrections(
         cleaned, pos,
