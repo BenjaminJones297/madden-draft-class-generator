@@ -369,6 +369,16 @@ def pick_slot_floor(actual_pick: int | None) -> int:
     return 0
 
 
+# NOTE: An earlier iteration applied a per-position OVR BIAS here to push the
+# computed OVR down for over-rated positions. That approach was wrong — Madden
+# recomputes the displayed OVR from attributes via per-archetype formulas on
+# load, so bias-ing the OverallRating field alone does nothing in-game. The
+# correct fix lives in apply_position_overshoot_dampener() (called from
+# apply_position_corrections) which lowers KEY ATTRIBUTES by a small amount
+# for over-rated positions, so Madden's recompute lands at the calibrated
+# value naturally.
+
+
 def compute_ovr(
     ratings: dict,
     pos: str,
@@ -865,6 +875,53 @@ def apply_combine_corrections(r: dict, pos: str, bench, vertical, cone, shuttle,
         if r.get("acceleration", 0) < floor:
             r["acceleration"] = floor
 
+    return r
+
+
+# Per-position attribute dampener — lowers KEY ATTRIBUTES (the ones that
+# drive Madden's archetype OVR formula) by a small amount for positions
+# where the centroid + post-processing produces too-high values vs the
+# 2025 calibration distribution.  Lowering attributes (not just the OVR
+# field) is required so Madden's in-game archetype recompute lands at the
+# calibrated value too, not just our stored OverallRating.
+#
+# Magnitudes were tuned empirically from scripts/_audit_distribution.py:
+# the per-position OVR delta vs 2025 calibration is the target reduction.
+ATTRIBUTE_DAMPENER: dict[str, int] = {
+    "CB":  -2,    # was +3.35 OVR overshoot pre-fix
+    "DE":  -2,    # was +3.21
+    "FS":  -2,    # was +3.48
+    "T":   -2,    # was +3.18
+    "C":   -2,    # was +2.81
+    "QB":  -2,    # was +2.69
+    "G":   -1,    # was +2.19
+    "SS":  -1,    # was +2.10
+    "TE":  -1,    # was +1.98
+    "WR":  -1,    # was +1.88
+}
+
+
+def apply_position_overshoot_dampener(ratings: dict, pos: str) -> dict:
+    """
+    Subtract a per-position N from KEY attributes (the ones the position's
+    archetype formula weights heavily).  This lowers Madden's recomputed
+    in-game OVR for positions that were systematically over-rated relative
+    to the 2025 calibration.  Non-key fields are left untouched so the
+    player's overall attribute profile still reflects their archetype.
+    """
+    delta = ATTRIBUTE_DAMPENER.get(pos)
+    if not delta:
+        return ratings
+    canon = canonical_pos(pos)
+    key_fields = POSITION_KEY_FIELDS.get(canon, POSITION_KEY_FIELDS["QB"])
+    r = dict(ratings)
+    for f in key_fields:
+        if f in ("overall", "devTrait"):
+            continue
+        v = r.get(f)
+        if not isinstance(v, (int, float)):
+            continue
+        r[f] = max(40, min(99, int(v) + delta))
     return r
 
 
@@ -1479,6 +1536,7 @@ def rate_prospect(
 
     cleaned = apply_position_corrections(cleaned, pos, prospect.get("forty"))
     cleaned = apply_profile_corrections(cleaned, pos, prospect.get("notes"))
+    cleaned = apply_position_overshoot_dampener(cleaned, pos)
     cleaned = apply_dev_trait_by_pick(cleaned, prospect.get("actual_draft_pick"))
     cleaned = apply_combine_corrections(
         cleaned, pos,
