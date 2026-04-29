@@ -900,18 +900,25 @@ def apply_profile_corrections(ratings: dict, pos: str, notes: str | None) -> dic
     if pos == "CB":
         if has_any("run defender", "run support", "willing tackler",
                    "sticky tackler", "tackler", "tackling", "open-field tackler"):
-            bump("tackle",   8)
-            bump("hitPower", 4)
+            bump("tackle",   10)
+            bump("hitPower",  6)
+            bump("pursuit",   5)
         if has_any("physical", "physicality", "toughness",
                    "violent", "punisher", "thumper"):
-            bump("hitPower", 6)
+            bump("hitPower", 8)
+            bump("tackle",   3)
         if has_any("press corner", "press coverage", "physical press",
                    "weighted blanket", "jam at the line"):
-            bump("pressCoverage", 8)
+            bump("pressCoverage", 10)
+            bump("hitPower",       3)
         if has_any("closing speed", "closes well", "rangy", "sideline-to-sideline"):
-            bump("pursuit", 6)
+            bump("pursuit", 7)
         if has_any("ball-hawking", "ball skills", "ball production", "ballhawk", "interceptions"):
             bump("zoneCoverage", 4)
+        if has_any("strength", "strong corner", "shed perimeter blocks",
+                   "sheds blocks", "stack and shed"):
+            bump("hitPower", 4)
+            bump("blockShedding", 3)
 
     elif pos in ("FS", "SS"):
         if has_any("tackler", "tackling", "run support", "willing tackler"):
@@ -1093,10 +1100,10 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
             r["agility"] = agi_floor
         # leadBlock floor — the LLM consistently undershoots this stat for OL
         # (treats it as FB-only).  Real M26 starting OL sit in 80-95 lead-block;
-        # rookies typically 60-75.  Madden's OVR formula weights leadBlock for
+        # rookies typically 65-80.  Madden's OVR formula weights leadBlock for
         # G/T/C, so leaving it at 20-30 collapses the displayed OVR.
         ovr = r.get("overall", 0)
-        lb_floor = max(55, ovr - 12) if ovr else 55
+        lb_floor = max(62, ovr - 6) if ovr else 62
         if r.get("leadBlock", 0) < lb_floor:
             r["leadBlock"] = lb_floor
         # impactBlocking cap — the LLM consistently OVER-rates this for OL,
@@ -1149,13 +1156,36 @@ def apply_position_corrections(ratings: dict, pos: str, forty: float | None) -> 
         ovr = r.get("overall", 0)
         tk_floor = max(48, ovr - 16)
         hp_floor = max(42, ovr - 22)
-        pu_floor = max(55, ovr - 12)
+        pu_floor = max(60, ovr - 8)
         if r.get("tackle", 0) < tk_floor:
             r["tackle"] = tk_floor
         if r.get("hitPower", 0) < hp_floor:
             r["hitPower"] = hp_floor
         if r.get("pursuit", 0) < pu_floor:
             r["pursuit"] = pu_floor
+
+    # QB ball-carrier floor.  Even pocket QBs aren't single-digit-stiff-arm.
+    # Real M26 QBs sit in stiff-arm 40-60, juke/spin 35-55, trucking 35-55,
+    # change-of-direction 55-75 (mobile QBs higher).  The LLM zeroes them.
+    if pos == "QB":
+        ovr  = r.get("overall", 0)
+        spd  = r.get("speed", 0)
+        # Mobile QB bonus when high speed
+        mobile = 1 if spd >= 80 else 0
+        for stat, base in (
+            ("stiffArm", 40), ("trucking", 35),
+            ("spinMove", 35), ("jukeMove", 35),
+            ("changeOfDirection", 55),
+        ):
+            floor = base + (5 * mobile)
+            if r.get(stat, 0) < floor:
+                r[stat] = floor
+        # carrying floor for QBs (ball security as a runner)
+        if r.get("carrying", 0) < 55:
+            r["carrying"] = 55
+        # breakTackle floor
+        if r.get("breakTackle", 0) < 35 + (10 * mobile):
+            r["breakTackle"] = 35 + (10 * mobile)
 
     # TE shortRouteRunning / release floor.  The LLM under-rates pass-catching
     # TEs' route-running, treating them as primarily blockers.  Real M26 TE
