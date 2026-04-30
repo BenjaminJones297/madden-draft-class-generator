@@ -495,6 +495,7 @@ def scrape_otc_contracts() -> dict[str, dict]:
                 "total_value": total,
                 "guaranteed": gtd,
                 "contract_years": years,
+                "year_signed": 0,
                 "team": team_text,
                 "position": pos_text,
             }
@@ -740,6 +741,7 @@ def main() -> None:
             "total_contract_value": contract.get("total_value", 0.0),
             "guaranteed":         contract.get("guaranteed", 0.0),
             "contract_years":     contract.get("contract_years", 0),
+            "year_signed":        contract.get("year_signed", 0),
         }
 
         players.append(player)
@@ -758,6 +760,7 @@ def main() -> None:
             player["team"] = move["team"]
             if move.get("contract_years"):
                 player["contract_years"] = move["contract_years"]
+                player["year_signed"]    = 2026
             if move.get("total_contract_value"):
                 player["total_contract_value"] = move["total_contract_value"]
             fa_applied += 1
