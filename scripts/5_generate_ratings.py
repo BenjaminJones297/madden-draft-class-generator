@@ -1356,21 +1356,35 @@ def apply_profile_corrections(ratings: dict, pos: str, notes: str | None) -> dic
         # Set FLOORS so the HB_ReceivingBack archetype score
         # (avg(catching, shortRouteRunning, release)) lands ~80 — matching
         # NFL receiving backs like Kamara/Ekeler. floor(s, v) = max(r[s], v).
+        # spectacularCatch / catchInTraffic floors mirror M26's actual top
+        # receiving HBs (McCaffrey 75, Kamara 74, Patterson 76, mean ~72).
         if receives and routes:
-            r["catching"]          = max(r.get("catching", 0), 82)
-            r["shortRouteRunning"] = max(r.get("shortRouteRunning", 0), 78)
-            r["release"]           = max(r.get("release", 0), 76)
-            r["catchInTraffic"]    = max(r.get("catchInTraffic", 0), 65)
-        # HB route-running cascade: short >= medium >= deep. RBs run more
-        # short routes than medium and rarely run deep ones — so a higher
-        # mediumRouteRunning than shortRouteRunning is unrealistic.
+            r["catching"]           = max(r.get("catching", 0), 82)
+            r["shortRouteRunning"]  = max(r.get("shortRouteRunning", 0), 78)
+            r["release"]            = max(r.get("release", 0), 76)
+            r["catchInTraffic"]     = max(r.get("catchInTraffic", 0), 70)
+            r["spectacularCatch"]   = max(r.get("spectacularCatch", 0), 70)
+            r["mediumRouteRunning"] = max(r.get("mediumRouteRunning", 0), 72)
+            r["deepRouteRunning"]   = max(r.get("deepRouteRunning", 0), 64)
+        # HB route-running cascade. M26's actual distribution has short-mid
+        # gap median 7 (range 2-12), mid-deep gap median 7 — so target a
+        # natural step-down. For non-receiving backs, force a default gap
+        # of 6 below the next slot (so equal-centroid values get separated).
+        # For receiving backs (where floors keep mid/deep elevated), tighten
+        # the upper bound to short and the lower bound to short-9.
         if "shortRouteRunning" in r:
             short = r["shortRouteRunning"]
-            if r.get("mediumRouteRunning", 0) > short:
-                r["mediumRouteRunning"] = short
-            mid = r.get("mediumRouteRunning", short)
-            if r.get("deepRouteRunning", 0) > mid:
-                r["deepRouteRunning"] = mid
+            mid_raw = r.get("mediumRouteRunning", short - 6)
+            # Cap mid <= short - 2 (mid never matches short for an HB).
+            # Floor mid >= short - 9 (M26 max gap).
+            mid = max(short - 9, min(mid_raw, short - 2))
+            # If receives && routes set the floor at 72, respect that.
+            mid = max(mid, r.get("mediumRouteRunning", 0) if (receives and routes) else 0)
+            r["mediumRouteRunning"] = mid
+            deep_raw = r.get("deepRouteRunning", mid - 6)
+            deep = max(mid - 9, min(deep_raw, mid - 2))
+            deep = max(deep, r.get("deepRouteRunning", 0) if (receives and routes) else 0)
+            r["deepRouteRunning"] = deep
         if has_any("pass blocker", "pass protection", "blitz pickup"):
             bump("passBlock", 4)
             bump("impactBlocking", 3)
