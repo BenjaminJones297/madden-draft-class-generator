@@ -1295,12 +1295,30 @@ def apply_profile_corrections(ratings: dict, pos: str, notes: str | None) -> dic
                    "big-play", "explosive runner", "breakaway speed"):
             bump("speed", 3)
             bump("acceleration", 2)
-        if has_any("receiving", "pass-catching back", "third-down back",
-                   "receiving threat", "soft hands", "checkdown",
-                   "screen game"):
+        # Receiving-back signals — base bumps fire on any receiving keyword.
+        receives = has_any("receiving", "pass-catching back", "third-down back",
+                           "receiving threat", "soft hands", "checkdown",
+                           "screen game", "pass-catching", "pass catcher",
+                           "split out wide", "lined up out wide")
+        routes   = has_any("route runner", "route running", "talented route runner",
+                           "precise routes", "savvy route runner", "sharp routes",
+                           "route tree", "from the slot", "slot back",
+                           "mismatch linebackers")
+        if receives or routes:
             bump("catching", 6)
             bump("shortRouteRunning", 4)
+            bump("mediumRouteRunning", 3)
             bump("release", 3)
+            bump("catchInTraffic", 3)
+        # Strong receiving back — both pass-catching AND route-running cited.
+        # Stack additional bumps so legit dual-threat backs (Love-tier) land
+        # in the 78-82 catching / 65-72 route-running range.
+        if receives and routes:
+            bump("catching", 4)
+            bump("shortRouteRunning", 6)
+            bump("mediumRouteRunning", 6)
+            bump("deepRouteRunning", 4)
+            bump("release", 4)
         if has_any("pass blocker", "pass protection", "blitz pickup"):
             bump("passBlock", 4)
             bump("impactBlocking", 3)
