@@ -43,6 +43,8 @@ ROSTER_FILE          = os.path.join(DATA_DIR, "nfl_rosters_2026.json")
 MADDEN_RATINGS_FILE  = os.path.join(DATA_DIR, "current_player_ratings_full.json")
 OUTPUT_FILE          = os.path.join(DATA_DIR, "roster_players_rated.json")
 
+CURRENT_LEAGUE_YEAR = 2026
+
 
 # ---------------------------------------------------------------------------
 # Name normalisation helpers for fuzzy matching
@@ -112,8 +114,16 @@ def map_contract_fields(player: dict) -> dict:
     if years <= 0:
         years = 1
 
-    # Approximate years remaining (heuristic: assume deal was signed ~2 yrs ago)
-    years_left = max(1, years - min(years - 1, 2))
+    # Use the recorded signing year only when the deal hasn't already lapsed by
+    # current_league_year. The nflverse historical contracts file is stale past 2022,
+    # so trusting a "deal expired in 2024" record would funnel everyone into a 2027
+    # FA cliff. Fall back to a spread heuristic in that case so expirations distribute
+    # across multiple league years.
+    year_signed = int(player.get("year_signed", 0) or 0)
+    if year_signed > 0 and (year_signed + years) > CURRENT_LEAGUE_YEAR:
+        years_left = min(years, (year_signed + years) - CURRENT_LEAGUE_YEAR)
+    else:
+        years_left = max(1, years - min(years - 1, 2))
 
     # Signing bonus ~ 50 % of guaranteed
     signing_bonus = int(guaranteed * 0.5) if guaranteed else 0

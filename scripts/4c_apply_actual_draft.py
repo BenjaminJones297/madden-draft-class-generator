@@ -48,10 +48,13 @@ ACTUAL_PICKS: dict[str, tuple[int, int]] = {
     "monroe freeling":        (19, 1),
     "makai lemon":            (20, 1),
     "max iheanachor":         (21, 1),
+    "akheem mesidor":         (22, 1),
     "malachi lawrence":       (23, 1),
     "kc concepcion":          (24, 1),
     "dillon thieneman":       (25, 1),
+    "keylan rutledge":        (26, 1),
     "chris johnson":          (27, 1),
+    "caleb lomu":             (28, 1),
     "peter woods":            (29, 1),
     "omar cooper":            (30, 1),   # handles "Omar Cooper Jr."
     "keldric faulk":          (31, 1),
