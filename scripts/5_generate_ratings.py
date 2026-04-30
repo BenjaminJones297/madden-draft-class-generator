@@ -971,6 +971,48 @@ def apply_top_pick_awareness_floor(ratings: dict, pos: str, actual_pick: int | N
     return r
 
 
+def apply_top_pick_ol_floor(ratings: dict, pos: str, actual_pick: int | None) -> dict:
+    """
+    Top OL picks need elevated run/pass blocking and impact blocking to
+    register correctly in Madden's archetype-OVR formulas. The centroid
+    pulls them toward the average rookie OL, leaving high picks like Chase
+    Bisontis (#34, ARI) at runBlock=75 / passBlock=73 — too low for a R2 OL.
+
+    Per-pick floors for OL canonical positions (T, G, C):
+      Pick 1-15:  blocks 78,  impact 76
+      Pick 16-32: blocks 75,  impact 73
+      Pick 33-50: blocks 73,  impact 71
+      Pick 51-100: blocks 70, impact 68
+    """
+    if not actual_pick:
+        return ratings
+    if pos not in ("T", "G", "C", "LT", "RT", "LG", "RG", "OG", "OT"):
+        return ratings
+
+    if actual_pick <= 15:
+        block_floor, impact_floor, awr_floor = 82, 80, 76
+    elif actual_pick <= 32:
+        block_floor, impact_floor, awr_floor = 79, 77, 73
+    elif actual_pick <= 50:
+        block_floor, impact_floor, awr_floor = 77, 75, 72
+    elif actual_pick <= 100:
+        block_floor, impact_floor, awr_floor = 73, 71, 70
+    else:
+        return ratings
+
+    r = dict(ratings)
+    for f in ("runBlock", "passBlock", "runBlockPower", "runBlockFinesse",
+              "passBlockPower", "passBlockFinesse"):
+        if r.get(f, 0) < block_floor:
+            r[f] = block_floor
+    for f in ("impactBlocking", "leadBlock"):
+        if r.get(f, 0) < impact_floor:
+            r[f] = impact_floor
+    if r.get("awareness", 0) < awr_floor:
+        r["awareness"] = awr_floor
+    return r
+
+
 def apply_late_pick_dampener(ratings: dict, pos: str, actual_pick: int | None) -> dict:
     """
     Subtract a small amount from key attributes for late-round picks.
@@ -1873,6 +1915,7 @@ def rate_prospect(
     cleaned = apply_profile_corrections(cleaned, pos, prospect.get("notes"))
     cleaned = apply_position_overshoot_dampener(cleaned, pos)
     cleaned = apply_top_pick_awareness_floor(cleaned, pos, prospect.get("actual_draft_pick"))
+    cleaned = apply_top_pick_ol_floor(cleaned, pos, prospect.get("actual_draft_pick"))
     cleaned = apply_late_pick_dampener(cleaned, pos, prospect.get("actual_draft_pick"))
     cleaned = apply_dev_trait_by_pick(cleaned, prospect.get("actual_draft_pick"))
     cleaned = apply_combine_corrections(
