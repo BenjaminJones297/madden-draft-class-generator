@@ -1306,19 +1306,29 @@ def apply_profile_corrections(ratings: dict, pos: str, notes: str | None) -> dic
                            "mismatch linebackers")
         if receives or routes:
             bump("catching", 6)
-            bump("shortRouteRunning", 4)
-            bump("mediumRouteRunning", 3)
-            bump("release", 3)
+            bump("shortRouteRunning", 6)        # leads the route trio for HBs
+            bump("mediumRouteRunning", 2)       # HBs run mostly short routes
+            bump("release", 4)
             bump("catchInTraffic", 3)
         # Strong receiving back — both pass-catching AND route-running cited.
-        # Stack additional bumps so legit dual-threat backs (Love-tier) land
-        # in the 78-82 catching / 65-72 route-running range.
+        # Set FLOORS so the HB_ReceivingBack archetype score
+        # (avg(catching, shortRouteRunning, release)) lands ~80 — matching
+        # NFL receiving backs like Kamara/Ekeler. floor(s, v) = max(r[s], v).
         if receives and routes:
-            bump("catching", 4)
-            bump("shortRouteRunning", 6)
-            bump("mediumRouteRunning", 6)
-            bump("deepRouteRunning", 4)
-            bump("release", 4)
+            r["catching"]          = max(r.get("catching", 0), 82)
+            r["shortRouteRunning"] = max(r.get("shortRouteRunning", 0), 78)
+            r["release"]           = max(r.get("release", 0), 76)
+            r["catchInTraffic"]    = max(r.get("catchInTraffic", 0), 65)
+        # HB route-running cascade: short >= medium >= deep. RBs run more
+        # short routes than medium and rarely run deep ones — so a higher
+        # mediumRouteRunning than shortRouteRunning is unrealistic.
+        if "shortRouteRunning" in r:
+            short = r["shortRouteRunning"]
+            if r.get("mediumRouteRunning", 0) > short:
+                r["mediumRouteRunning"] = short
+            mid = r.get("mediumRouteRunning", short)
+            if r.get("deepRouteRunning", 0) > mid:
+                r["deepRouteRunning"] = mid
         if has_any("pass blocker", "pass protection", "blitz pickup"):
             bump("passBlock", 4)
             bump("impactBlocking", 3)
