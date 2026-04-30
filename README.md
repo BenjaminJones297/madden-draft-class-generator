@@ -158,6 +158,122 @@ data/output/2026_draft_class.draftclass
 
 ---
 
+## Updating a 2026 Franchise (Existing Save)
+
+If you already have a franchise saved at the **beginning of the 2026 league
+year** (i.e. just after Super Bowl LX, before the 2026 draft), you can refresh
+it with current real-world team assignments and import the 2026 rookie class on
+top. The result is a 2026 franchise where rosters, contracts, and the upcoming
+draft class all reflect real life.
+
+### What you need
+
+- A Madden 26 `CAREER-…` franchise file saved at the start of 2026.
+- The Madden 26 `.ros` roster file you started the franchise from (for official
+  player ratings).
+- Node ≥ 18, Python ≥ 3.9, and Ollama (same prerequisites as the draft-class
+  pipeline).
+
+> **Always back up your franchise file before running the scripts below — they
+> save changes in place.** Copy the `CAREER-…` file somewhere safe first.
+
+### Workflow
+
+#### 1. Point the tools at your franchise
+
+Add `FRANCHISE_FILE` to your `.env` (or pass `--franchise` on the command line):
+
+```dotenv
+ROSTER_FILE=C:\Users\YourName\Documents\Madden NFL 26\saves\ROSTERFILE.ros
+FRANCHISE_FILE=C:\Users\YourName\Documents\Madden NFL 26\saves\CAREER-FRANCHISE
+```
+
+#### 2. Refresh the current NFL roster + contract data
+
+```bash
+python3 roster_run.py --ros "%ROSTER_FILE%"
+```
+
+This runs the **roster pipeline** (steps 7 → 3 → 8) and writes
+`data/roster_players_rated.json` — every active NFL player paired with their
+official Madden ratings, current team, and current contract (years remaining,
+AAV, signing bonus, base salary).
+
+| Step | Script | What it does |
+|---|---|---|
+| 7 | `7_fetch_nfl_roster_and_contracts.py` | Downloads current rosters + contracts from nflverse and applies hand-curated 2026 free-agent moves |
+| 3 | `3_extract_roster_ratings.js` | Pulls official Madden ratings out of your `.ros` file |
+| 8 | `8_generate_roster_ratings.py` | Merges the two and computes Madden contract fields |
+
+#### 3. Apply real-world team assignments to the franchise
+
+```bash
+node scripts/9_apply_transactions.js
+```
+
+For every **free agent** in the franchise file (`TeamIndex = 32`) who is on a
+real 53-man roster, this signs them to their real-world team with a
+matching-length contract pulled from `roster_players_rated.json`. The franchise
+file is saved in place. Re-run any time you want to pick up new FA signings.
+
+> **Players already on a team in the franchise are not moved.** Script 9 only
+> resolves the FA pool — players the franchise already has on the wrong team
+> won't be retraded by this tool.
+
+#### 4. (Optional) Backfill the 2025 season results
+
+If your save is right at the start of the 2026 league year (Madden has just
+finished simming the 2025 season), you can pin the 2025 results to the real
+NFL outcomes before resuming play:
+
+```bash
+node scripts/11_apply_game_results.js
+```
+
+This sets `ForceWin` on every 2025 SeasonGame so the franchise's 2025 history
+matches reality. Skip this step if your save already has the 2025 season the
+way you want it.
+
+#### 5. Generate the 2026 rookie class
+
+```bash
+python3 run.py --ros "%ROSTER_FILE%"
+```
+
+This is the **draft-class pipeline** (steps 1–6) described in
+[Quick Start](#quick-start). It writes
+`data/output/2026_draft_class.draftclass`.
+
+#### 6. Import the rookies into the franchise
+
+The `.draftclass` file is loaded by Madden itself, not by these scripts:
+
+1. Copy `data/output/2026_draft_class.draftclass` into your Madden saves folder
+   (see [Importing into Madden 26](#importing-into-madden-26)).
+2. Launch Madden 26 and load your franchise.
+3. Advance to the **2026 NFL Draft** screen.
+4. Choose **"Custom Draft Class"** when prompted and pick `2026_draft_class`.
+
+After the draft, your franchise has the real 2026 NFL rookie class on top of
+the real 2026 NFL veteran rosters.
+
+### Re-running
+
+The pipelines are safe to re-run. Common shortcuts:
+
+```bash
+# Roster data already downloaded — just remerge ratings and contracts
+python3 roster_run.py --ros "%ROSTER_FILE%" --skip-fetch
+
+# Re-apply transactions after editing roster_players_rated.json
+node scripts/9_apply_transactions.js
+
+# Regenerate the .draftclass without re-fetching prospect data
+python3 run.py --skip-fetch --skip-calibration
+```
+
+---
+
 ## Customizing Prospects
 
 If web scraping in Step 4 is blocked or you want to add/edit specific prospects, you can manually edit:
@@ -198,6 +314,10 @@ Copy `.env.example` to `.env` to set persistent defaults:
 ```dotenv
 # Path to your Madden 26 .ros roster file (optional)
 ROSTER_FILE=
+
+# Path to your Madden 26 CAREER- franchise file
+# (only needed for the franchise-update workflow — scripts 9 and 11)
+FRANCHISE_FILE=
 
 # Ollama host (default: http://localhost:11434)
 OLLAMA_HOST=http://localhost:11434
