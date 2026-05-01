@@ -244,9 +244,13 @@ This is the **draft-class pipeline** (steps 1–6) described in
 [Quick Start](#quick-start). It writes
 `data/output/2026_draft_class.draftclass`.
 
-#### 6. Import the rookies into the franchise
+#### 6. Add the rookies to your franchise
 
-The `.draftclass` file is loaded by Madden itself, not by these scripts:
+Three ways to do this — pick the one that matches the state of your save:
+
+**Option A — Custom Draft Class (franchise hasn't drafted yet).**
+
+The `.draftclass` is loaded by Madden itself when you reach the draft screen:
 
 1. Copy `data/output/2026_draft_class.draftclass` into your Madden saves folder
    (see [Importing into Madden 26](#importing-into-madden-26)).
@@ -254,8 +258,69 @@ The `.draftclass` file is loaded by Madden itself, not by these scripts:
 3. Advance to the **2026 NFL Draft** screen.
 4. Choose **"Custom Draft Class"** when prompted and pick `2026_draft_class`.
 
-After the draft, your franchise has the real 2026 NFL rookie class on top of
-the real 2026 NFL veteran rosters.
+**Option B — Inject straight into the roster (franchise has already drafted).**
+
+Use this when your save is already past the 2026 draft and the CPU has
+generated rookies you want to overwrite. It uses the same `prospects_rated.json`
+the `.draftclass` is built from, so the ratings are identical:
+
+```bash
+node scripts/9c_inject_rookies.js
+```
+
+What it does:
+
+- Empties every Player record with `YearDrafted == 0` (Madden's auto-drafted
+  2026 rookie class).
+- Inserts each prospect from `data/prospects_rated.json` into the next empty
+  Player slot, with their full rating block.
+- Sets `TeamIndex` from the prospect's `draftTeamId` (Wikipedia-sourced 2026
+  draft order). Prospects without draft data go to the FA pool.
+- Picks a position-appropriate jersey number (NFL ranges, deduplicated per
+  team) and stamps a 4-year rookie-scale contract.
+- **Does not touch veteran ratings.** Existing veterans keep whatever ratings
+  they already had in the franchise, so your `CAREER-…` save's official ratings
+  are preserved.
+
+> **Re-running `9c_inject_rookies.js` is safe.** Each run first clears all
+> `YearDrafted == 0` records, so you won't end up with duplicates if you tweak
+> `prospects_rated.json` and inject again. It does **not** roll back or
+> reassign the picks Madden simulated — those slots were owned by the
+> auto-rookies that just got cleared, so the cap-space accounting is the same.
+
+**Option C — Full sync from a source roster (rebuild the entire roster).**
+
+Use this when you want the franchise's roster to match a specific source `.ros`
+exactly — every active player from the source is copied in, anyone in the
+franchise who isn't in the source is removed, and the 2026 rookies are then
+layered on top with real team assignments. Useful when starting from a stock
+launch roster or any other "known-good" `.ros`.
+
+```bash
+node scripts/9d_sync_roster.js --ros "%ROSTER_FILE%"
+```
+
+What it does (in order):
+
+1. **Snapshots every active player** in the source `.ros` (non-empty,
+   `OverallRating > 0`). All ratings, contracts, team, jersey, age, height,
+   weight, college, dev trait, and draft history come along.
+2. **Empties the franchise's Player table.** Every existing record is cleared,
+   so anyone who isn't in the source file is gone after this step.
+3. **Writes the source players into the franchise**, shifting `YearDrafted`
+   by −1 (so the source's "this year" rookies become last-year's class in the
+   target — assumes the franchise is one league year ahead of the `.ros`).
+4. **Injects the 2026 rookies** with `YearDrafted = 0` on their real teams,
+   the same way Option B does.
+5. Saves the franchise file in place.
+
+> **This is destructive — back up your franchise before running.** The Player
+> table is rebuilt from scratch, so any custom edits, in-franchise progression
+> ratings, or names not in the source `.ros` are lost. Best used right at the
+> start of a franchise, not mid-season.
+
+After any of the three options, your franchise has the real 2026 NFL rookie
+class on top of the real 2026 NFL veteran rosters.
 
 ### Re-running
 
@@ -267,6 +332,12 @@ python3 roster_run.py --ros "%ROSTER_FILE%" --skip-fetch
 
 # Re-apply transactions after editing roster_players_rated.json
 node scripts/9_apply_transactions.js
+
+# Re-inject rookies after regenerating prospects_rated.json
+node scripts/9c_inject_rookies.js
+
+# Full roster rebuild from a source .ros + fresh rookies
+node scripts/9d_sync_roster.js --ros "%ROSTER_FILE%"
 
 # Regenerate the .draftclass without re-fetching prospect data
 python3 run.py --skip-fetch --skip-calibration
