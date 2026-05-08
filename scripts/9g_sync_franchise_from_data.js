@@ -66,6 +66,15 @@ const CURRENT_LEAGUE_YEAR = 2026;
 // real rookies we inject. The 977 naturally-empty Player slots accommodate
 // the ~265 new rookies without any clearing needed.
 const ENABLE_VET_PASS      = true;
+// OFF by default: nfl_rosters_2026.json doesn't match Madden's curated 2026
+// release rosters (the source of truth users expect). Enabling moves vets
+// to nflverse-derived teams which is strictly worse for accuracy. Also: with
+// the move on, sim CTDs even with Roster + DepthChart-pool maintenance —
+// FA→team moves leave ContractStatus inconsistent and other team-affiliated
+// tables (PracticeSquad / MarketedPlayers / ActiveSignatureData / etc.)
+// still reference moved players at their old teams. Keep helpers in place
+// for if/when a better data source + deeper fix arrives.
+const ENABLE_VET_TEAM_MOVE = false;
 const ENABLE_PASS_2_CLEAR  = false;  // OFF: emptying causes sim CTD (see comment above)
 const ENABLE_PASS_3_INJECT = true;
 // When ENABLE_PASS_3_INJECT is on, also send any unused auto-rookies to the
@@ -502,10 +511,11 @@ function makeJerseyAllocator() {
 const NULL_REFERENCE = '0'.repeat(32);   // 15-bit tableId=0 + 17-bit rowNumber=0
 
 async function buildPlayerRefIndex(franchise, playerTableId) {
-  const index = new Map();   // playerRow → Field[]
+  const index = new Map();   // playerRow → [{ field, sourceTableId }]
   for (const table of franchise.tables) {
     if (table.name === 'Player') continue;
     try { await table.readRecords(); } catch (_) { continue; }   // schema gaps — skip
+    const tid = table.header.tableId;
     for (const rec of table.records) {
       if (rec.isEmpty) continue;
       const fields = rec.fieldsArray || [];
@@ -516,7 +526,7 @@ async function buildPlayerRefIndex(franchise, playerTableId) {
         if (r.tableId === 0 && r.rowNumber === 0) continue;
         if (r.tableId !== playerTableId) continue;
         if (!index.has(r.rowNumber)) index.set(r.rowNumber, []);
-        index.get(r.rowNumber).push(f);
+        index.get(r.rowNumber).push({ field: f, sourceTableId: tid });
       }
     }
   }
@@ -524,13 +534,57 @@ async function buildPlayerRefIndex(franchise, playerTableId) {
 }
 
 function nullReferencesTo(refIndex, playerRow) {
-  const fields = refIndex.get(playerRow);
-  if (!fields) return 0;
+  const refs = refIndex.get(playerRow);
+  if (!refs) return 0;
   let nulled = 0;
-  for (const f of fields) {
-    try { f.value = NULL_REFERENCE; nulled++; } catch (_) { /* skip locked field */ }
+  for (const r of refs) {
+    try { r.field.value = NULL_REFERENCE; nulled++; } catch (_) { /* skip locked field */ }
   }
   return nulled;
+}
+
+// Null only the DepthChart-pool references to this player row. Used when a
+// vet (or rookie) changes teams: their old team's DC slots still point at
+// them, and Madden's sim engine CTDs on stale "team A's QB1 = player on team B"
+// pointers (proven empirically by V7).
+function nullDcReferencesTo(refIndex, playerRow, dcPoolTableId) {
+  const refs = refIndex.get(playerRow);
+  if (!refs) return 0;
+  let nulled = 0;
+  for (const r of refs) {
+    if (r.sourceTableId !== dcPoolTableId) continue;
+    try { r.field.value = NULL_REFERENCE; nulled++; } catch (_) {}
+  }
+  return nulled;
+}
+
+// Resolve which Player[] sub-table holds the DepthChart pool. The schema's
+// DepthChart records have 35 position-keyed array fields (QB, HB, WR, ...)
+// all referencing one Player[] table (~1260 cap). Look up that table by
+// resolving a known-named position field on a DepthChart record, since
+// DepthChart records have other reference fields too (like Team) which we
+// don't want to pick up by accident.
+async function findDcPoolTableId(franchise) {
+  // Find the populated DepthChart table (skip the 1-record stub returned by
+  // getTableByName, same trap we hit with Team).
+  const dcCandidates = franchise.tables.filter(t => t.name === 'DepthChart');
+  let dc = null;
+  for (const t of dcCandidates) {
+    try { await t.readRecords(); } catch (_) { continue; }
+    if (t.records.filter(r => !r.isEmpty).length >= 30) { dc = t; break; }
+  }
+  if (!dc) return null;
+  const sample = dc.records.find(r => !r.isEmpty);
+  if (!sample) return null;
+  const POSITION_FIELDS = ['QB', 'HB', 'WR', 'TE', 'C', 'CB', 'FS', 'SS', 'LE', 'RE', 'LOLB', 'MLB', 'ROLB', 'K', 'P'];
+  for (const key of POSITION_FIELDS) {
+    const f = sample.getFieldByKey(key);
+    if (!f || !f.isReference) continue;
+    const r = f.referenceData;
+    if (!r || r.tableId === 0) continue;
+    return r.tableId;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -791,8 +845,27 @@ async function main() {
   console.log(`  Player records  : ${playerTable.records.length} (${playerTable.header.recordCapacity} capacity)`);
 
   console.log(`\n  Vet pass        : ${ENABLE_VET_PASS ? 'ON' : 'OFF (bisect)'}`);
+  console.log(`  Vet team move   : ${ENABLE_VET_TEAM_MOVE ? 'ON' : 'OFF'}`);
   console.log(`  Pass 2 (clear)  : ${ENABLE_PASS_2_CLEAR ? 'ON' : 'OFF (bisect)'}`);
   console.log(`  Pass 3 (inject) : ${ENABLE_PASS_3_INJECT ? 'ON' : 'OFF (bisect)'}`);
+
+  // Build per-team roster context up front — used by both vet team moves
+  // (Pass 1b) and rookie inject/overlay (Pass 3).
+  console.log('\n  Building team-roster index …');
+  const rosterCtx = await buildTeamRosterContext(franchise, playerTable.header.tableId);
+
+  // Build cross-table reference index up front. Lets vet team moves null
+  // stale DepthChart pointers to the moved player (the V7 sim-CTD root cause).
+  let refIndex = null;
+  let dcPoolTableId = null;
+  if (ENABLE_VET_TEAM_MOVE || ENABLE_PASS_2_CLEAR) {
+    console.log('  Scanning all tables for player references …');
+    const t0 = Date.now();
+    refIndex = await buildPlayerRefIndex(franchise, playerTable.header.tableId);
+    const dt = Date.now() - t0;
+    dcPoolTableId = await findDcPoolTableId(franchise);
+    console.log(`  Ref index: ${refIndex.size} player rows referenced (${dt}ms). DepthChart pool tableId=${dcPoolTableId}`);
+  }
 
   // ── Pass 1: Veteran update ────────────────────────────────────────────────
   const stats = {
@@ -807,6 +880,8 @@ async function main() {
     rookiesAddedToRoster: 0, rookiesNoRosterSlot: 0,
     rookiesFreshInjected: 0,
     unusedAutoRookiesDisposed: 0,
+    vetTeamMatched: 0, vetTeamUnchanged: 0, vetTeamMoved: 0, vetMovedToFA: 0,
+    vetRosterRemoved: 0, vetRosterAdded: 0, vetDcRefsNulled: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
@@ -861,27 +936,68 @@ async function main() {
       stats.unmatched.push(`${fn} ${ln} (${ps})`);
     }
 
-    // 1b. (DISABLED) Team + contract overlay used to come from nfl_rosters_2026.json,
-    //               but it crushed depth-chart consistency and demolished contracts
-    //               for any vet whose nflverse aav was 0 (pinning them to the 895k
-    //               minimum). The diff against the original confirmed thousands of
-    //               unintended contract overwrites. Vets now keep whatever team and
-    //               contract the franchise had for them. Only ratings update above.
-    stats.contractFallback++;
-  }
+    // 1b. Vet team move (skipped if --no-vet-team-move). Match by name in
+    //     nfl_rosters_2026.json. If real team differs from current TeamIndex,
+    //     do a proper team move: remove from old Roster, null DepthChart-pool
+    //     refs (so old team's QB1 isn't a player on a new team), append to
+    //     new Roster, set TeamIndex. ContractStatus → FreeAgent if real team
+    //     is FA. Contract dollars left intact (the prior overlay clamped most
+    //     vets to the 895k floor).
+    if (ENABLE_VET_TEAM_MOVE && rosterCtx) {
+      let rosterHit = rosterByName.get(makeNameOnlyKey(fn, ln));
+      if (!rosterHit) {
+        const aliasTo = aliases[`${fn} ${ln}`];
+        if (aliasTo) {
+          const split = splitName(aliasTo);
+          rosterHit = rosterByName.get(makeNameOnlyKey(split.first, split.last));
+        }
+      }
+      if (rosterHit) {
+        stats.vetTeamMatched++;
+        const rawTeam = String(rosterHit.team || '').toUpperCase();
+        const team = ABBR_NORMALIZE[rawTeam] ?? rawTeam;
+        let targetTeam = -1;
+        if (team === 'FA' || team === '')          targetTeam = TEAM_INDEX_FREE_AGENT;
+        else if (team in NFLVERSE_TO_TEAM_INDEX)   targetTeam = NFLVERSE_TO_TEAM_INDEX[team];
 
-  // Build per-team roster context once — used by Pass 3 to append rookies
-  // to the right team's roster array (Player0..Player99 slots).
-  console.log('\n  Building team-roster index …');
-  const rosterCtx = await buildTeamRosterContext(franchise, playerTable.header.tableId);
+        const currentTeam = Number(safeGet(rec, 'TeamIndex'));
+        if (targetTeam < 0 || targetTeam === currentTeam) {
+          stats.vetTeamUnchanged++;
+        } else {
+          if (currentTeam >= 0 && currentTeam <= 31) {
+            if (removeFromTeamRoster(rosterCtx, currentTeam, rec.index)) stats.vetRosterRemoved++;
+          }
+          // Null DC entries pointing at this player (old team's depth chart
+          // slot at their position would otherwise be a stale ref → sim CTD).
+          stats.vetDcRefsNulled += nullDcReferencesTo(refIndex, rec.index, dcPoolTableId);
+
+          trySet(rec, 'TeamIndex', targetTeam);
+
+          if (targetTeam === TEAM_INDEX_FREE_AGENT) {
+            trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
+            stats.vetMovedToFA++;
+          } else {
+            if (appendToTeamRoster(rosterCtx, targetTeam, rec.index)) stats.vetRosterAdded++;
+            stats.vetTeamMoved++;
+          }
+        }
+      } else {
+        stats.contractFallback++;
+      }
+    } else {
+      stats.contractFallback++;
+    }
+  }
 
   // ── Pass 2: Clear 2026 rookie slots (reference-cleaning empty) ────────────
   if (ENABLE_PASS_2_CLEAR) {
-    console.log('\n  Pass 2: scanning all tables for player references …');
-    const t0 = Date.now();
-    const refIndex = await buildPlayerRefIndex(franchise, playerTable.header.tableId);
-    stats.refIndexBuildMs = Date.now() - t0;
-    console.log(`  Reference index built in ${stats.refIndexBuildMs}ms — ${refIndex.size} player rows referenced`);
+    if (!refIndex) {
+      console.log('\n  Pass 2: scanning all tables for player references …');
+      const t0 = Date.now();
+      refIndex = await buildPlayerRefIndex(franchise, playerTable.header.tableId);
+      stats.refIndexBuildMs = Date.now() - t0;
+      console.log(`  Reference index built in ${stats.refIndexBuildMs}ms — ${refIndex.size} player rows referenced`);
+    }
 
     for (const rec of playerTable.records) {
       if (rec.isEmpty) continue;
@@ -1095,8 +1211,14 @@ async function main() {
   console.log(`  Ratings updated         : ${stats.ratingsUpdated}`);
   console.log(`    via alias             : ${stats.aliasedCount}`);
   console.log(`    via name-only fallback: ${stats.nameOnlyFallback}`);
-  console.log(`  Team + contract updated : ${stats.teamUpdated}`);
-  console.log(`  Contract fallback (kept): ${stats.contractFallback}`);
+  console.log(`  Team-move matched       : ${stats.vetTeamMatched}`);
+  console.log(`    Already on real team  : ${stats.vetTeamUnchanged}`);
+  console.log(`    Moved to real team    : ${stats.vetTeamMoved}`);
+  console.log(`    Moved to FA pool      : ${stats.vetMovedToFA}`);
+  console.log(`    Roster slots removed  : ${stats.vetRosterRemoved}`);
+  console.log(`    Roster slots added    : ${stats.vetRosterAdded}`);
+  console.log(`    DC refs nulled        : ${stats.vetDcRefsNulled}`);
+  console.log(`  No nfl_rosters match    : ${stats.contractFallback}`);
   console.log(`  Unmatched (no ratings)  : ${stats.unmatched.length}`);
   console.log('Rookies');
   console.log(`  Source                  : ${path.basename(rookiesResolved.path)} (${rookieEntries.length} entries)`);
