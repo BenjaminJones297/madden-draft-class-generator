@@ -739,6 +739,112 @@ function removeFromTeamRoster(ctx, teamIndex, playerRow) {
   try { f.value = NULL_REFERENCE; return true; } catch (_) { return false; }
 }
 
+// Compact every team's Roster array: pack live Player refs to the start,
+// nulls to the end. Pass 1b's removes + Pass 3's appends leave nulls
+// scattered through the 100-slot array; sim engine likely iterates
+// expecting live-then-null layout, and CTDs on intermixed nulls.
+function compactAllTeamRosters(ctx) {
+  if (!ctx) return 0;
+  let teamsCompacted = 0;
+  for (const [teamIndex, rosterRowIdx] of ctx.teamIndexToRosterRow.entries()) {
+    const rosterRec = ctx.rosterTable.records[rosterRowIdx];
+    if (!rosterRec || rosterRec.isEmpty) continue;
+    // Snapshot live refs in order
+    const liveRefs = [];
+    for (let i = 0; i < 100; i++) {
+      const f = rosterRec.getFieldByKey(`Player${i}`);
+      if (!f || !f.isReference) continue;
+      const r = f.referenceData;
+      if (r && !(r.tableId === 0 && r.rowNumber === 0)) {
+        liveRefs.push({ tableId: r.tableId, rowNumber: r.rowNumber });
+      }
+    }
+    // Write back compactly
+    for (let i = 0; i < 100; i++) {
+      const f = rosterRec.getFieldByKey(`Player${i}`);
+      if (!f) continue;
+      try {
+        if (i < liveRefs.length) {
+          f.value = utilService.getBinaryReferenceData(liveRefs[i].tableId, liveRefs[i].rowNumber);
+        } else {
+          f.value = NULL_REFERENCE;
+        }
+      } catch (_) {}
+    }
+    teamsCompacted++;
+  }
+  return teamsCompacted;
+}
+
+// ---------------------------------------------------------------------------
+// Team cap-field recalculation
+//
+// Sim engine validates per-team cap totals (SalCapRosterSize, SalCapRookieCount,
+// etc.) on first sim. After our team moves, those derived counts drift away
+// from reality (e.g., team A lost 8 vets but its SalCapRosterSize is unchanged).
+// V11/V12/V13 nulled refs across 16 team-affiliated tables and updated
+// PrevTeamIndex; sim still CTDs. The remaining unhandled state is here.
+// We recompute counts from the actual Player table; we don't try to recompute
+// every cap-room formula (that requires knowing Madden's penalty/proration
+// math), but we zero the derived cap-room fields so Madden recomputes them.
+// ---------------------------------------------------------------------------
+async function recalcTeamCapFields(franchise, playerTable) {
+  const teamCandidates = franchise.tables.filter(t => t.name === 'Team');
+  let teamMain = null;
+  for (const t of teamCandidates) {
+    try { await t.readRecords(); } catch (_) { continue; }
+    if (t.records.filter(r => !r.isEmpty).length >= 30) { teamMain = t; break; }
+  }
+  if (!teamMain) return { updated: 0, teams: 0 };
+
+  // Per-NFL-team counts of: total active roster, rookies, total committed cap.
+  const counts = new Map();   // teamIndex → { roster, rookies, capTotalK }
+  for (const rec of playerTable.records) {
+    if (rec.isEmpty) continue;
+    const cs = safeGet(rec, 'ContractStatus');
+    if (CONTRACT_STATUS_INACTIVE.has(cs)) continue;
+    const ti = Number(safeGet(rec, 'TeamIndex'));
+    if (!Number.isFinite(ti) || ti < 0 || ti > 31) continue;
+    const yp = safeGet(rec, 'YearsPro');
+    const isRookie = (yp === 0 || yp === '0');
+    // Sum salary + bonus per year — Madden internally stores in thousands.
+    const cur = counts.get(ti) || { roster: 0, rookies: 0, capTotalK: 0 };
+    cur.roster++;
+    if (isRookie) cur.rookies++;
+    const sal = Number(safeGet(rec, 'ContractSalary0')) || 0;
+    const bon = Number(safeGet(rec, 'ContractBonus0'))  || 0;
+    cur.capTotalK += sal + bon;
+    counts.set(ti, cur);
+  }
+
+  // Fields we'll zero out so Madden recomputes from current Roster on first
+  // sim. Leaves cap penalties + rollover alone — those persist across moves.
+  const ZERO_FIELDS = [
+    'SalCapCapRoom', 'SalCapSpendingMoney',
+    'SalCapRosterReserve', 'SalCapRosterFillReserve', 'SalCapRosterFillCount',
+    'SalCapRookieReserve', 'SalCapOffersReserve',
+    'SalCapThisYearOfferCount', 'SalCapThisYearOfferReserve',
+    'SalCapNextYearOfferCount', 'SalCapNextYearOfferReserve',
+    'SalCapNextYearReserve', 'SalCapNextYearSalaryReserve',
+    'SalCapNextYearCapRoom', 'SalCapLowReplaceSalary',
+  ];
+  let updated = 0, teamsTouched = 0;
+  for (const rec of teamMain.records) {
+    if (rec.isEmpty) continue;
+    const ti = Number(safeGet(rec, 'TeamIndex'));
+    if (!Number.isFinite(ti) || ti < 0 || ti > 31) continue;
+    teamsTouched++;
+    const c = counts.get(ti) || { roster: 0, rookies: 0, capTotalK: 0 };
+    if (trySet(rec, 'SalCapRosterSize',          c.roster))  updated++;
+    if (trySet(rec, 'SalCapNextYearRosterSize',  c.roster))  updated++;
+    if (trySet(rec, 'SalCapRookieCount',         c.rookies)) updated++;
+    for (const f of ZERO_FIELDS) {
+      if (trySet(rec, f, 0)) updated++;
+    }
+  }
+  return { updated, teams: teamsTouched };
+}
+
 // ---------------------------------------------------------------------------
 // Franchise open
 // ---------------------------------------------------------------------------
@@ -938,6 +1044,7 @@ async function main() {
     unusedAutoRookiesDisposed: 0,
     vetTeamMatched: 0, vetTeamUnchanged: 0, vetTeamMoved: 0, vetMovedToFA: 0,
     vetRosterRemoved: 0, vetRosterAdded: 0, vetDcRefsNulled: 0,
+    capFieldsUpdated: 0, capTeamsTouched: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
@@ -1267,6 +1374,17 @@ async function main() {
       trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
       stats.unusedAutoRookiesDisposed++;
     }
+  }
+
+  // ── Pass 4: compact Roster arrays + recalc Team cap fields ────────────────
+  if (ENABLE_VET_TEAM_MOVE) {
+    const teamsCompacted = compactAllTeamRosters(rosterCtx);
+    console.log(`\n  Compacted Roster arrays  : ${teamsCompacted} teams`);
+    console.log('  Recalculating Team cap fields …');
+    const capStats = await recalcTeamCapFields(franchise, playerTable);
+    stats.capFieldsUpdated = capStats.updated;
+    stats.capTeamsTouched  = capStats.teams;
+    console.log(`  Cap fields updated       : ${capStats.updated} across ${capStats.teams} teams`);
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
