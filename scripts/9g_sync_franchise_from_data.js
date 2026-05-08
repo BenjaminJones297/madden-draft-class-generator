@@ -70,7 +70,15 @@ const NFLVERSE_TO_TEAM_INDEX = {
   BAL: 24, WAS: 25, NO:  26, SEA: 27, PIT: 28, TEN: 29, MIN: 30, HOU: 31,
 };
 const TEAM_INDEX_FREE_AGENT  = 32;
-const CONTRACT_STATUS_SIGNED = '1';
+// PlayerContractStatus is a 4-bit enum from the M26 schema. Use the enum NAME
+// (the lib resolves it via _getEnumFromValue), not the integer — passing '1'
+// happens to write decimal-1 = Signed, but '0' writes decimal-0 = Drafted,
+// which is wrong for free agents (FreeAgent = decimal 6).
+const CONTRACT_STATUS_SIGNED     = 'Signed';
+const CONTRACT_STATUS_FREE_AGENT = 'FreeAgent';
+// ContractStatus values that mean "this isn't an active player anymore" —
+// skip these when re-teaming so we don't resurrect cap ghosts / retirees.
+const CONTRACT_STATUS_INACTIVE = new Set(['Deleted', 'Retired', 'None']);
 const MIN_SALARY_K           = 895;
 
 // nfl_team_id_to_abbr.json emits AZ/LAR; NFLVERSE_TO_TEAM_INDEX uses ARI/LA.
@@ -677,7 +685,7 @@ async function main() {
 
   // ── Pass 1: Veteran update ────────────────────────────────────────────────
   const stats = {
-    skippedEmpty: 0, skippedNoName: 0, skippedRookieSlot: 0, skippedKnownRookie: 0,
+    skippedEmpty: 0, skippedNoName: 0, skippedRookieSlot: 0, skippedKnownRookie: 0, skippedInactiveVets: 0,
     ratingsUpdated: 0, aliasedCount: 0, nameOnlyFallback: 0,
     teamUpdated: 0, contractFallback: 0,
     unmatched: [],
@@ -691,6 +699,10 @@ async function main() {
     if (rec.isEmpty) { stats.skippedEmpty++; continue; }
     const yd = safeGet(rec, 'YearDrafted');
     if (yd === 0 || yd === '0') { stats.skippedRookieSlot++; continue; }
+
+    // Don't resurrect cap ghosts / retirees by overwriting their team / contract.
+    const currentStatus = safeGet(rec, 'ContractStatus');
+    if (CONTRACT_STATUS_INACTIVE.has(currentStatus)) { stats.skippedInactiveVets++; continue; }
 
     const fn = safeGet(rec, 'FirstName');
     const ln = safeGet(rec, 'LastName');
@@ -745,7 +757,7 @@ async function main() {
       const team    = ABBR_NORMALIZE[rawTeam] ?? rawTeam;
       if (team === 'FA' || team === '') {
         trySet(rec, 'TeamIndex', TEAM_INDEX_FREE_AGENT);
-        trySet(rec, 'ContractStatus', '0');
+        trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
       } else if (team in NFLVERSE_TO_TEAM_INDEX) {
         trySet(rec, 'TeamIndex', NFLVERSE_TO_TEAM_INDEX[team]);
         const mapped = mapContractFields(rosterHit);
@@ -902,6 +914,7 @@ async function main() {
   console.log('Skipped (Pass 1)');
   console.log(`  Empty slots             : ${stats.skippedEmpty}`);
   console.log(`  Known 2026 rookie names : ${stats.skippedKnownRookie}`);
+  console.log(`  Inactive vets (kept)    : ${stats.skippedInactiveVets}`);
   console.log(`  Records with no name    : ${stats.skippedNoName}`);
 
   if (stats.unmatched.length) {
