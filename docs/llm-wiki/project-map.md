@@ -48,8 +48,9 @@ Optional reference input:
   desired 2026 class).
 - `scripts/9g_sync_franchise_from_data.js`: post-draft franchise sync. Updates
   vet ratings + overlays 2026 rookies onto auto-prospect placeholders + adds
-  rookies to drafting team's Roster array. See `decisions.md` for why it does
-  NOT change vet TeamIndex by default.
+  rookies to drafting team's Roster array. **Working recipe: run on a copy of
+  `CAREER-UPDATED-ROSTER` (vets already on real teams).** See `decisions.md`
+  for why default does NOT change vet TeamIndex.
 - `scripts/9h_generate_roster_changes.js`: read-only diff. Outputs a markdown
   checklist (`output/roster_changes.md`) of trades / signings / releases the
   user should execute in Madden's UI to make rosters match
