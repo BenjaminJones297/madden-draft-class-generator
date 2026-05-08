@@ -40,7 +40,35 @@ Implications:
 - See `scripts/9z_validate_franchise.js` for the reference-integrity check
   that surfaced this issue.
 
-## 2026-05-08 - Vet Team Moves Are Out-Of-Scope For 9g
+## 2026-05-08 (PM) - File-Edit Vet Team Moves Are Structurally Hard
+
+Updated assessment after 8 iterations + 3 parallel agent investigations:
+post-franchise bulk vet team moves via file editing are not a known-
+working pattern. We've handled 8 distinct invariants (Roster, DepthChart
+pool, 13 team-affiliated arrays, 3 contract tracking tables,
+PrevTeamIndex, contract layout normalization, Team SalCap fields,
+Franchise.FreeAgents pool); validator clean each iteration; sim CTDs
+immediately every time.
+
+External evidence:
+- madden-franchise 4.2.2 (latest) is ESM rewrite + schema fixes only.
+  No new trade/team-move APIs.
+- Community tools (bep713 editor, FFC Retro Rosters, Bowersrd's PC
+  hub) operate on `.ros` files PRE-franchise or do single-player serial
+  cuts/sign POST-franchise. Nobody publishes working bulk-move-post-sim.
+
+Why: Madden's sim engine validates a wide invariant set spanning
+Player records, Team-affiliated arrays, league-singleton arrays,
+per-record contract tables, derived per-team cap totals, plus likely
+internal sim state we can't introspect from outside.
+
+Decision still stands: default 9g (rookie-stat-baseline) does not
+move vet TeamIndex. The full V19 implementation lives on
+`9g-vets-team-move` for future research. For accurate vet teams, use
+`scripts/9h_generate_roster_changes.js` to generate an in-game
+checklist (Madden's engine handles every invariant correctly).
+
+## 2026-05-08 - Vet Team Moves Are Out-Of-Scope For 9g (original entry)
 
 Decision: 9g updates vet ratings only. It does NOT change `Player.TeamIndex`
 on existing veterans. The `ENABLE_VET_TEAM_MOVE` flag in 9g is OFF by default.
