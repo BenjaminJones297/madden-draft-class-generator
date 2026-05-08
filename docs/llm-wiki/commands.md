@@ -95,23 +95,65 @@ Output: per-player JSON with team + contract (from nflverse) + ratings
 binary `.ros` file. mf 3.8 / 4.2 can't decompress real `.ros` files
 (`incorrect header check`), so writing one is open work.
 
-## Recommended Workflow: Pre-Rosters Franchise + 9g
+## Recommended Workflow: Pre-Rosters Franchise + 9g (canonical V20 recipe)
 
-**Verified working pattern (CAREER-9G-V20, 2026-05-08):**
+**Verified working (CAREER-9G-V20 + V20-AUTOSAVE, 2026-05-08).** Result: vet
+ratings correct, 2026 rookies on real-life teams, sim past Week 1 confirmed,
+sim past the 2026 in-game draft confirmed (V20-AUTOSAVE captures the
+post-draft state).
+
+### CLI
 
 ```powershell
-# Source MUST already have vets on their real-life teams.
-# CAREER-UPDATED-ROSTER is the user's verified working template.
+# 1. Use the V20-producer 9g (rookie-stat-baseline; tip 97d3ab9).
+git checkout rookie-stat-baseline
+
+# 2. Copy the source franchise → fresh destination. Never edit the source.
 $src = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-UPDATED-ROSTER"
-$dst = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-9G-START"
+$dst = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-9G-V21"
 Copy-Item $src $dst
+
+# 3. Apply vet ratings + 2026 rookies (writes in-place to $dst).
 node scripts/9g_sync_franchise_from_data.js --franchise $dst --apply --allow-unmatched
+
+# 4. Reference-integrity check before loading Madden.
 node scripts/9z_validate_franchise.js --franchise $dst
 ```
 
-Result: vet ratings + 2026 rookies on real teams + working sim. See
-`decisions.md` 2026-05-08 (PM, late) for why this works and the
-`9g-vets-team-move` branch for what doesn't.
+### In Madden
+
+1. Main Menu → Load Franchise → pick the new save (`CAREER-9G-V21`).
+2. *(Optional)* Main Hub → Choose Draft Class → Import Local →
+   `data/output/2026_draft_class_from_franchise.draftclass`.
+3. Advance Stage → through stage 10 (the 2026 NFL Draft).
+4. Continue advancing → preseason → Week 1 of the 2026 regular season.
+
+Madden's autosave (e.g. `CAREER-9G-V21-AUTOSAVE`) captures the post-sim
+state automatically.
+
+### Why each piece
+
+| Piece | Why |
+| --- | --- |
+| `CAREER-UPDATED-ROSTER` source | Already has vets on real-life teams + offseason stage 9 (pre-draft) timeline. The recipe is "add 2026 rookies + ratings to a franchise that already has correct vet teams." Building this source from scratch is open work. |
+| `rookie-stat-baseline` branch | 9g here is the V8 hybrid (same-team overlay + fresh inject) with `ENABLE_VET_TEAM_MOVE = false`. Branch `9g-vets-team-move` has the V11..V19 team-move attempts that CTD sim. |
+| `--apply --allow-unmatched` | `--apply` writes (default is dry-run); `--allow-unmatched` proceeds when a few `full_solution_2_ratings.json` vets don't match franchise records (mostly retired / practice-squad). |
+| `9z_validate_franchise.js` | Catches live records pointing at empty Player rows — the leading load-CTD class. |
+
+### Gotchas
+
+- **Don't kill Madden between iterations.** At the main menu Madden does
+  not lock save files; killing it wastes ~30s/iteration.
+- **Draft class import is optional.** If imported, Madden's draft engine
+  uses our prospects' pick slots; if not, Madden generates synthetic
+  prospects for any rookies 9g didn't overlay (Pass 4 already disposed
+  unused auto-rookies to the FA pool, so the synthetic class is small).
+  Both paths produced sim-clean autosaves.
+- **2026 rookies are tagged `YearDrafted=0, YearsPro=0`** by 9g — treated
+  as drafted-current-year, not next-year prospects. That's why they
+  appear on real teams immediately on load.
+
+See `decisions.md` 2026-05-08 (PM, late) for the architectural reasoning.
 
 ## Post-Draft Franchise Sync (raw apply against any starting save)
 
