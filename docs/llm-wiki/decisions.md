@@ -18,6 +18,46 @@ Implications:
 - Use `data/contracts/` before opening large JSON artifacts.
 - Treat `ARCHITECTURE.md` as future-state planning, not current behavior.
 
+## 2026-05-08 (PM, late) - The Working Recipe: pre-rosters franchise + V8 9g
+
+**The working approach** for getting accurate vet teams + real 2026 rookies
++ working sim:
+
+1. **Start from a franchise that already has vets on real teams**, not the
+   default Madden state. The user has `CAREER-UPDATED-ROSTER` in the saves
+   dir — built in an earlier session, probably by importing a custom roster
+   file. Use it as the source. (`data/raw/ROSTER-Official` may have been
+   the base; recreating that build from scratch is open work.)
+
+2. **Run the default 9g** (rookie-stat-baseline branch — `ENABLE_VET_TEAM_MOVE = false`)
+   on a copy of that source. 9g updates vet ratings via
+   `full_solution_2_ratings.json` and fresh-injects 2026 rookies on their
+   real-life teams via `rookie_ratings_post_madden.json`.
+
+3. **Sim past Week 1 works** — confirmed on `CAREER-9G-V20`.
+
+**Why this works and our V11..V19 attempts didn't:** we don't move any vets'
+TeamIndex. The pre-rosters franchise already has them on the right teams.
+9g only adds rookies (which go into empty Player slots — no team-roster
+disturbance) and writes ratings in place (no structural change). Madden's
+sim invariants stay intact.
+
+**Alternative path** the user mentioned (worth exploring as a v2):
+- Sim through preseason in a normal franchise to right before the 2026 draft
+- Import a `.draftclass` file (we already build `data/output/2026_draft_class.draftclass`
+  via `scripts/6_create_draft_class.js`)
+- Sim the draft — Madden's engine assigns rookies to teams via the draft
+  itself, sidestepping our team-write code paths entirely
+- Then dispose any auto-rookies that got drafted alongside
+
+**Open question:** how was `CAREER-UPDATED-ROSTER` originally built? It has
+2,326 Signed players on real-life teams (Adams on LAR, Barkley on PHI, etc.)
+plus 310 records with `ContractStatus=Draft` — these look like a draft pool
+already injected. The build pipeline isn't documented in this repo;
+identifying it (probably a one-time roster-builder script + an in-game
+roster import) would let us reproduce the starting state without depending
+on the existing file.
+
 ## 2026-05-08 - 9g Overlays Rookies; Does Not `rec.empty()` Them
 
 Decision: In `scripts/9g_sync_franchise_from_data.js`, populate real 2026
