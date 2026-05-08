@@ -78,6 +78,10 @@ const ENABLE_PASS_3_INJECT = true;
 // FA pool so they don't sit in the future draft pool with their auto-generated
 // names. Non-destructive: just changes their TeamIndex + ContractStatus.
 const ENABLE_DISPOSE_UNUSED_AUTO_ROOKIES = true;
+// Also dispose Madden's YearDrafted=0,YearsPro=0 auto-UDFAs (procedurally-
+// named depth fillers like 'Emmett Johnson' that get tagged as Day1Starter
+// on team rosters). Sends them to the FA pool. Identified 2026-05-08.
+const ENABLE_DISPOSE_AUTO_UDFAS = true;
 
 // ---------------------------------------------------------------------------
 // nflverse abbr → Madden franchise TeamIndex (0-31). Mirrors script 9 / 9c so
@@ -1118,6 +1122,7 @@ async function main() {
     vetContractNormalized: 0,
     vetAddedToFAPool: 0, vetRemovedFromFAPool: 0,
     capFieldsUpdated: 0, capTeamsTouched: 0,
+    autoUdfasDisposed: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
@@ -1487,6 +1492,41 @@ async function main() {
     stats.capFieldsUpdated = capStats.updated;
     stats.capTeamsTouched  = capStats.teams;
     console.log(`  Cap fields updated       : ${capStats.updated} across ${capStats.teams} teams`);
+  }
+
+  // ── Pass 5: dispose Madden's YearDrafted=0 auto-rookies / UDFAs ───────────
+  // Madden auto-generates 400+ records with YearDrafted=0, YearsPro=0 to
+  // fill depth charts. They have procedural names like "Emmett Johnson"
+  // and end up tagged as Day1Starter on team rosters. Move them to FA so
+  // they don't pollute team rosters. Non-destructive: same dispose pattern
+  // as the unused 2026-prospect placeholders.
+  if (ENABLE_DISPOSE_AUTO_UDFAS) {
+    let disposed = 0;
+    for (let i = 0; i < playerTable.records.length; i++) {
+      const rec = playerTable.records[i];
+      if (rec.isEmpty) continue;
+      const yd = safeGet(rec, 'YearDrafted');
+      const yp = safeGet(rec, 'YearsPro');
+      if (yd !== 0 || yp !== 0) continue;
+      const cs = safeGet(rec, 'ContractStatus');
+      if (CONTRACT_STATUS_INACTIVE.has(cs)) continue;
+      const ti = Number(safeGet(rec, 'TeamIndex'));
+      if (ti === TEAM_INDEX_FREE_AGENT) continue;   // already in FA pool
+      // Remove from old team's Roster + null team-affiliated refs
+      if (rosterCtx && ti >= 0 && ti <= 31) {
+        removeFromTeamRoster(rosterCtx, ti, rec.index);
+      }
+      if (refIndex && teamAffiliatedPoolIds) {
+        nullTeamAffiliatedRefs(refIndex, rec.index, teamAffiliatedPoolIds);
+      }
+      trySet(rec, 'TeamIndex', TEAM_INDEX_FREE_AGENT);
+      trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
+      // Add to league FA pool so Madden's FA logic sees them
+      if (faCtx) appendToFreeAgentsPool(faCtx, rec.index);
+      disposed++;
+    }
+    stats.autoUdfasDisposed = disposed;
+    console.log(`  Auto-UDFAs (YD=0/YP=0) disposed to FA: ${disposed}`);
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
