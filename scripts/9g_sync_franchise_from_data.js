@@ -53,10 +53,11 @@ const ALIASES_FILE       = path.join(DATA_DIR, 'player_name_aliases.json');
 
 const CURRENT_LEAGUE_YEAR = 2026;
 
-// Bisect toggles. Branches `9g-rookies-only` and `9g-vets-only` flip these to
-// isolate which pass causes a Madden load crash. Default (this branch): both on.
+// Bisect toggles. Branches flip these to isolate which pass causes a Madden
+// load crash. Default (this branch): all three on.
 const ENABLE_VET_PASS      = true;
-const ENABLE_ROOKIE_PASSES = true;
+const ENABLE_PASS_2_CLEAR  = true;   // empty existing auto-rookie slots
+const ENABLE_PASS_3_INJECT = true;   // write 265 rookies from rookie_ratings_post_madden.json
 
 // ---------------------------------------------------------------------------
 // nflverse abbr → Madden franchise TeamIndex (0-31). Mirrors script 9 / 9c so
@@ -624,7 +625,8 @@ async function main() {
   console.log(`  Player records  : ${playerTable.records.length} (${playerTable.header.recordCapacity} capacity)`);
 
   console.log(`\n  Vet pass        : ${ENABLE_VET_PASS ? 'ON' : 'OFF (bisect)'}`);
-  console.log(`  Rookie passes   : ${ENABLE_ROOKIE_PASSES ? 'ON' : 'OFF (bisect)'}`);
+  console.log(`  Pass 2 (clear)  : ${ENABLE_PASS_2_CLEAR ? 'ON' : 'OFF (bisect)'}`);
+  console.log(`  Pass 3 (inject) : ${ENABLE_PASS_3_INJECT ? 'ON' : 'OFF (bisect)'}`);
 
   // ── Pass 1: Veteran update ────────────────────────────────────────────────
   const stats = {
@@ -712,7 +714,7 @@ async function main() {
   }
 
   // ── Pass 2: Clear 2026 rookie slots ───────────────────────────────────────
-  if (ENABLE_ROOKIE_PASSES) for (const rec of playerTable.records) {
+  if (ENABLE_PASS_2_CLEAR) for (const rec of playerTable.records) {
     if (rec.isEmpty) continue;
     const yd = safeGet(rec, 'YearDrafted');
     if (yd === 0 || yd === '0') {
@@ -727,7 +729,7 @@ async function main() {
 
   // ── Pass 3: Inject rookies ────────────────────────────────────────────────
   const pickJersey = makeJerseyAllocator();
-  if (ENABLE_ROOKIE_PASSES) for (const r of rookieEntries) {
+  if (ENABLE_PASS_3_INJECT) for (const r of rookieEntries) {
     // Identity (tolerant of multiple shapes)
     let first = r.firstName ?? r.FirstName ?? '';
     let last  = r.lastName  ?? r.LastName  ?? '';
