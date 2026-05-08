@@ -1,0 +1,2852 @@
+[
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "TB",
+    "home_score": 18,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "BAL",
+    "home_score": 36,
+    "away_score": 35,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "MIN",
+    "home_score": 21,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "CIN",
+    "home_score": 14,
+    "away_score": 15,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "TEN",
+    "home_score": 18,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "DET",
+    "home_score": 24,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "MIA",
+    "home_score": 29,
+    "away_score": 6,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "CAR",
+    "home_score": 23,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "HOU",
+    "home_score": 12,
+    "away_score": 7,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "KC",
+    "home_score": 24,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "LV",
+    "home_score": 11,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "ARI",
+    "home_score": 11,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "PIT",
+    "home_score": 28,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "DAL",
+    "home_score": 21,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "SF",
+    "home_score": 11,
+    "away_score": 15,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 1,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "NYG",
+    "home_score": 19,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "CAR",
+    "home_score": 24,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "CLE",
+    "home_score": 36,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "JAX",
+    "home_score": 27,
+    "away_score": 24,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "NYG",
+    "home_score": 35,
+    "away_score": 33,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "CHI",
+    "home_score": 46,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "WAS",
+    "home_score": 24,
+    "away_score": 16,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "TB",
+    "home_score": 17,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "DEN",
+    "home_score": 26,
+    "away_score": 25,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "PHI",
+    "home_score": 15,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "LAC",
+    "home_score": 7,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "NE",
+    "home_score": 24,
+    "away_score": 29,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "ATL",
+    "home_score": 5,
+    "away_score": 19,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "SF",
+    "home_score": 19,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "BUF",
+    "home_score": 8,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "SEA",
+    "home_score": 15,
+    "away_score": 27,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 2,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "LA",
+    "home_score": 17,
+    "away_score": 29,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "DET",
+    "home_score": 26,
+    "away_score": 34,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "MIA",
+    "home_score": 27,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "ATL",
+    "home_score": 26,
+    "away_score": 0,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "DAL",
+    "home_score": 27,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "GB",
+    "home_score": 11,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "HOU",
+    "home_score": 15,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "DEN",
+    "home_score": 20,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "CIN",
+    "home_score": 42,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "PIT",
+    "home_score": 12,
+    "away_score": 19,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "KC",
+    "home_score": 7,
+    "away_score": 19,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "LA",
+    "home_score": 29,
+    "away_score": 23,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "NO",
+    "home_score": 39,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "ARI",
+    "home_score": 14,
+    "away_score": 13,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "NYJ",
+    "home_score": 26,
+    "away_score": 24,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "IND",
+    "home_score": 18,
+    "away_score": 36,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 3,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "LV",
+    "home_score": 36,
+    "away_score": 21,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "SEA",
+    "home_score": 18,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "WAS",
+    "home_score": 30,
+    "away_score": 24,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "NO",
+    "home_score": 27,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "GB",
+    "home_score": 35,
+    "away_score": 35,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "CIN",
+    "home_score": 25,
+    "away_score": 2,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "CLE",
+    "home_score": 30,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "TEN",
+    "home_score": 23,
+    "away_score": 0,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "BAL",
+    "home_score": 33,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "IND",
+    "home_score": 24,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "CHI",
+    "home_score": 21,
+    "away_score": 22,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "NYJ",
+    "home_score": 24,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "CAR",
+    "home_score": 37,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "LAC",
+    "home_score": 19,
+    "away_score": 16,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "MIN",
+    "home_score": 21,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "JAX",
+    "home_score": 19,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 4,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "PHI",
+    "home_score": 22,
+    "away_score": 27,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "TEN",
+    "home_score": 19,
+    "away_score": 19,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "HOU",
+    "home_score": 8,
+    "away_score": 39,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "NE",
+    "home_score": 18,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "MIA",
+    "home_score": 24,
+    "away_score": 21,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "DET",
+    "home_score": 21,
+    "away_score": 33,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "MIN",
+    "home_score": 15,
+    "away_score": 19,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "LV",
+    "home_score": 35,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "KC",
+    "home_score": 27,
+    "away_score": 25,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "SF",
+    "home_score": 20,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "WAS",
+    "home_score": 8,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "NYG",
+    "home_score": 23,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "DAL",
+    "home_score": 19,
+    "away_score": 33,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "DEN",
+    "home_score": 15,
+    "away_score": 19,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 5,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "TB",
+    "home_score": 31,
+    "away_score": 34,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "BUF",
+    "home_score": 21,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "LA",
+    "home_score": 2,
+    "away_score": 15,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "DAL",
+    "home_score": 26,
+    "away_score": 24,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "CIN",
+    "home_score": 24,
+    "away_score": 16,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "ARI",
+    "home_score": 27,
+    "away_score": 24,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "SEA",
+    "home_score": 11,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "DET",
+    "home_score": 26,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "TEN",
+    "home_score": 18,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "LAC",
+    "home_score": 24,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "NE",
+    "home_score": 17,
+    "away_score": 22,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "PHI",
+    "home_score": 30,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "DEN",
+    "home_score": 9,
+    "away_score": 11,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "CLE",
+    "home_score": 20,
+    "away_score": 7,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "SF",
+    "home_score": 26,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 6,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "CHI",
+    "home_score": 21,
+    "away_score": 22,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "GB",
+    "home_score": 20,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "NO",
+    "home_score": 23,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "PIT",
+    "home_score": 29,
+    "away_score": 27,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "MIA",
+    "home_score": 27,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "WAS",
+    "home_score": 39,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "NYG",
+    "home_score": 29,
+    "away_score": 28,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "TB",
+    "home_score": 21,
+    "away_score": 7,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "LA",
+    "home_score": 5,
+    "away_score": 31,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "LV",
+    "home_score": 27,
+    "away_score": 0,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "IND",
+    "home_score": 21,
+    "away_score": 34,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "PHI",
+    "home_score": 19,
+    "away_score": 25,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "CAR",
+    "home_score": 5,
+    "away_score": 11,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "HOU",
+    "home_score": 24,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "ATL",
+    "home_score": 18,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 7,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "NE",
+    "home_score": 11,
+    "away_score": 27,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "MIA",
+    "home_score": 8,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "CHI",
+    "home_score": 26,
+    "away_score": 14,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "BUF",
+    "home_score": 7,
+    "away_score": 35,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "NYJ",
+    "home_score": 34,
+    "away_score": 34,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "DAL",
+    "home_score": 39,
+    "away_score": 21,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "SF",
+    "home_score": 23,
+    "away_score": 13,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "TEN",
+    "home_score": 34,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "WAS",
+    "home_score": 25,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "MIN",
+    "home_score": 33,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "CLE",
+    "home_score": 28,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "TB",
+    "home_score": 2,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "NYG",
+    "home_score": 34,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 8,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "GB",
+    "home_score": 22,
+    "away_score": 31,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "KC",
+    "home_score": 25,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "CHI",
+    "home_score": 37,
+    "away_score": 42,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "ARI",
+    "home_score": 15,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "MIN",
+    "home_score": 21,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "CAR",
+    "home_score": 11,
+    "away_score": 14,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "DEN",
+    "home_score": 13,
+    "away_score": 16,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "NO",
+    "home_score": 30,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "JAX",
+    "home_score": 26,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "BAL",
+    "home_score": 5,
+    "away_score": 25,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "ATL",
+    "home_score": 21,
+    "away_score": 20,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "SF",
+    "home_score": 21,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "IND",
+    "home_score": 24,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "LAC",
+    "home_score": 18,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 9,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "SEA",
+    "home_score": 12,
+    "away_score": 34,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "NO",
+    "home_score": 5,
+    "away_score": 15,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "NYG",
+    "home_score": 21,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "LV",
+    "home_score": 8,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "PHI",
+    "home_score": 5,
+    "away_score": 8,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "JAX",
+    "home_score": 32,
+    "away_score": 26,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "ATL",
+    "home_score": 27,
+    "away_score": 22,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "PIT",
+    "home_score": 22,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "BUF",
+    "home_score": 26,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "BAL",
+    "home_score": 17,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "CLE",
+    "home_score": 24,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "ARI",
+    "home_score": 39,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "LA",
+    "home_score": 23,
+    "away_score": 37,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "NE",
+    "home_score": 20,
+    "away_score": 25,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 10,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "DET",
+    "home_score": 19,
+    "away_score": 39,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "SF",
+    "home_score": 19,
+    "away_score": 36,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "CAR",
+    "home_score": 24,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "TB",
+    "home_score": 39,
+    "away_score": 28,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "BAL",
+    "home_score": 14,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "KC",
+    "home_score": 19,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "LAC",
+    "home_score": 31,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "SEA",
+    "home_score": 19,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "DAL",
+    "home_score": 14,
+    "away_score": 29,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "WAS",
+    "home_score": 14,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "CHI",
+    "home_score": 15,
+    "away_score": 17,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "NYJ",
+    "home_score": 24,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "GB",
+    "home_score": 18,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "DET",
+    "home_score": 14,
+    "away_score": 7,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "CIN",
+    "home_score": 30,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 11,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "HOU",
+    "home_score": 11,
+    "away_score": 14,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "JAX",
+    "home_score": 21,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "NYJ",
+    "home_score": 20,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "PIT",
+    "home_score": 27,
+    "away_score": 25,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "NE",
+    "home_score": 18,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "PHI",
+    "home_score": 21,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "NYG",
+    "home_score": 30,
+    "away_score": 24,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "MIN",
+    "home_score": 20,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "BUF",
+    "home_score": 20,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "IND",
+    "home_score": 20,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "TB",
+    "home_score": 30,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "CLE",
+    "home_score": 8,
+    "away_score": 21,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "ATL",
+    "home_score": 8,
+    "away_score": 21,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "CAR",
+    "home_score": 18,
+    "away_score": 7,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 12,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "SEA",
+    "home_score": 21,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "CIN",
+    "home_score": 12,
+    "away_score": 28,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "LA",
+    "home_score": 27,
+    "away_score": 25,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "SF",
+    "home_score": 6,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "KC",
+    "home_score": 27,
+    "away_score": 25,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "GB",
+    "home_score": 21,
+    "away_score": 27,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "HOU",
+    "home_score": 14,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "LV",
+    "home_score": 27,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "NO",
+    "home_score": 19,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "NYG",
+    "home_score": 29,
+    "away_score": 13,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "ATL",
+    "home_score": 24,
+    "away_score": 21,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "CHI",
+    "home_score": 13,
+    "away_score": 21,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "BUF",
+    "home_score": 5,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "MIN",
+    "home_score": 23,
+    "away_score": 0,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "ARI",
+    "home_score": 18,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "JAX",
+    "home_score": 2,
+    "away_score": 22,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 13,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "DEN",
+    "home_score": 23,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "LA",
+    "home_score": 15,
+    "away_score": 40,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "SEA",
+    "home_score": 7,
+    "away_score": 33,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "PIT",
+    "home_score": 19,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "CIN",
+    "home_score": 34,
+    "away_score": 30,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "TEN",
+    "home_score": 26,
+    "away_score": 27,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "DAL",
+    "home_score": 39,
+    "away_score": 26,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "CHI",
+    "home_score": 25,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "IND",
+    "home_score": 32,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "HOU",
+    "home_score": 8,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "PHI",
+    "home_score": 19,
+    "away_score": 17,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "DEN",
+    "home_score": 15,
+    "away_score": 21,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "WAS",
+    "home_score": 27,
+    "away_score": 0,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "MIA",
+    "home_score": 8,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 14,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "NO",
+    "home_score": 18,
+    "away_score": 21,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "CLE",
+    "home_score": 27,
+    "away_score": 2,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "BAL",
+    "home_score": 0,
+    "away_score": 21,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "MIN",
+    "home_score": 23,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "GB",
+    "home_score": 30,
+    "away_score": 23,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "ARI",
+    "home_score": 35,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "NYJ",
+    "home_score": 42,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "LAC",
+    "home_score": 11,
+    "away_score": 14,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "DET",
+    "home_score": 36,
+    "away_score": 30,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "BUF",
+    "home_score": 27,
+    "away_score": 31,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "CAR",
+    "home_score": 18,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "WAS",
+    "home_score": 19,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "LV",
+    "home_score": 27,
+    "away_score": 0,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "MIA",
+    "home_score": 25,
+    "away_score": 13,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "IND",
+    "home_score": 16,
+    "away_score": 14,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "TEN",
+    "home_score": 33,
+    "away_score": 21,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 15,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "ATL",
+    "home_score": 25,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "ARI",
+    "away_team": "ATL",
+    "home_score": 17,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "BAL",
+    "away_team": "NE",
+    "home_score": 21,
+    "away_score": 25,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "TB",
+    "home_score": 20,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "GB",
+    "home_score": 19,
+    "away_score": 14,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "BUF",
+    "home_score": 18,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "DAL",
+    "away_team": "LAC",
+    "home_score": 15,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "JAX",
+    "home_score": 18,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "DET",
+    "away_team": "PIT",
+    "home_score": 21,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "LV",
+    "home_score": 20,
+    "away_score": 19,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "SF",
+    "home_score": 24,
+    "away_score": 42,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "CIN",
+    "home_score": 19,
+    "away_score": 40,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "NO",
+    "away_team": "NYJ",
+    "home_score": 26,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "MIN",
+    "home_score": 11,
+    "away_score": 14,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "SEA",
+    "away_team": "LA",
+    "home_score": 34,
+    "away_score": 33,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "KC",
+    "home_score": 23,
+    "away_score": 7,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 16,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "PHI",
+    "home_score": 16,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "LA",
+    "home_score": 24,
+    "away_score": 21,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "PHI",
+    "home_score": 11,
+    "away_score": 11,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "CAR",
+    "away_team": "SEA",
+    "home_score": 8,
+    "away_score": 24,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "ARI",
+    "home_score": 33,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "CLE",
+    "away_team": "PIT",
+    "home_score": 11,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "GB",
+    "away_team": "BAL",
+    "home_score": 21,
+    "away_score": 36,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "IND",
+    "away_team": "JAX",
+    "home_score": 15,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "KC",
+    "away_team": "DEN",
+    "home_score": 11,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "LAC",
+    "away_team": "HOU",
+    "home_score": 14,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "NYG",
+    "home_score": 8,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "MIA",
+    "away_team": "TB",
+    "home_score": 18,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "DET",
+    "home_score": 20,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "NYJ",
+    "away_team": "NE",
+    "home_score": 8,
+    "away_score": 37,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "CHI",
+    "home_score": 37,
+    "away_score": 34,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "TEN",
+    "away_team": "NO",
+    "home_score": 23,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 17,
+    "game_type": "REG",
+    "home_team": "WAS",
+    "away_team": "DAL",
+    "home_score": 20,
+    "away_score": 26,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "ATL",
+    "away_team": "NO",
+    "home_score": 17,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "BUF",
+    "away_team": "NYJ",
+    "home_score": 31,
+    "away_score": 6,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "CHI",
+    "away_team": "DET",
+    "home_score": 14,
+    "away_score": 17,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "CIN",
+    "away_team": "CLE",
+    "home_score": 16,
+    "away_score": 18,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "DEN",
+    "away_team": "LAC",
+    "home_score": 17,
+    "away_score": 2,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "HOU",
+    "away_team": "IND",
+    "home_score": 34,
+    "away_score": 26,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "JAX",
+    "away_team": "TEN",
+    "home_score": 36,
+    "away_score": 5,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "LA",
+    "away_team": "ARI",
+    "home_score": 33,
+    "away_score": 18,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "LV",
+    "away_team": "KC",
+    "home_score": 12,
+    "away_score": 11,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "MIN",
+    "away_team": "GB",
+    "home_score": 14,
+    "away_score": 2,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "NE",
+    "away_team": "MIA",
+    "home_score": 34,
+    "away_score": 8,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "NYG",
+    "away_team": "DAL",
+    "home_score": 30,
+    "away_score": 15,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "PHI",
+    "away_team": "WAS",
+    "home_score": 15,
+    "away_score": 21,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "PIT",
+    "away_team": "BAL",
+    "home_score": 23,
+    "away_score": 21,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "SF",
+    "away_team": "SEA",
+    "home_score": 2,
+    "away_score": 11,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 18,
+    "game_type": "REG",
+    "home_team": "TB",
+    "away_team": "CAR",
+    "home_score": 14,
+    "away_score": 12,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 19,
+    "game_type": "WC",
+    "home_team": "CAR",
+    "away_team": "LA",
+    "home_score": 31,
+    "away_score": 34,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 19,
+    "game_type": "WC",
+    "home_team": "CHI",
+    "away_team": "GB",
+    "home_score": 31,
+    "away_score": 27,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 19,
+    "game_type": "WC",
+    "home_team": "JAX",
+    "away_team": "BUF",
+    "home_score": 24,
+    "away_score": 27,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 19,
+    "game_type": "WC",
+    "home_team": "NE",
+    "away_team": "LAC",
+    "home_score": 16,
+    "away_score": 3,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 19,
+    "game_type": "WC",
+    "home_team": "PHI",
+    "away_team": "SF",
+    "home_score": 19,
+    "away_score": 23,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 19,
+    "game_type": "WC",
+    "home_team": "PIT",
+    "away_team": "HOU",
+    "home_score": 6,
+    "away_score": 30,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 20,
+    "game_type": "DIV",
+    "home_team": "CHI",
+    "away_team": "LA",
+    "home_score": 17,
+    "away_score": 20,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 20,
+    "game_type": "DIV",
+    "home_team": "DEN",
+    "away_team": "BUF",
+    "home_score": 33,
+    "away_score": 30,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 20,
+    "game_type": "DIV",
+    "home_team": "NE",
+    "away_team": "HOU",
+    "home_score": 28,
+    "away_score": 16,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 20,
+    "game_type": "DIV",
+    "home_team": "SEA",
+    "away_team": "SF",
+    "home_score": 41,
+    "away_score": 6,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 21,
+    "game_type": "CON",
+    "home_team": "DEN",
+    "away_team": "NE",
+    "home_score": 7,
+    "away_score": 10,
+    "home_won": false
+  },
+  {
+    "season": 2025,
+    "week": 21,
+    "game_type": "CON",
+    "home_team": "SEA",
+    "away_team": "LA",
+    "home_score": 31,
+    "away_score": 27,
+    "home_won": true
+  },
+  {
+    "season": 2025,
+    "week": 22,
+    "game_type": "SB",
+    "home_team": "NE",
+    "away_team": "SEA",
+    "home_score": 13,
+    "away_score": 29,
+    "home_won": false
+  }
+]

@@ -1,16 +1,19 @@
 """
-Script 10 — Fetch 2025 NFL Game Results
+Script 10 — Fetch 2025 NFL Game Results (SportsData.io)
 
-Downloads the nflverse schedules CSV and extracts completed game results for
-the 2025 NFL season (regular season + playoffs).
+Pulls the full 2025 NFL schedule + final scores from SportsData.io and writes
+a JSON file in the format expected by scripts/11_apply_game_results.js.
+
+Requires SPORTSDATA_API_KEY in .env (the SchedulesBasic endpoint is on the
+free tier).
 
 Output:
-  data/game_results_2025.json  — list of completed game objects:
+  data/game_results_2025.json — list of completed game objects:
   {
     "season":     2025,
-    "week":       1,            // NFL week (1-18 regular, 19+ playoffs)
+    "week":       1,            // 1-18 regular, 19-22 playoffs
     "game_type":  "REG",        // REG | WC | DIV | CON | SB
-    "home_team":  "ARI",        // nflverse team abbreviation
+    "home_team":  "ARI",        // nflverse-style abbreviation
     "away_team":  "ATL",
     "home_score": 27,
     "away_score": 14,
@@ -24,11 +27,10 @@ Run:
 import json
 import os
 import sys
-import io
-import csv
 import time
 
 import requests
+from dotenv import load_dotenv
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -38,124 +40,159 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 DATA_DIR     = os.path.join(PROJECT_ROOT, "data")
 OUTPUT_FILE  = os.path.join(DATA_DIR, "game_results_2025.json")
 
-# ---------------------------------------------------------------------------
-# nflverse schedules URL
-# ---------------------------------------------------------------------------
-SCHEDULES_URL = (
-    "https://github.com/nflverse/nflverse-data/releases/download/"
-    "schedules/schedules.csv"
-)
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
+# ---------------------------------------------------------------------------
+# SportsData.io
+# ---------------------------------------------------------------------------
 SEASON_YEAR = 2025
+API_KEY     = os.getenv("SPORTSDATA_API_KEY")
+BASE_URL    = "https://api.sportsdata.io/v3/nfl/scores/json/Scores"
+FINAL_STATUSES = {"Final", "F/OT"}
 
-# nflverse game_type values we want
-VALID_GAME_TYPES = {"REG", "WC", "DIV", "CON", "SB"}
+# Postseason round (Week field, 1-4) → game_type + nflverse-style absolute week
+POSTSEASON = {
+    1: ("WC",  19),
+    2: ("DIV", 20),
+    3: ("CON", 21),
+    4: ("SB",  22),
+}
+
+# SportsData.io abbreviations → nflverse abbreviations (only deltas)
+# nflverse uses "LA" for the Rams; SportsData.io uses "LAR".
+SPORTSDATA_TO_NFLVERSE = {
+    "LAR": "LA",
+}
 
 
-def download_csv(url: str, retries: int = 3) -> list[dict]:
-    """Download a CSV from url and return rows as list of dicts."""
+def require_api_key() -> None:
+    if not API_KEY:
+        print("[!] No SPORTSDATA_API_KEY found.")
+        print("  Add it to your .env file:")
+        print("    SPORTSDATA_API_KEY=your_key_here")
+        sys.exit(1)
+
+
+def fetch_schedule(season_label: str, retries: int = 3) -> list[dict]:
+    """Fetch a Scores response for e.g. '2025REG' or '2025POST'."""
+    base = f"{BASE_URL}/{season_label}"
+    url  = f"{base}?key={API_KEY}"
     for attempt in range(1, retries + 1):
         try:
-            print(f"  Downloading: {url}")
-            resp = requests.get(url, timeout=60)
+            print(f"  Fetching: {base}")
+            resp = requests.get(url, timeout=30)
             resp.raise_for_status()
-            reader = csv.DictReader(io.StringIO(resp.text))
-            return list(reader)
+            return resp.json()
         except requests.RequestException as exc:
             print(f"  Attempt {attempt}/{retries} failed: {exc}")
             if attempt < retries:
                 time.sleep(2)
-    raise RuntimeError(f"Failed to download {url} after {retries} attempts")
+    raise RuntimeError(f"Failed to fetch {base} after {retries} attempts")
 
 
-def safe_int(val: str) -> int | None:
-    """Convert string to int, return None if not possible."""
-    try:
-        return int(float(val))
-    except (ValueError, TypeError):
-        return None
+def to_nflverse_team(abbr: str) -> str:
+    return SPORTSDATA_TO_NFLVERSE.get(abbr, abbr)
+
+
+def process_rows(rows: list[dict], is_postseason: bool) -> tuple[list[dict], int, int]:
+    """Returns (games, unfinished_count, other_skipped_count)."""
+    games: list[dict] = []
+    unfinished = 0
+    other_skipped = 0
+
+    for row in rows:
+        week_raw   = row.get("Week")
+        home_abbr  = (row.get("HomeTeam") or "").strip().upper()
+        away_abbr  = (row.get("AwayTeam") or "").strip().upper()
+        home_score = row.get("HomeScore")
+        away_score = row.get("AwayScore")
+        status     = (row.get("Status") or "").strip()
+
+        if not home_abbr or not away_abbr or week_raw is None:
+            other_skipped += 1
+            continue
+
+        if home_score is None or away_score is None or status not in FINAL_STATUSES:
+            unfinished += 1
+            continue
+
+        if is_postseason:
+            mapping = POSTSEASON.get(int(week_raw))
+            if not mapping:
+                other_skipped += 1
+                continue
+            game_type, nfl_week = mapping
+        else:
+            game_type = "REG"
+            nfl_week  = int(week_raw)
+
+        games.append({
+            "season":     SEASON_YEAR,
+            "week":       nfl_week,
+            "game_type":  game_type,
+            "home_team":  to_nflverse_team(home_abbr),
+            "away_team":  to_nflverse_team(away_abbr),
+            "home_score": int(home_score),
+            "away_score": int(away_score),
+            "home_won":   int(home_score) > int(away_score),
+        })
+
+    return games, unfinished, other_skipped
+
+
+def dedupe(games: list[dict]) -> tuple[list[dict], int]:
+    """Collapse rescheduled duplicates — same matchup in same week appears
+    once. Last occurrence wins (typically the played/rescheduled record)."""
+    seen: dict[tuple, dict] = {}
+    duplicates = 0
+    for g in games:
+        key = (g["game_type"], g["week"], g["home_team"], g["away_team"])
+        if key in seen:
+            duplicates += 1
+        seen[key] = g
+    return list(seen.values()), duplicates
 
 
 def main() -> None:
     print("=" * 60)
-    print("Script 10 — Fetch 2025 NFL Game Results")
+    print(f"Script 10 - Fetch {SEASON_YEAR} NFL Game Results (SportsData.io)")
     print("=" * 60)
 
-    # ── Download schedules ────────────────────────────────────────────────
-    rows = download_csv(SCHEDULES_URL)
-    print(f"  Total rows downloaded: {len(rows):,}")
+    require_api_key()
 
-    # ── Filter for 2025 season ────────────────────────────────────────────
-    games: list[dict] = []
-    skipped = 0
+    reg_rows  = fetch_schedule(f"{SEASON_YEAR}REG")
+    post_rows = fetch_schedule(f"{SEASON_YEAR}POST")
+    print(f"  Regular-season records : {len(reg_rows):,}")
+    print(f"  Postseason records     : {len(post_rows):,}")
 
-    for row in rows:
-        try:
-            season = safe_int(row.get("season", ""))
-            if season != SEASON_YEAR:
-                continue
+    reg_games,  reg_unfin,  reg_other  = process_rows(reg_rows,  is_postseason=False)
+    post_games, post_unfin, post_other = process_rows(post_rows, is_postseason=True)
 
-            game_type = row.get("game_type", "").strip().upper()
-            if game_type not in VALID_GAME_TYPES:
-                skipped += 1
-                continue
-
-            week_val = safe_int(row.get("week", ""))
-            if week_val is None:
-                skipped += 1
-                continue
-
-            home_team  = row.get("home_team", "").strip().upper()
-            away_team  = row.get("away_team", "").strip().upper()
-            home_score = safe_int(row.get("home_score", ""))
-            away_score = safe_int(row.get("away_score", ""))
-
-            # Skip games that haven't been played yet (no scores)
-            if home_score is None or away_score is None:
-                skipped += 1
-                continue
-
-            if not home_team or not away_team:
-                skipped += 1
-                continue
-
-            games.append({
-                "season":     season,
-                "week":       week_val,
-                "game_type":  game_type,
-                "home_team":  home_team,
-                "away_team":  away_team,
-                "home_score": home_score,
-                "away_score": away_score,
-                "home_won":   home_score > away_score,
-            })
-        except Exception as exc:
-            skipped += 1
-            print(f"  ⚠  Skipped row: {exc}", file=sys.stderr)
-
-    # ── Sort games by week, then home team ───────────────────────────────
+    games, dup_count = dedupe(reg_games + post_games)
     games.sort(key=lambda g: (g["week"], g["home_team"]))
 
-    # ── Save ─────────────────────────────────────────────────────────────
     os.makedirs(DATA_DIR, exist_ok=True)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as fh:
         json.dump(games, fh, indent=2)
 
-    # ── Summary ──────────────────────────────────────────────────────────
-    print("\n" + "=" * 60)
-    print("Summary")
-    print("=" * 60)
     by_type: dict[str, int] = {}
     for g in games:
         by_type[g["game_type"]] = by_type.get(g["game_type"], 0) + 1
 
+    print("\n" + "=" * 60)
+    print("Summary")
+    print("=" * 60)
     print(f"  Total completed games : {len(games)}")
     for gtype in ["REG", "WC", "DIV", "CON", "SB"]:
         if gtype in by_type:
             print(f"    {gtype:<5}: {by_type[gtype]}")
-    print(f"  Skipped/future        : {skipped}")
-    print(f"\n  Output → {os.path.relpath(OUTPUT_FILE, PROJECT_ROOT)}")
-    print("\n✓ Done.")
+    print(f"  Unfinished skipped    : {reg_unfin + post_unfin}")
+    print(f"  Reschedule duplicates : {dup_count}")
+    other = reg_other + post_other
+    if other:
+        print(f"  Other skipped         : {other}")
+    print(f"\n  Output -> {os.path.relpath(OUTPUT_FILE, PROJECT_ROOT)}")
+    print("\nDone.")
 
 
 if __name__ == "__main__":

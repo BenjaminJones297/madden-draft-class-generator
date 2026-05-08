@@ -3,7 +3,7 @@
 /**
  * Script 11 — Apply Game Results (ForceWin)
  *
- * Reads data/game_results_2025.json (real 2025 NFL season results) and the
+ * Reads data\game_results_2025.json (real 2025 NFL season results) and the
  * Madden 26 franchise file, then sets the ForceWin field on every SeasonGame
  * record so that when weeks are simmed in-game the correct team wins.
  *
@@ -17,8 +17,13 @@
  * the newly-populated playoff matchups also get their ForceWin set.
  *
  * Run:
- *   node scripts/11_apply_game_results.js [--franchise /path/to/CAREER-FRANCHISE]
- *   FRANCHISE_FILE=/path/to/CAREER-FRANCHISE node scripts/11_apply_game_results.js
+ *   node scripts\11_apply_game_results.js data\game_results_2025.json --franchise C:\path\to\CAREER-FRANCHISE
+ *   node scripts\11_apply_game_results.js --franchise C:\path\to\CAREER-FRANCHISE --results data\game_results_2025.json
+ *   node scripts\11_apply_game_results.js "@.\data\game_results_2025.json" --franchise C:\path\to\CAREER-FRANCHISE
+ *   FRANCHISE_FILE=C:\path\to\CAREER-FRANCHISE node scripts\11_apply_game_results.js
+ *
+ * Note: quote @file-style paths in PowerShell (for example,
+ * "@.\data\game_results_2025.json") so PowerShell passes the value to Node.
  */
 
 const fs      = require('fs');
@@ -32,7 +37,7 @@ const SCRIPT_DIR     = __dirname;
 const PROJECT_ROOT   = path.join(SCRIPT_DIR, '..');
 const DATA_DIR       = path.join(PROJECT_ROOT, 'data');
 const ENV_PATH       = path.join(PROJECT_ROOT, '.env');
-const RESULTS_FILE   = path.join(DATA_DIR, 'game_results_2025.json');
+const DEFAULT_RESULTS_FILE = path.join(DATA_DIR, 'game_results_2025.json');
 
 // ---------------------------------------------------------------------------
 // Madden franchise TeamIndex (0-31) → nflverse abbreviation
@@ -88,12 +93,66 @@ function loadEnvFile(envPath) {
 
 function resolveFranchisePath() {
   const args = process.argv.slice(2);
-  for (let i = 0; i < args.length - 1; i++) {
+  for (let i = 0; i < args.length; i++) {
     if (args[i] === '--franchise') return args[i + 1];
+    if (args[i].startsWith('--franchise=')) return args[i].slice('--franchise='.length);
   }
   if (process.env.FRANCHISE_FILE) return process.env.FRANCHISE_FILE;
   const envVars = loadEnvFile(ENV_PATH);
   return envVars['FRANCHISE_FILE'] || null;
+}
+
+function normalizeInputPath(rawPath) {
+  if (!rawPath) return rawPath;
+  let inputPath = String(rawPath).trim();
+
+  // Some callers pass tagged/context files as @./path/to/file.json.
+  // Treat the leading @ as metadata, not as part of the filesystem path.
+  if (inputPath.startsWith('@')) inputPath = inputPath.slice(1);
+
+  if ((inputPath.startsWith('"') && inputPath.endsWith('"')) ||
+      (inputPath.startsWith("'") && inputPath.endsWith("'"))) {
+    inputPath = inputPath.slice(1, -1);
+  }
+
+  return inputPath;
+}
+
+function resolveInputPath(rawPath, fallbackPath) {
+  const inputPath = normalizeInputPath(rawPath);
+  if (!inputPath) return fallbackPath;
+  if (path.isAbsolute(inputPath)) return inputPath;
+
+  const cwdPath = path.resolve(process.cwd(), inputPath);
+  if (fs.existsSync(cwdPath)) return cwdPath;
+
+  return path.resolve(PROJECT_ROOT, inputPath);
+}
+
+function resolveResultsPath() {
+  const args = process.argv.slice(2);
+  const envVars = loadEnvFile(ENV_PATH);
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--results' && args[i + 1]) return resolveInputPath(args[i + 1], DEFAULT_RESULTS_FILE);
+    if (args[i].startsWith('--results=')) return resolveInputPath(args[i].slice('--results='.length), DEFAULT_RESULTS_FILE);
+  }
+
+  const positional = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--franchise' || arg === '--results') {
+      i++;
+      continue;
+    }
+    if (!arg.startsWith('--')) positional.push(arg);
+  }
+
+  if (positional.length > 0) return resolveInputPath(positional[0], DEFAULT_RESULTS_FILE);
+  if (process.env.GAME_RESULTS_FILE) return resolveInputPath(process.env.GAME_RESULTS_FILE, DEFAULT_RESULTS_FILE);
+  if (envVars.GAME_RESULTS_FILE) return resolveInputPath(envVars.GAME_RESULTS_FILE, DEFAULT_RESULTS_FILE);
+
+  return DEFAULT_RESULTS_FILE;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +181,7 @@ async function main() {
 
   // ── Validate inputs ───────────────────────────────────────────────────────
   const franchisePath = resolveFranchisePath();
+  const resultsPath   = resolveResultsPath();
   if (!franchisePath) {
     console.error('\n✗ No franchise file specified.');
     console.error('  Set FRANCHISE_FILE in .env or pass --franchise /path/to/file');
@@ -131,16 +191,18 @@ async function main() {
     console.error(`\n✗ Franchise file not found: ${franchisePath}`);
     process.exit(1);
   }
-  if (!fs.existsSync(RESULTS_FILE)) {
-    console.error(`\n✗ Game results file not found: ${RESULTS_FILE}`);
+  if (!fs.existsSync(resultsPath)) {
+    console.error(`\n✗ Game results file not found: ${resultsPath}`);
     console.error('  Run script 10 first: python scripts/10_fetch_game_results.py');
+    console.error('  Or pass an explicit file: node scripts\\11_apply_game_results.js data\\game_results_2025.json --franchise <file>');
     process.exit(1);
   }
 
   console.log(`\n  Franchise file  : ${franchisePath}`);
+  console.log(`  Results file    : ${resultsPath}`);
 
   // ── Load real game results ────────────────────────────────────────────────
-  const results = JSON.parse(fs.readFileSync(RESULTS_FILE, 'utf8'));
+  const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
   console.log(`  Game results    : ${results.length} completed games`);
   const lookup = buildResultLookup(results);
 
