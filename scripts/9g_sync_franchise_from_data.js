@@ -68,6 +68,10 @@ const CURRENT_LEAGUE_YEAR = 2026;
 const ENABLE_VET_PASS      = true;
 const ENABLE_PASS_2_CLEAR  = false;  // OFF: emptying causes sim CTD (see comment above)
 const ENABLE_PASS_3_INJECT = true;
+// When ENABLE_PASS_3_INJECT is on, also send any unused auto-rookies to the
+// FA pool so they don't sit in the future draft pool with their auto-generated
+// names. Non-destructive: just changes their TeamIndex + ContractStatus.
+const ENABLE_DISPOSE_UNUSED_AUTO_ROOKIES = true;
 
 // ---------------------------------------------------------------------------
 // nflverse abbr → Madden franchise TeamIndex (0-31). Mirrors script 9 / 9c so
@@ -603,6 +607,29 @@ function appendToTeamRoster(ctx, teamIndex, playerRow) {
   return false;   // no open slot in roster
 }
 
+// Find which Player slot in a team's Roster (Player0..Player99) currently
+// references the given player row. Returns the field, or null.
+function findInTeamRoster(ctx, teamIndex, playerRow) {
+  if (!ctx) return null;
+  const rosterRowIdx = ctx.teamIndexToRosterRow.get(Number(teamIndex));
+  if (rosterRowIdx == null) return null;
+  const rosterRec = ctx.rosterTable.records[rosterRowIdx];
+  if (!rosterRec || rosterRec.isEmpty) return null;
+  for (let i = 0; i < 100; i++) {
+    const f = rosterRec.getFieldByKey(`Player${i}`);
+    if (!f || !f.isReference) continue;
+    const r = f.referenceData;
+    if (r && r.tableId === ctx.playerTableId && r.rowNumber === playerRow) return f;
+  }
+  return null;
+}
+
+function removeFromTeamRoster(ctx, teamIndex, playerRow) {
+  const f = findInTeamRoster(ctx, teamIndex, playerRow);
+  if (!f) return false;
+  try { f.value = NULL_REFERENCE; return true; } catch (_) { return false; }
+}
+
 // ---------------------------------------------------------------------------
 // Franchise open
 // ---------------------------------------------------------------------------
@@ -778,12 +805,19 @@ async function main() {
     rookieMetaMissing: 0,
     realDobSet: 0, dobFallback: 0,
     rookiesAddedToRoster: 0, rookiesNoRosterSlot: 0,
+    rookiesFreshInjected: 0,
+    unusedAutoRookiesDisposed: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
     if (rec.isEmpty) { stats.skippedEmpty++; continue; }
     const yd = safeGet(rec, 'YearDrafted');
-    if (yd === 0 || yd === '0') { stats.skippedRookieSlot++; continue; }
+    // Skip the 2026 auto-rookie placeholders. In M26's franchise convention,
+    // YearDrafted=1 + YearsPro=0 are next-year draft-pool prospects (Madden's
+    // synthetic 2026 class to be replaced by Pass 3). YearDrafted=0 records
+    // are CURRENT-year rookies + UDFAs we want to leave alone.
+    const yp = safeGet(rec, 'YearsPro');
+    if (yd === 1 && (yp === 0 || yp === '0')) { stats.skippedRookieSlot++; continue; }
 
     // Don't resurrect cap ghosts / retirees by overwriting their team / contract.
     const currentStatus = safeGet(rec, 'ContractStatus');
@@ -864,7 +898,57 @@ async function main() {
     }
   }
 
-  // ── Pass 3: Inject rookies ────────────────────────────────────────────────
+  // ── Pass 3: Overlay rookies onto auto-generated rookie slots ──────────────
+  //
+  // For each post-Madden rookie, find an auto-generated rookie record
+  // (YearDrafted=0) — preferring one already on the same drafting team to
+  // avoid roster-array maintenance — and rewrite its identity in place. If
+  // the auto-rookie is on a different team than the rookie's real-life
+  // drafter, swap roster-array slots: remove from old team's Roster, add to
+  // new team's Roster, update TeamIndex.
+  //
+  // Mutating in place (rather than empty + inject) preserves every reference
+  // pointing at the row (HistoryEntry, PlayerAcquisitionEvaluation, depth-
+  // chart slots, etc.). That's the difference that lets sim work.
+  // Auto-rookie placeholders: YearDrafted=1, YearsPro=0 (Madden's synthetic
+  // 2026 draft class on real teams with fake names). YearDrafted=0 catches
+  // 2025 rookies + UDFAs we MUST NOT touch.
+  const autoRookiePool = [];   // { row, teamIndex, used }
+  if (ENABLE_PASS_3_INJECT) {
+    for (let i = 0; i < playerTable.records.length; i++) {
+      const arRec = playerTable.records[i];
+      if (arRec.isEmpty) continue;
+      const yd = safeGet(arRec, 'YearDrafted');
+      const yp = safeGet(arRec, 'YearsPro');
+      if (yd === 1 && (yp === 0 || yp === '0')) {
+        autoRookiePool.push({ row: i, teamIndex: Number(safeGet(arRec, 'TeamIndex')), used: false });
+      }
+    }
+    console.log(`  Auto-rookie pool        : ${autoRookiePool.length} eligible for overlay (YearDrafted=1, YearsPro=0)`);
+  }
+  // Bucket by team for fast same-team picks
+  const autoRookieByTeam = new Map();
+  for (let i = 0; i < autoRookiePool.length; i++) {
+    const t = autoRookiePool[i].teamIndex;
+    if (!autoRookieByTeam.has(t)) autoRookieByTeam.set(t, []);
+    autoRookieByTeam.get(t).push(i);
+  }
+  // Same-team only — no fallback. Mismatches get injected as new records
+  // (V5 path) below, which is sim-safe; cross-team overlay required Roster
+  // swap + DepthChart maintenance which we aren't doing.
+  function pickAutoRookieSameTeam(preferTeam) {
+    if (!autoRookieByTeam.has(preferTeam)) return null;
+    const bucket = autoRookieByTeam.get(preferTeam);
+    while (bucket.length) {
+      const k = bucket.shift();
+      if (!autoRookiePool[k].used) {
+        autoRookiePool[k].used = true;
+        return autoRookiePool[k];
+      }
+    }
+    return null;
+  }
+
   const pickJersey = makeJerseyAllocator();
   if (ENABLE_PASS_3_INJECT) for (const r of rookieEntries) {
     // Identity (tolerant of multiple shapes)
@@ -901,10 +985,19 @@ async function main() {
     }
     if (teamIndex === TEAM_INDEX_FREE_AGENT) stats.rookiesToFA++;
 
-    // Find next empty slot
-    const idx = playerTable.header.nextRecordToUse;
-    if (idx >= playerTable.header.recordCapacity) { stats.rookiesSkipped++; continue; }
-    const rec = playerTable.records[idx];
+    // Try overlay first (same-team only). If none, inject as new record.
+    const autoRookie = pickAutoRookieSameTeam(teamIndex);
+    let idx, rec;
+    if (autoRookie) {
+      idx = autoRookie.row;
+      rec = playerTable.records[idx];
+    } else {
+      // Fresh inject path (V5-style): use next empty Player slot.
+      idx = playerTable.header.nextRecordToUse;
+      if (idx >= playerTable.header.recordCapacity) { stats.rookiesSkipped++; continue; }
+      rec = playerTable.records[idx];
+      stats.rookiesFreshInjected++;
+    }
 
     // Identity
     trySet(rec, 'FirstName', String(first).slice(0, 11));
@@ -928,8 +1021,11 @@ async function main() {
     trySet(rec, 'Height', parseHeight(ht));
     trySet(rec, 'Weight', encodeWeight(wt));
 
-    // Roster status
-    trySet(rec, 'TeamIndex',       teamIndex);
+    // Same-team overlay → no team change needed (autoRookie already on the
+    // right team). Inject path → set TeamIndex fresh.
+    if (!autoRookie) {
+      trySet(rec, 'TeamIndex', teamIndex);
+    }
     trySet(rec, 'ContractStatus',  CONTRACT_STATUS_SIGNED);
     trySet(rec, 'YearDrafted',     0);
     trySet(rec, 'YearsPro',        0);
@@ -957,14 +1053,38 @@ async function main() {
     }
 
     // Add to drafting team's Roster array so the player shows up in Madden's
-    // roster / depth-chart / lineup screens. FA-routed rookies don't get a
-    // team-roster entry — they're in the FA pool by design.
+    // roster / depth-chart / lineup screens. We only need to add when:
+    //   (a) the team changed (we removed from old team's Roster above), OR
+    //   (b) the auto-rookie wasn't already in any Roster slot.
+    // For (b), findInTeamRoster on the same team returns null so we always
+    // append. Cheap enough to just check & append unconditionally.
     if (teamIndex !== TEAM_INDEX_FREE_AGENT) {
-      if (appendToTeamRoster(rosterCtx, teamIndex, idx)) stats.rookiesAddedToRoster++;
-      else                                                stats.rookiesNoRosterSlot++;
+      const alreadyInRoster = findInTeamRoster(rosterCtx, teamIndex, idx);
+      if (!alreadyInRoster) {
+        if (appendToTeamRoster(rosterCtx, teamIndex, idx)) stats.rookiesAddedToRoster++;
+        else                                                stats.rookiesNoRosterSlot++;
+      }
     }
 
     stats.rookiesInjected++;
+  }
+
+  // ── Pass 4: dispose unused auto-rookies ───────────────────────────────────
+  // Move any auto-rookie we didn't overlay to the FA pool so they don't
+  // pollute the future draft pool / clutter team rosters. This is a non-
+  // destructive disposition: no rec.empty(), no broken refs.
+  if (ENABLE_PASS_3_INJECT && ENABLE_DISPOSE_UNUSED_AUTO_ROOKIES) {
+    for (let i = 0; i < autoRookiePool.length; i++) {
+      if (autoRookiePool[i].used) continue;
+      const ar  = autoRookiePool[i];
+      const rec = playerTable.records[ar.row];
+      if (ar.teamIndex !== TEAM_INDEX_FREE_AGENT && ar.teamIndex >= 0 && ar.teamIndex <= 31) {
+        removeFromTeamRoster(rosterCtx, ar.teamIndex, ar.row);
+      }
+      trySet(rec, 'TeamIndex',      TEAM_INDEX_FREE_AGENT);
+      trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
+      stats.unusedAutoRookiesDisposed++;
+    }
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
@@ -980,11 +1100,14 @@ async function main() {
   console.log(`  Unmatched (no ratings)  : ${stats.unmatched.length}`);
   console.log('Rookies');
   console.log(`  Source                  : ${path.basename(rookiesResolved.path)} (${rookieEntries.length} entries)`);
-  console.log(`  Cleared (YearDrafted=0) : ${stats.rookiesCleared}`);
-  console.log(`  Refs nulled before empty: ${stats.refsNulled} (index built in ${stats.refIndexBuildMs}ms)`);
-  console.log(`  Injected on real teams  : ${stats.rookiesInjected - stats.rookiesToFA}`);
-  console.log(`    added to team Roster  : ${stats.rookiesAddedToRoster}`);
-  console.log(`    no open Roster slot   : ${stats.rookiesNoRosterSlot}`);
+  console.log(`  Auto-rookie pool size   : ${autoRookiePool.length}`);
+  console.log(`  Total processed         : ${stats.rookiesInjected}`);
+  console.log(`    Overlaid (same team)  : ${stats.rookiesInjected - stats.rookiesFreshInjected}`);
+  console.log(`    Fresh-injected        : ${stats.rookiesFreshInjected}`);
+  console.log(`    Added to team Roster  : ${stats.rookiesAddedToRoster}`);
+  console.log(`    No open Roster slot   : ${stats.rookiesNoRosterSlot}`);
+  console.log(`  Routed to FA (no draft) : ${stats.rookiesToFA}`);
+  console.log(`  Disposed (unused → FA)  : ${stats.unusedAutoRookiesDisposed}`);
   console.log(`  Routed to FA pool       : ${stats.rookiesToFA}`);
   console.log(`  Metadata fallback used  : ${stats.rookieMetaMissing}`);
   console.log(`  Real birthdate set      : ${stats.realDobSet}`);
