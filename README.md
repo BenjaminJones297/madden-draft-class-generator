@@ -2,6 +2,8 @@
 
 Generate a **real-world 2026 NFL draft class** and import it directly into Madden NFL 26. The pipeline downloads real combine measurables and scouting data, uses the actual Madden 26 launch ratings for the 2025 class as calibration ground truth, then calls a local Ollama LLM to generate every Madden attribute for each 2026 prospect — no manual editing required.
 
+> **LLM context:** Agents and AI coding assistants should start with [`AGENTS.md`](AGENTS.md) and the repo-local wiki in [`docs/llm-wiki/`](docs/llm-wiki/).
+
 ---
 
 ## How It Works

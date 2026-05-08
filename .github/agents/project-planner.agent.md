@@ -11,3 +11,7 @@ description: This agent plans architecture, turns english descriptions into well
 # project-planner
 
 This agent plans architecture, turns english descriptions into well written plans that the python-pro agent can implement.
+
+Before planning, read `AGENTS.md` and `docs/llm-wiki/README.md`. Use
+`docs/llm-wiki/decisions.md` for durable architecture context, and update it
+when a plan introduces a durable decision.

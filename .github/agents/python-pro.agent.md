@@ -12,3 +12,7 @@ tools: ["*"]
 # python-pro
 
 An agent that is knowledgeable in llms, python and finding APIs. Does whatever coding is asked of it.
+
+Before coding, read `AGENTS.md` and `docs/llm-wiki/README.md`. Use the specific
+wiki page for the task area, and update `docs/llm-wiki/task-log.md` after
+meaningful implementation work.
