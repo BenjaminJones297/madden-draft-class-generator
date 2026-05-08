@@ -742,34 +742,13 @@ async function main() {
       stats.unmatched.push(`${fn} ${ln} (${ps})`);
     }
 
-    // 1b. Team + contract lookup from nfl_rosters_2026.json
-    let rosterHit = rosterByName.get(makeNameOnlyKey(fn, ln));
-    if (!rosterHit) {
-      const aliasTo = aliases[`${fn} ${ln}`];
-      if (aliasTo) {
-        const split = splitName(aliasTo);
-        rosterHit = rosterByName.get(makeNameOnlyKey(split.first, split.last));
-      }
-    }
-
-    if (rosterHit) {
-      const rawTeam = String(rosterHit.team || '').toUpperCase();
-      const team    = ABBR_NORMALIZE[rawTeam] ?? rawTeam;
-      if (team === 'FA' || team === '') {
-        trySet(rec, 'TeamIndex', TEAM_INDEX_FREE_AGENT);
-        trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
-      } else if (team in NFLVERSE_TO_TEAM_INDEX) {
-        trySet(rec, 'TeamIndex', NFLVERSE_TO_TEAM_INDEX[team]);
-        const mapped = mapContractFields(rosterHit);
-        writeContractToRecord(rec, mapped);
-      } else {
-        stats.contractFallback++;  // unrecognized abbr — leave as-is
-        continue;
-      }
-      stats.teamUpdated++;
-    } else {
-      stats.contractFallback++;
-    }
+    // 1b. (DISABLED) Team + contract overlay used to come from nfl_rosters_2026.json,
+    //               but it crushed depth-chart consistency and demolished contracts
+    //               for any vet whose nflverse aav was 0 (pinning them to the 895k
+    //               minimum). The diff against the original confirmed thousands of
+    //               unintended contract overwrites. Vets now keep whatever team and
+    //               contract the franchise had for them. Only ratings update above.
+    stats.contractFallback++;
   }
 
   // ── Pass 2: Clear 2026 rookie slots (reference-cleaning empty) ────────────
