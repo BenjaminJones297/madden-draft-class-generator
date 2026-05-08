@@ -555,6 +555,64 @@ function nullDcReferencesTo(refIndex, playerRow, dcPoolTableId) {
   return nulled;
 }
 
+// Resolve all Player[] sub-tables that hold per-team references to players
+// (DepthChart pool + Roster + PracticeSquad + MarketedPlayers + Trade/Contract
+// blacklists + Active-abilities + training lists). When a vet's TeamIndex
+// changes, every ref in these tables pointing at the moved vet is stale —
+// Madden's sim engine CTDs on stale "team A's PracticeSquad has player on
+// team B" pointers (V7/V9/V10 confirmed empirically: nulling only the DC
+// pool isn't enough). Returns Set<tableId>.
+async function findTeamAffiliatedPoolIds(franchise) {
+  const ids = new Set();
+  // The 35-record Team table (skip the 1-record stub returned by getTableByName).
+  const teamCandidates = franchise.tables.filter(t => t.name === 'Team');
+  let teamMain = null;
+  for (const t of teamCandidates) {
+    try { await t.readRecords(); } catch (_) { continue; }
+    if (t.records.filter(r => !r.isEmpty).length >= 30) { teamMain = t; break; }
+  }
+  if (teamMain) {
+    const TEAM_PLAYER_ARRAY_FIELDS = [
+      'Roster', 'PracticeSquad', 'DraftedPlayers',
+      'MarketedPlayers', 'MarketedLegends',
+      'ContractOfferBlacklist', 'TradePlayerBlackList',
+      'DefenseActiveAbilitiesPlayers', 'OffenseActiveAbilitiesPlayers',
+      'DrillCompletedList', 'FocusTrainingList', 'MiniGameCompletedList',
+    ];
+    for (const rec of teamMain.records) {
+      if (rec.isEmpty) continue;
+      for (const fname of TEAM_PLAYER_ARRAY_FIELDS) {
+        const f = rec.getFieldByKey(fname);
+        if (!f || !f.isReference) continue;
+        const r = f.referenceData;
+        if (r && r.tableId !== 0) ids.add(r.tableId);
+      }
+    }
+  }
+  const dc = await findDcPoolTableId(franchise);
+  if (dc) ids.add(dc);
+  // Per-record team-linkage tables: each record has Player + Team refs.
+  // When a vet moves teams, the negotiation/offer/evaluation is stale.
+  // Null the Player ref to invalidate the record without empty()ing it
+  // (which would create dangling refs to the empty row).
+  for (const name of ['PlayerReSignNegotiation', 'ContractOffer', 'PlayerAcquisitionEvaluation']) {
+    const matches = franchise.tables.filter(t => t.name === name);
+    for (const t of matches) ids.add(t.header.tableId);
+  }
+  return ids;
+}
+
+function nullTeamAffiliatedRefs(refIndex, playerRow, poolIds) {
+  const refs = refIndex.get(playerRow);
+  if (!refs) return 0;
+  let nulled = 0;
+  for (const r of refs) {
+    if (!poolIds.has(r.sourceTableId)) continue;
+    try { r.field.value = NULL_REFERENCE; nulled++; } catch (_) {}
+  }
+  return nulled;
+}
+
 // Resolve which Player[] sub-table holds the DepthChart pool. The schema's
 // DepthChart records have 35 position-keyed array fields (QB, HB, WR, ...)
 // all referencing one Player[] table (~1260 cap). Look up that table by
@@ -852,16 +910,17 @@ async function main() {
   const rosterCtx = await buildTeamRosterContext(franchise, playerTable.header.tableId);
 
   // Build cross-table reference index up front. Lets vet team moves null
-  // stale DepthChart pointers to the moved player (the V7 sim-CTD root cause).
+  // stale pointers in EVERY team-affiliated Player[] table when a vet
+  // changes teams (V7/V9/V10 proved DepthChart-only nulling is insufficient).
   let refIndex = null;
-  let dcPoolTableId = null;
+  let teamAffiliatedPoolIds = null;
   if (ENABLE_VET_TEAM_MOVE || ENABLE_PASS_2_CLEAR) {
     console.log('  Scanning all tables for player references …');
     const t0 = Date.now();
     refIndex = await buildPlayerRefIndex(franchise, playerTable.header.tableId);
     const dt = Date.now() - t0;
-    dcPoolTableId = await findDcPoolTableId(franchise);
-    console.log(`  Ref index: ${refIndex.size} player rows referenced (${dt}ms). DepthChart pool tableId=${dcPoolTableId}`);
+    teamAffiliatedPoolIds = await findTeamAffiliatedPoolIds(franchise);
+    console.log(`  Ref index: ${refIndex.size} player rows referenced (${dt}ms). Team-affiliated pools: ${[...teamAffiliatedPoolIds].sort((a,b)=>a-b).join(',')}`);
   }
 
   // ── Pass 1: Veteran update ────────────────────────────────────────────────
@@ -960,10 +1019,18 @@ async function main() {
           if (currentTeam >= 0 && currentTeam <= 31) {
             if (removeFromTeamRoster(rosterCtx, currentTeam, rec.index)) stats.vetRosterRemoved++;
           }
-          // Null DC entries pointing at this player (old team's depth-chart
-          // slot at their position would otherwise be a stale ref → sim CTD).
-          stats.vetDcRefsNulled += nullDcReferencesTo(refIndex, rec.index, dcPoolTableId);
+          // Null every team-affiliated Player[] ref to this vet so old team
+          // doesn't keep them on PracticeSquad / MarketedPlayers / DC slot /
+          // active-ability lists / training lists. Without this, sim CTDs.
+          stats.vetDcRefsNulled += nullTeamAffiliatedRefs(refIndex, rec.index, teamAffiliatedPoolIds);
 
+          // Track the player's previous team — Madden's sim engine uses this
+          // for "this player's last team" lookups (free-agency markets, story
+          // arcs, transaction history). Without it, TeamIndex says B but
+          // PrevTeamIndex still says A's-original-prev-team — inconsistent.
+          if (currentTeam >= 0 && currentTeam <= 32) {
+            trySet(rec, 'PrevTeamIndex', currentTeam);
+          }
           trySet(rec, 'TeamIndex', targetTeam);
 
           if (targetTeam === TEAM_INDEX_FREE_AGENT) {
