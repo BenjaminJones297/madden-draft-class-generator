@@ -78,10 +78,12 @@ const ENABLE_PASS_3_INJECT = true;
 // FA pool so they don't sit in the future draft pool with their auto-generated
 // names. Non-destructive: just changes their TeamIndex + ContractStatus.
 const ENABLE_DISPOSE_UNUSED_AUTO_ROOKIES = true;
-// Also dispose Madden's YearDrafted=0,YearsPro=0 auto-UDFAs (procedurally-
-// named depth fillers like 'Emmett Johnson' that get tagged as Day1Starter
-// on team rosters). Sends them to the FA pool. Identified 2026-05-08.
-const ENABLE_DISPOSE_AUTO_UDFAS = true;
+// V19 ROLLBACK: keep OFF. The yd=0/yp=0 filter also matches our just-
+// injected real 2026 rookies (Pass 3 sets exactly those values) and
+// current-year depth players Madden curates. User confirmed 2026-05-08:
+// enabling this disposed real Chiefs RBs along with the auto-fillers.
+// Re-enable only with a more selective filter.
+const ENABLE_DISPOSE_AUTO_UDFAS = false;
 
 // ---------------------------------------------------------------------------
 // nflverse abbr → Madden franchise TeamIndex (0-31). Mirrors script 9 / 9c so
