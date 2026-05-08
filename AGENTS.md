@@ -18,6 +18,11 @@ Current runnable entry points:
 
 - `run.py`: draft class pipeline.
 - `roster_run.py`: active NFL roster pipeline.
+- `scripts/9g_sync_franchise_from_data.js`: applies vet ratings + 2026
+  rookies into a Madden 26 `.franchise` save. **Use the V20 working recipe
+  documented in `docs/llm-wiki/decisions.md` (2026-05-08 PM, late):** start
+  from `CAREER-UPDATED-ROSTER` (vets already on real teams), run default
+  9g (no vet TeamIndex moves). Sim past Week 1 works.
 
 Important source directories:
 
