@@ -68,6 +68,33 @@ Fetch/merge without extracting official ratings:
 python roster_run.py --skip-extract
 ```
 
+## Regenerate Draft Class From Franchise-Style Rookie File
+
+Script 6 already supports both shapes (`prospects_rated.json` and the
+flat-keyed franchise-export shape used by `rookie_ratings_from_franchise.json`).
+Just point `--input` at it.
+
+```powershell
+node scripts/6_create_draft_class.js --input data/rookie_ratings_from_franchise.json --out data/output/2026_draft_class_from_franchise.draftclass
+```
+
+Import in Madden: Main Hub → Choose Draft Class → Import Local File.
+
+## Build Combined Roster JSON (full_solution_2_ratings + nfl_rosters_2026)
+
+Script 8 now accepts `--ratings` and `--out` flags. Pass either the
+script-3 output (dict-shape) or the franchise-export shape
+(`full_solution_2_ratings.json`).
+
+```powershell
+python scripts/8_generate_roster_ratings.py --ratings data/full_solution_2_ratings.json --out data/roster_players_rated_full2.json
+```
+
+Output: per-player JSON with team + contract (from nflverse) + ratings
+(from the supplied ratings file). Note: this is a JSON merge, not a
+binary `.ros` file. mf 3.8 / 4.2 can't decompress real `.ros` files
+(`incorrect header check`), so writing one is open work.
+
 ## Recommended Workflow: Pre-Rosters Franchise + 9g
 
 **Verified working pattern (CAREER-9G-V20, 2026-05-08):**

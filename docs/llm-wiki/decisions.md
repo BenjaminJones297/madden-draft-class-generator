@@ -18,6 +18,27 @@ Implications:
 - Use `data/contracts/` before opening large JSON artifacts.
 - Treat `ARCHITECTURE.md` as future-state planning, not current behavior.
 
+## 2026-05-08 (PM, late) - V20's Season Timeline
+
+`CAREER-9G-V20` (and its source `CAREER-UPDATED-ROSTER`) sits at:
+- `CurrentSeasonYear = 2025`
+- `CurrentStage = OffSeason`
+- `CurrentOffseasonStage = 9` (late offseason)
+- `IsProDayComplete = true`
+- `CurrentWeek = 11` (offseason week counter)
+
+Practical interpretation: **right before the 2026 NFL Draft.** Madden's
+offseason stages run 1–10; stage 9 is pro-day-complete + pre-draft. From
+this state, the user can sim the draft in-game (which uses our injected
+2026 rookies' real-life draft-team data to place them on real teams via
+Madden's draft engine) without needing 9g's vet TeamIndex moves.
+
+Implication for future workflows: applying changes at this offseason
+stage may be more sim-tolerant than at Week-1-regular-season state
+(which is where our V11..V19 team-move attempts broke). The original
+`CAREER-CARDSWEEK1B4SIM` source we'd been editing was at week 1 of the
+regular season — possibly part of why team moves CTD'd there.
+
 ## 2026-05-08 (PM, late) - The Working Recipe: pre-rosters franchise + V8 9g
 
 **The working approach** for getting accurate vet teams + real 2026 rookies
