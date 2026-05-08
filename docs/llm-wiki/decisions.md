@@ -18,6 +18,44 @@ Implications:
 - Use `data/contracts/` before opening large JSON artifacts.
 - Treat `ARCHITECTURE.md` as future-state planning, not current behavior.
 
+## 2026-05-08 (PM, latest) - .ros Encoding: No Off-The-Shelf Path For M26
+
+`madden-franchise` (3.8.0 + 4.2.2) and `madden-file-tools` (the only sibling
+that ever touched rosters) **do not** support reading or writing M26 `.ros`
+files. Investigated 2026-05-08 across both libraries' source.
+
+**Why:**
+- `madden-franchise`'s `Constants.js` only declares `FRANCHISE` /
+  `FRANCHISE_COMMON` formats. No roster code path.
+- `FranchiseFile.js`'s `unpackFile` slices at fixed offset `0x52` and
+  runs `zlib.inflateSync` — fails on `.ros` because the M24+ FBCHUNKS
+  container isn't a zlib stream.
+- `madden-file-tools`'s `MaddenRosterHelper.js` was last updated 2021-08
+  for M21 TDB2 layout. Doesn't understand the FBCHUNKS wrapper that
+  M24/M25/M26 added.
+- M24+ uses a Frostbite chunked-archive wrapper (`FBCHUNKS`) as the
+  outer container for both franchise AND roster files. The franchise
+  inner reader is implemented; the roster inner reader (TDB2 in M26)
+  isn't.
+
+**Consequence:** `scripts/3_extract_roster_ratings.js` claims to read
+.ros via the franchise constructor — it succeeds on franchise saves
+(`CAREER-*`) but fails on actual `.ros` files like
+`data/raw/ROSTER-Official` and the user's `ROSTER-NEW`. No commit in
+this repo's git history shows it ever working on a real M26 .ros.
+
+**Workarounds, ranked by effort:**
+1. Use the V20 recipe (CAREER-UPDATED-ROSTER + 9g) — already working,
+   no .ros work needed.
+2. Reverse-engineer the FBCHUNKS chunk table to extract the inner
+   TDB2, feed to a hand-rolled or revived MaddenRosterHelper.
+3. Mine `madden-franchise`'s franchise FBCHUNKS extraction logic and
+   adapt for `.ros`. Same Frostbite container, different inner schema.
+
+For now: **option 1.** If we need the user-facing "build a roster from
+JSON" experience, the realistic deliverable is `roster_players_rated.json`
+(script 8 output) plus the V20 recipe — not a binary `.ros` file.
+
 ## 2026-05-08 (PM, late) - V20's Season Timeline
 
 `CAREER-9G-V20` (and its source `CAREER-UPDATED-ROSTER`) sits at:
