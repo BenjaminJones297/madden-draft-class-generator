@@ -12,6 +12,50 @@ not a full changelog.
 - Noted that `ARCHITECTURE.md` is a future web app blueprint, not the current
   implementation.
 
+## 2026-05-08 (PM) - Vet Team-Move Investigation: 8 invariants, sim CTD persists
+
+Tried to make 9g move ~1086 vets between teams per
+`full_solution_2_ratings.json` and have the franchise still sim past
+Week 1. Status: validator clean every iteration, franchise loads, sim
+CTDs immediately. Work paused on `9g-vets-team-move` branch with
+`ENABLE_VET_TEAM_MOVE = false` on baseline.
+
+8 invariants identified (all implemented in V11..V18):
+1. Roster Player[] per team — remove from old, append to new, compact.
+2. DepthChart pool — null any slot pointing at the moved vet.
+3. 13 team-affiliated Player[] sub-tables on populated Team record
+   (PracticeSquad / Marketed* / training / active-abilities).
+4. Per-record contract tables: PlayerReSignNegotiation, ContractOffer,
+   PlayerAcquisitionEvaluation — null Player ref on stale records.
+5. Player.PrevTeamIndex — set to old team.
+6. Contract layout normalization — pull Salary{ContractYear} as new
+   uniform per-year value, Bonus = Salary/9, ContractYear = 0. Mirrors
+   the working `CAREER-SEAHAWKSWEEK1` pattern.
+7. Team SalCap derived fields — recompute SalCapRosterSize +
+   SalCapRookieCount; zero SalCapCapRoom etc. for Madden recompute.
+8. Franchise.FreeAgents pool — 3500-slot Player[] sub-table on the
+   Franchise singleton holding league-wide FA refs. Append on
+   move-to-FA, remove on move-off-FA.
+
+Three parallel-agent investigations (2026-05-08):
+- madden-franchise lib v4.2.2 = ESM rewrite + schema fixes only. No new
+  trade/team-move APIs. Stay on 3.8.0.
+- Community tools survey: nobody publishes a working "bulk team move
+  via file edit, post-sim". Pattern is build rosters in `.ros` BEFORE
+  the franchise starts (FFC Retro Rosters etc.).
+- Auto-UDFA records (YD=0, YP=0): Madden auto-generates ~444 of them
+  as depth fillers with procedural names. One tagged "Day1Starter" on
+  the Chiefs prompted V19's dispose pass.
+
+V19 (on `9g-vets-team-move`): Pass 5 disposes 288 auto-UDFAs to FA
+pool. Fixes the visible "fake-named players on team rosters" issue.
+**Sim CTD on team-moved vets remains unresolved.**
+
+Bottom line: the file-edit path appears structurally bounded against
+post-sim bulk team moves. Recommendation for accurate vet teams is
+`scripts/9h_generate_roster_changes.js` (in-game checklist) or accept
+the V8 baseline (Madden's curated rosters).
+
 ## 2026-05-08 - Post-Draft Franchise Sync (9g) + Validators (9z) + In-Game Checklist (9h)
 
 Built end-to-end tooling to apply our generated 2026 rookie data and our
