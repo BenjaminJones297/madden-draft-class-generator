@@ -15,6 +15,9 @@
  *   node scripts/9h_generate_roster_changes.js --franchise <path>
  *     [--ratings <path>]  default: data/full_solution_2_ratings.json
  *     [--out <path>]      default: output/roster_changes.md
+ *     [--min-ovr <N>]     only include moves where the player's OverallRating
+ *                         is >= N. Default 0 (all moves). Useful to start
+ *                         with high-impact roster changes only (e.g. 85).
  *     [--include-unmatched] also list vets not in the ratings file
  */
 
@@ -89,6 +92,7 @@ async function main() {
   const ratingsPath   = findFlag('--ratings')   || RATINGS_DEFAULT;
   const outPath       = findFlag('--out')       || OUT_DEFAULT;
   const includeUnmatched = hasFlag('--include-unmatched');
+  const minOvr = parseInt(findFlag('--min-ovr') || '0', 10) || 0;
 
   if (!franchisePath || !fs.existsSync(franchisePath)) {
     console.error('Pass --franchise <path> (or set FRANCHISE_FILE in .env).');
@@ -162,6 +166,7 @@ async function main() {
       ovr:         Number(ovr) || 0,
       sourceStatus: ratingEntry.ContractStatus || '',
     };
+    if (row.ovr < minOvr) continue;
     if (currentTeam === FA_INDEX && targetTeam !== FA_INDEX) signings.push(row);
     else if (targetTeam === FA_INDEX && currentTeam !== FA_INDEX) releases.push(row);
     else trades.push(row);
@@ -182,6 +187,7 @@ async function main() {
   lines.push('');
   lines.push(`Generated from \`${path.basename(franchisePath)}\` against \`${path.basename(ratingsPath)}\`.`);
   lines.push('Execute these adjustments in Madden\'s in-game UI so the engine handles cap math, depth-chart updates, and negotiation bookkeeping correctly. 2026 rookies are handled separately by 9g.');
+  if (minOvr > 0) lines.push(`*Filtered to OVR >= ${minOvr}.*`);
   lines.push('');
   lines.push(`**Trades (team → team):** ${trades.length}`);
   lines.push(`**Sign from FA pool:** ${signings.length}`);
