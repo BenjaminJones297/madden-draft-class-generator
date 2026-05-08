@@ -12,6 +12,28 @@ not a full changelog.
 - Noted that `ARCHITECTURE.md` is a future web app blueprint, not the current
   implementation.
 
+## 2026-05-08 (PM, late) - Working Recipe Confirmed: V20
+
+After the team-move file-edit dead end, found the recipe by user-recall:
+
+- The user has `CAREER-UPDATED-ROSTER` in their Madden saves dir from a
+  prior session — a franchise template with vets already on real-life
+  teams (Davante Adams on LAR, Saquon Barkley on PHI, etc.).
+- Running default V8 9g on a copy of it produces **`CAREER-9G-V20`** —
+  vets correct + 2026 rookies fresh-injected on real-life teams + sim
+  past Week 1 works + exit clean.
+- The recipe does NOT require any vet TeamIndex changes. The pre-built
+  source already has them right. 9g just adds rookies + updates ratings.
+
+`ROSTER-NEW` (also in the saves dir) is in a different binary format —
+`madden-franchise` v3.8.0 AND v4.2.2 both fail with `incorrect header
+check` on it. Likely a `.ros` file in a format mf doesn't fully
+decompress. Not needed for the V20 recipe.
+
+How `CAREER-UPDATED-ROSTER` was originally built isn't documented here
+— likely an in-game roster import from `data/raw/ROSTER-Official` or a
+community roster file. Tracked as open work in `decisions.md`.
+
 ## 2026-05-08 (PM) - Vet Team-Move Investigation: 8 invariants, sim CTD persists
 
 Tried to make 9g move ~1086 vets between teams per

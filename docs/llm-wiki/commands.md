@@ -68,7 +68,25 @@ Fetch/merge without extracting official ratings:
 python roster_run.py --skip-extract
 ```
 
-## Post-Draft Franchise Sync
+## Recommended Workflow: Pre-Rosters Franchise + 9g
+
+**Verified working pattern (CAREER-9G-V20, 2026-05-08):**
+
+```powershell
+# Source MUST already have vets on their real-life teams.
+# CAREER-UPDATED-ROSTER is the user's verified working template.
+$src = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-UPDATED-ROSTER"
+$dst = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-9G-START"
+Copy-Item $src $dst
+node scripts/9g_sync_franchise_from_data.js --franchise $dst --apply --allow-unmatched
+node scripts/9z_validate_franchise.js --franchise $dst
+```
+
+Result: vet ratings + 2026 rookies on real teams + working sim. See
+`decisions.md` 2026-05-08 (PM, late) for why this works and the
+`9g-vets-team-move` branch for what doesn't.
+
+## Post-Draft Franchise Sync (raw apply against any starting save)
 
 Apply vet ratings + 2026 rookies into a `.franchise` save. **Always copy first
 and target the copy** — never write to the original.
