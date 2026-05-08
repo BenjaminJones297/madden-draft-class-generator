@@ -43,6 +43,24 @@ Optional reference input:
 - `scripts/9c_inject_rookies.js`: inject rookie data.
 - `scripts/9d_sync_roster.js`: sync roster records.
 - `scripts/9e_sync_ratings.js`: sync ratings.
+- `scripts/9f_inject_rookies_from_franchise.js`: inject rookies from a source
+  franchise file (alternative to `9g` when a separate franchise has the
+  desired 2026 class).
+- `scripts/9g_sync_franchise_from_data.js`: post-draft franchise sync. Updates
+  vet ratings + overlays 2026 rookies onto auto-prospect placeholders + adds
+  rookies to drafting team's Roster array. See `decisions.md` for why it does
+  NOT change vet TeamIndex by default.
+- `scripts/9h_generate_roster_changes.js`: read-only diff. Outputs a markdown
+  checklist (`output/roster_changes.md`) of trades / signings / releases the
+  user should execute in Madden's UI to make rosters match
+  `full_solution_2_ratings.json`.
+- `scripts/9z_validate_franchise.js`: ref-integrity check. Flags live records
+  pointing at empty Player rows (the leading load-CTD class).
+- `scripts/9z_diff_franchises.js`: field-level diff between two franchise files.
+- `scripts/9z_diagnose_rosters.js`: per-team Player counts + ContractStatus
+  distribution.
+- `scripts/9z_explore_player_arrays.js`: maps the populated Team table to its
+  Roster Player[] sub-table (skips the 1-record stub `getTableByName` returns).
 - `scripts/10_fetch_current_rosters.py`: fetch current roster data.
 - `scripts/10_fetch_game_results.py`: fetch game results.
 - `scripts/11_apply_game_results.js`: apply game result updates.

@@ -68,6 +68,37 @@ Fetch/merge without extracting official ratings:
 python roster_run.py --skip-extract
 ```
 
+## Post-Draft Franchise Sync
+
+Apply vet ratings + 2026 rookies into a `.franchise` save. **Always copy first
+and target the copy** — never write to the original.
+
+```powershell
+$src = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-START"
+$dst = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-9G"
+Copy-Item $src $dst
+node scripts/9g_sync_franchise_from_data.js --franchise $dst --apply --allow-unmatched
+```
+
+Validate the result before loading in Madden:
+
+```powershell
+node scripts/9z_validate_franchise.js --franchise $dst
+```
+
+Diff against the original to confirm only intended fields changed:
+
+```powershell
+node scripts/9z_diff_franchises.js --before $src --after $dst --summary
+```
+
+Generate the in-game roster-change checklist (markdown to
+`output/roster_changes.md`):
+
+```powershell
+node scripts/9h_generate_roster_changes.js --franchise $dst
+```
+
 ## Validation And Audits
 
 Python syntax check:
