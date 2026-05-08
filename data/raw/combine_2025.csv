@@ -1,0 +1,216 @@
+season,draft_year,draft_team,draft_round,draft_ovr,pfr_id,cfb_id,player_name,pos,school,ht,wt,forty,bench,vertical,broad_jump,cone,shuttle
+2025,2025,Dallas Cowboys,7,247,AkinTo00,tommy-akingbesote-1,Tommy Akingbesote,DT,Maryland,6-4,306,5.09,,28,103,,
+2025,2025,New York Giants,3,65,AlexDa01,darius-alexander-1,Darius Alexander,DT,Toledo,6-4,305,4.95,28,31.5,111,7.6,4.79
+2025,2025,Jacksonville Jaguars,7,236,AlleLe01,lequint-allen-1,LeQuint Allen,RB,Syracuse,6-0,204,,,35,120,,
+2025,2025,Washington Commanders,2,61,AmosTr00,trey-amos-1,Trey Amos,CB,Mississippi,6-1,195,4.43,13,32.5,126,,
+2025,2025,Seattle Seahawks,2,50,ArroEl00,elijah-arroyo-1,Elijah Arroyo,TE,Miami,6-5,250,,22,,,,
+2025,2025,Tennessee Titans,4,136,AyomEl00,elic-ayomanor-1,Elic Ayomanor,WR,Stanford,6-2,206,4.44,,38.5,127,,
+2025,2025,New York Jets,5,176,BaroTy00,tyler-baron-1,Tyler Baron,EDGE,Miami,6-5,258,4.62,19,35.5,121,,
+2025,2025,Denver Broncos,1,20,BarrJa01,jahdae-barron-1,Jahdae Barron,CB,Texas,5-11,194,4.39,,35,123,,
+2025,2025,Minnesota Vikings,6,202,BartGa00,gavin-bartholomew-1,Gavin Bartholomew,TE,Pittsburgh,6-5,246,4.7,,,,,
+2025,2025,Kansas City Chiefs,5,156,BassJe00,jeffrey-bassa-1,Jeffrey Bassa,LB,Oregon,6-1,232,4.63,21,38.5,118,7.34,
+2025,2025,Las Vegas Raiders,2,58,BechJa00,jack-bech-1,Jack Bech,WR,TCU,6-1,214,,19,34.5,125,6.84,4.21
+2025,2025,Green Bay Packers,2,54,BeltAn00,anthony-belton-1,Anthony Belton,OT,North Carolina St.,6-6,336,5.26,,29.5,107,7.77,
+2025,2025,Pittsburgh Steelers,5,164,BlacYa00,yahya-black-1,Yahya Black,DT,Iowa,6-6,336,5.39,,25.5,101,7.63,4.72
+2025,2025,Dallas Cowboys,1,12,BookTy00,tyler-booker-1,Tyler Booker,G,Alabama,6-5,321,5.38,,27,94,7.96,4.84
+2025,2025,New England Patriots,6,182,BorrAn00,andres-borregales-1,Andres Borregales,K,Miami,5-11,199,,,,,,
+2025,2025,Cincinnati Bengals,6,193,BrooTa00,tahj-brooks-1,Tahj Brooks,RB,Texas Tech,5-9,214,4.52,16,35,120,6.9,4.06
+2025,2025,New Orleans Saints,3,71,BrouVe00,vernon-broughton-1,Vernon Broughton,DT,Texas,6-5,311,,,,,,
+2025,2025,Denver Broncos,3,74,BryaPa00,pat-bryant-1,Pat Bryant,WR,Illinois,6-2,204,4.61,,37.5,124,,
+2025,2025,Baltimore Ravens,4,129,BuchTe00,teddye-buchanan-1,Teddye Buchanan,LB,California,6-2,233,4.6,26,40,125,,
+2025,2025,Arizona Cardinals,3,78,BurcJo00,jordan-burch-1,Jordan Burch,EDGE,Oregon,6-4,279,4.67,,,,,
+2025,2025,Arizona Cardinals,5,174,BurkDe01,denzel-burke-1,Denzel Burke,CB,Ohio St.,5-11,186,4.48,,,,,
+2025,2025,Los Angeles Chargers,3,86,CaldJa00,jamaree-caldwell-1,Jamaree Caldwell,DT,Oregon,6-2,332,5.16,,27,,,
+2025,2025,Philadelphia Eagles,1,31,CampJi00,jihaad-campbell-1,Jihaad Campbell,LB,Alabama,6-3,235,4.52,,,127,,
+2025,2025,New England Patriots,1,4,CampWi01,will-campbell-1,Will Campbell,OT,LSU,6-6,319,4.98,,32,113,,
+2025,2025,New York Giants,1,3,CartAb00,abdul-carter-1,Abdul Carter,EDGE,Penn St.,6-3,250,,,,,,
+2025,2025,Cincinnati Bengals,4,119,CartBa00,barrett-carter-1,Barrett Carter,LB,Clemson,6-0,231,,,34.5,116,,4.41
+2025,2025,San Francisco 49ers,7,249,ColbCo00,connor-colby-1,Connor Colby,G,Iowa,6-6,309,5.11,,28.5,110,7.78,4.63
+2025,2025,San Francisco 49ers,2,43,CollAl01,alfred-collins-1,Alfred Collins,DT,Texas,6-6,332,,,26,96,,
+2025,2025,Washington Commanders,1,29,ConeJo00,josh-conerly-jr-1,Joshua Conerly,OT,Oregon,6-5,311,5.05,,34.5,103,,
+2025,2025,Arizona Cardinals,6,211,ConnHa00,hayden-conner-1,Hayden Conner,G,Texas,6-6,314,,,,,7.9,4.88
+2025,2025,Dallas Cowboys,6,204,CornAj00,ajani-cornelius-1,Ajani Cornelius,OT,Oregon,6-5,310,,,,,,
+2025,2025,Denver Broncos,6,216,CrawJe00,jeremy-crawshaw-1,Jeremy Crawshaw,P,Florida,6-4,198,,,,,,
+2025,2025,New York Giants,1,25,DartJa00,jaxson-dart-1,Jaxson Dart,QB,Mississippi,6-2,223,,,,,,
+2025,2025,Baltimore Ravens,7,243,DellGa00,garrett-dellinger-1,Garrett Dellinger,G,LSU,6-4,325,,,,,,
+2025,2025,New Orleans Saints,7,254,DiggFa00,fadil-diggs-1,Fadil Diggs,EDGE,Syracuse,6-4,257,4.57,,30.5,121,,
+2025,2025,Tennessee Titans,4,103,DikeCh00,chimere-dike-1,Chimere Dike,WR,Florida,6-1,196,4.34,,38.5,128,6.82,4.27
+2025,2025,Tampa Bay Buccaneers,1,19,EgbuEm01,emeka-egbuka-1,Emeka Egbuka,WR,Ohio St.,6-1,202,,,,,,
+2025,2025,Seattle Seahawks,2,35,EmmaNi00,nick-emmanwori-1,Nick Emmanwori,SAF,South Carolina,6-3,220,4.38,20,43,138,,
+2025,2025,Houston Texans,2,48,ErseAi00,aireontae-ersery-1,Aireontae Ersery,OT,Minnesota,6-6,331,5.01,,29.5,111,7.81,4.82
+2025,2025,Carolina Panthers,4,114,EtieTr01,trevor-etienne-1,Trevor Etienne,RB,Georgia,5-9,198,4.42,15,35,124,,
+2025,2025,Carolina Panthers,5,163,EvanMi01,mitchell-evans-2,Mitchell Evans,TE,Notre Dame,6-5,258,4.74,,31,115,7.25,4.4
+2025,2025,Miami Dolphins,7,231,EwerQu00,quinn-ewers-1,Quinn Ewers,QB,Texas,6-2,214,,,,,,
+2025,2025,Dallas Cowboys,2,44,EzeiDo00,donovan-ezeiruaku-1,Donovan Ezeiruaku,EDGE,Boston Col.,6-3,248,,22,35.5,119,6.94,4.19
+2025,2025,Cincinnati Bengals,3,81,FairDy00,dylan-fairchild-1,Dylan Fairchild,G,Georgia,6-5,318,,,27.5,111,,
+2025,2025,New England Patriots,4,137,FarmJo00,joshua-farmer-1,Joshua Farmer,DT,Florida St.,6-3,305,5.11,26,29,112,,
+2025,2025,Minnesota Vikings,3,102,FeltTa00,tai-felton-1,Tai Felton,WR,Maryland,6-1,183,4.37,,39.5,130,,
+2025,2025,Los Angeles Rams,2,46,FergTe00,terrance-ferguson-1,Terrance Ferguson,TE,Oregon,6-5,247,4.63,,39,122,,
+2025,2025,Detroit Lions,5,171,FrazMi00,miles-frazier-1,Miles Frazier,G,LSU,6-6,317,5.24,,31,108,,
+2025,2025,Cleveland Browns,3,94,GabrDi00,dillon-gabriel-1,Dillon Gabriel,QB,Oregon,5-11,205,,,,,,
+2025,2025,Indianapolis Colts,5,151,GiddDJ00,dj-giddens-1,DJ Giddens,RB,Kansas St.,6-0,212,4.43,,39.5,130,,4.33
+2025,2025,Kansas City Chiefs,3,66,GillAs00,ashton-gillotte-1,Ashton Gillotte,EDGE,Louisville,6-3,264,,24,36.5,120,,
+2025,2025,Green Bay Packers,1,23,GoldMa02,matthew-golden-1,Matthew Golden,WR,Texas,5-11,191,4.29,,,,,
+2025,2025,Cleveland Browns,1,5,GrahMa00,mason-graham-2,Mason Graham,DT,Michigan,6-4,296,,24,,,,
+2025,2025,Las Vegas Raiders,3,99,GranCh00,,Charles Grant,OT,William & Mary,6-5,311,,,,,,
+2025,2025,Miami Dolphins,1,13,GranKe01,kenneth-grant-2,Kenneth Grant,DT,Michigan,6-4,331,,22,,,,
+2025,2025,Baltimore Ravens,2,59,GreeMi02,mike-green-14,Mike Green,EDGE,Marshall,6-3,251,,28,,,,
+2025,2025,Buffalo Bills,1,30,HairMa00,maxwell-hairston-1,Maxwell Hairston,CB,Kentucky,5-11,183,4.28,,39.5,129,,
+2025,2025,Los Angeles Rams,5,148,HamiTy00,ty-hamilton-2,Ty Hamilton,DT,Ohio St.,6-3,299,,,,,,
+2025,2025,Los Angeles Chargers,1,22,HampOm00,omarion-hampton-1,Omarion Hampton,RB,North Carolina,6-0,221,4.46,18,38,130,,4.4
+2025,2025,Buffalo Bills,5,170,HancJo00,jordan-hancock-1,Jordan Hancock,CB,Ohio St.,6-0,195,,,,,,
+2025,2025,Pittsburgh Steelers,1,21,HarmDe01,derrick-harmon-2,Derrick Harmon,DT,Oregon,6-5,313,4.95,,,,,
+2025,2025,Los Angeles Chargers,2,55,HarrTr03,tre-harris-1,Cleveland Harris,WR,Mississippi,6-2,205,4.54,,38.5,125,,
+2025,2025,Denver Broncos,2,60,HarvRJ00,rj-harvey-1,RJ Harvey,RB,Central Florida,5-8,205,4.4,16,38,127,,4.34
+2025,2025,Detroit Lions,6,196,HassAh00,ahmed-hassanein-1,Ahmed Hassanein,EDGE,Boise St.,6-2,267,4.77,27,32.5,113,,
+2025,2025,Buffalo Bills,5,173,HaweJa00,jackson-hawes-1,Jackson Hawes,TE,Georgia Tech,6-5,253,4.82,16,34.5,121,,4.4
+2025,2025,Tennessee Titans,4,120,HelmGu00,gunnar-helm-1,Gunnar Helm,TE,Texas,6-5,241,4.84,,30,,7.15,4.4
+2025,2025,Las Vegas Raiders,4,135,HemiTo00,tonka-hemingway-1,Tonka Hemingway,DT,South Carolina,6-3,284,,,32,112,7.36,4.48
+2025,2025,New England Patriots,2,38,HendTr02,treveyon-henderson-1,TreVeyon Henderson,RB,Ohio St.,5-10,202,4.43,,38.5,128,,
+2025,2025,Houston Texans,2,34,HiggJa00,jayden-higgins-1,Jayden Higgins,WR,Iowa St.,6-4,214,4.47,,39,128,,
+2025,2025,Philadelphia Eagles,6,191,HintMy00,myles-hinton-1,Myles Hinton,OT,Michigan,6-7,323,,,31.5,,,4.96
+2025,2025,Seattle Seahawks,5,166,HortTo00,tory-horton-1,Tory Horton,WR,Colorado St.,6-3,196,4.41,,37.5,,,
+2025,2025,Pittsburgh Steelers,6,185,HowaWi01,will-howard-2,Will Howard,QB,Ohio St.,6-4,236,,,31.5,112,7.13,4.33
+2025,2025,Los Angeles Rams,4,117,HuntJa03,jarquez-hunter-1,Jarquez Hunter,RB,Auburn,5-9,204,4.44,21,33.5,120,,
+2025,2025,Jacksonville Jaguars,1,2,HuntTr00,travis-hunter-2,Travis Hunter,CB/WR,Colorado,6-0,188,,,,,,
+2025,2025,Los Angeles Chargers,5,165,GadsOr01,oronde-gadsden-ii-1,Oronde Gadsden II,TE,Syracuse,6-5,243,,,34,114,,
+2025,2025,Miami Dolphins,6,179,GordOl00,ollie-gordon-1,Ollie Gordon II,RB,Oklahoma St.,6-1,226,4.61,,34.5,120,,
+2025,2025,Chicago Bears,2,39,BurdLu00,luther-burden-1,Luther Burden III,WR,Missouri,6-0,206,4.41,,,,,
+2025,2025,Jacksonville Jaguars,6,200,LaneRa00,rayuan-lane-1,Rayuan Lane III,SAF,Navy,5-11,200,4.57,,37,128,7.1,4.28
+2025,2025,Seattle Seahawks,7,238,WhitRi01,ricky-white-2,Ricky White III,WR,UNLV,6-1,184,4.61,,36,123,,
+2025,2025,Minnesota Vikings,5,139,IngrTy00,tyrion-ingram-dawkins-1,Tyrion Ingram-Dawkins,DT,Georgia,6-5,276,4.86,,36,124,7.28,4.34
+2025,2025,Carolina Panthers,5,140,JackCa01,camron-jackson-1,Cam Jackson,DT,Florida,6-6,328,5.17,,24.5,93,,
+2025,2025,Minnesota Vikings,1,24,JackDo03,donovan-jackson-1,Donovan Jackson,G,Ohio St.,6-4,315,,,,,,
+2025,2025,Buffalo Bills,3,72,JackLa03,landon-jackson-1,Landon Jackson,EDGE,Arkansas,6-6,264,4.68,,40.5,129,,
+2025,2025,San Francisco 49ers,5,147,JameJo01,jordan-james-3,Jordan James,RB,Oregon,5-10,205,4.55,,,117,,
+2025,2025,Dallas Cowboys,5,152,JameSh00,shemar-james-1,Shemar James,LB,Florida,6-1,222,4.69,,32,117,7.09,4.27
+2025,2025,Las Vegas Raiders,1,6,JeanAs00,ashton-jeanty-1,Ashton Jeanty,RB,Boise St.,5-9,211,,,,,,
+2025,2025,Pittsburgh Steelers,3,83,JohnKa03,kaleb-johnson-2,Kaleb Johnson,RB,Iowa,6-1,224,4.57,,,,,
+2025,2025,Tampa Bay Buccaneers,7,235,JohnTe03,tez-johnson-1,Tez Johnson,WR,Oregon,5-10,154,4.51,,37,131,6.65,4.15
+2025,2025,Arizona Cardinals,2,47,JohnWi02,will-johnson-10,Will Johnson,CB,Michigan,6-2,194,,,,,,
+2025,2025,Baltimore Ravens,3,91,JoneEm02,emery-jones-1,Emery Jones,OT,LSU,6-5,315,,,,,,
+2025,2025,Denver Broncos,3,101,JoneSa01,saivion-jones-1,Sai'vion Jones,EDGE,LSU,6-5,280,,19,33,119,,
+2025,2025,New Orleans Saints,1,9,BankKe01,kelvin-banks-jr-1,Kelvin Banks Jr.,OT,Texas,6-5,315,5.16,,32,104,7.81,4.66
+2025,2025,Atlanta Falcons,4,118,BowmBi01,billy-bowman-1,Billy Bowman Jr.,SAF,Oklahoma,5-10,192,4.42,17,35.5,123,,
+2025,2025,Cleveland Browns,3,67,FannHa00,harold-fannin-jr-1,Harold Fannin Jr.,TE,Bowling Green,6-3,241,4.71,22,34,118,6.97,4.39
+2025,2025,Carolina Panthers,6,208,HornJi00,jimmy-horn-jr-1,Jimmy Horn Jr.,WR,Colorado,5-8,174,4.46,,38,128,,4.41
+2025,2025,Cincinnati Bengals,2,49,KnigDe00,demetrius-knight-ii-1,Demetrius Knight Jr.,LB,South Carolina,6-2,235,4.58,22,31.5,118,7.12,4.25
+2025,2025,Miami Dolphins,5,150,MarsJa00,jason-marshall-jr-1,Jason Marshall Jr.,CB,Florida,6-0,194,4.49,,37.5,125,,
+2025,2025,Los Angeles Rams,5,172,PaulCh01,chris-paul-jr-1,Chris Paul Jr.,LB,Mississippi,6-1,222,4.63,,36,117,,
+2025,2025,Atlanta Falcons,1,26,PearJa00,james-pearce-jr-1,James Pearce Jr.,EDGE,Tennessee,6-5,245,4.47,,31,123,,
+2025,2025,Dallas Cowboys,3,76,ReveSh00,shavon-revel-1,Shavon Revel Jr.,CB,East Carolina,6-2,194,,,,,,
+2025,2025,Las Vegas Raiders,4,108,ThorDo00,donte-thornton-1,Dont'e Thornton Jr.,WR,Tennessee,6-5,205,4.3,,33,126,,
+2025,2025,Miami Dolphins,5,155,TradDa00,dante-trader-1,Dante Trader Jr.,SAF,Maryland,5-11,196,,12,31,117,7.09,4.32
+2025,2025,Tennessee Titans,3,82,WinsKe02,kevin-winston-1,Kevin Winston Jr.,SAF,Penn St.,6-2,215,,,,,,
+2025,2025,Cleveland Browns,2,36,JudkQu00,quinshon-judkins-1,Quinshon Judkins,RB,Ohio St.,6-0,221,4.48,,38.5,132,,
+2025,2025,Philadelphia Eagles,5,168,KendDr00,drew-kendall-1,Drew Kendall,C,Boston Col.,6-4,308,5.05,,,,7.56,4.51
+2025,2025,Los Angeles Chargers,4,125,KennKy00,kyle-kennard-1,Kyle Kennard,EDGE,South Carolina,6-4,254,4.73,23,,,,
+2025,2025,Minnesota Vikings,6,201,KingKo00,kobe-king-1,Kobe King,LB,Penn St.,6-1,236,,,,,,
+2025,2025,Jacksonville Jaguars,4,107,KiseJa00,jack-kiser-1,Jack Kiser,LB,Notre Dame,6-2,231,,,,,,
+2025,2025,Baltimore Ravens,6,178,KoneBi00,bilhal-kone-1,Bilhal Kone,CB,Western Michigan,6-1,190,4.43,,31.5,124,,
+2025,2025,Houston Texans,7,255,LachLu00,luke-lachey-1,Luke Lachey,TE,Iowa,6-6,251,,,35,120,7.18,4.47
+2025,2025,Los Angeles Chargers,5,158,LambKe01,keandre-lambert-smith-1,KeAndre Lambert-Smith,WR,Auburn,6-1,190,4.37,,34.5,124,,
+2025,2025,Washington Commanders,4,128,LaneJa00,jaylin-lane-1,Joshua Lane,WR,Virginia Tech,5-10,191,4.34,14,40,132,6.75,4.12
+2025,2025,Indianapolis Colts,6,189,LeonRi02,riley-leonard-1,Riley Leonard,QB,Notre Dame,6-4,216,,,,,,
+2025,2025,Las Vegas Raiders,7,222,LindCo00,cody-lindenberg-1,Cody Lindenberg,LB,Minnesota,6-2,236,,,,,,
+2025,2025,Chicago Bears,1,10,LoveCo00,colston-loveland-1,Colston Loveland,TE,Michigan,6-6,248,,,,,,
+2025,2025,Detroit Lions,7,244,LoveDo00,dominic-lovett-1,Dominic Lovett,WR,Georgia,5-10,185,4.4,,33.5,120,,4.27
+2025,2025,Buffalo Bills,6,206,LundCh00,chase-lundt-1,Chase Lundt,OT,Connecticut,6-8,304,,,,,,
+2025,2025,Dallas Cowboys,7,239,MafaPh00,phil-mafah-1,Phil Mafah,RB,Clemson,6-1,234,,,,,,
+2025,2025,San Francisco 49ers,3,75,MartNi01,nickolas-martin-1,Nickolas Martin,LB,Oklahoma St.,6-0,221,4.53,26,38,123,,
+2025,2025,Seattle Seahawks,7,223,MartDa02,damien-martinez-1,Damien Martinez,RB,Miami,6-0,217,4.51,,35,124,,
+2025,2025,New Orleans Saints,7,248,MataMo00,moliki-matavao-1,Moliki Matavao,TE,UCLA,6-6,260,4.81,,32.5,114,,
+2025,2025,New York Jets,5,162,MauiFr00,francisco-mauigoa-1,Francisco Mauigoa,LB,Miami,6-2,233,4.6,,35,121,7.15,4.24
+2025,2025,New York Giants,5,154,MbowMa00,marcus-mbow-1,Marcus Mbow,G,Purdue,6-4,303,,,,,,4.67
+2025,2025,Philadelphia Eagles,6,181,McCoKy00,kyle-mccord-1,Kyle McCord,QB,Syracuse,6-3,218,,,,,,
+2025,2025,Carolina Panthers,1,8,McMiTe00,tetairoa-mcmillan-1,Tetairoa McMillan,WR,Arizona,6-4,219,,,,,,
+2025,2025,Philadelphia Eagles,5,145,McWiMa01,mac-mcwilliams-1,Decarrion McWilliams,CB,Central Florida,5-10,191,4.41,,34,,,
+2025,2025,New York Jets,1,7,MembAr00,armand-membou-1,Armand Membou,OT,Missouri,6-4,332,4.91,,34,115,,
+2025,2025,Houston Texans,6,197,MertGr00,graham-mertz-1,Graham Mertz,QB,Florida,6-3,212,,,,,,
+2025,2025,Los Angeles Chargers,6,214,MickRJ00,rj-mickens-1,R.J. Mickens,SAF,Clemson,6-0,199,4.49,,41.5,121,,
+2025,2025,Seattle Seahawks,3,92,MilrJa00,jalen-milroe-1,Jalen Milroe,QB,Alabama,6-2,217,,,,,,
+2025,2025,Jacksonville Jaguars,3,89,MiluWy00,wyatt-milum-1,Wyatt Milum,OT,West Virginia,6-7,313,5.27,,30,108,,4.69
+2025,2025,Chicago Bears,7,233,MonaKy00,kyle-monangai-1,Kyle Monangai,RB,Rutgers,5-8,211,4.6,,34.5,117,,
+2025,2025,Philadelphia Eagles,5,161,MondSm01,smael-mondon-jr-1,Smael Mondon,LB,Georgia,6-2,224,4.58,,,130,,
+2025,2025,Jacksonville Jaguars,7,221,MonhJo00,jonah-monheim-1,Jonah Monheim,C,USC,6-4,302,,,,,,
+2025,2025,New York Jets,4,130,MoorMa04,malachi-moore-2,Malachi Moore,SAF,Alabama,5-11,196,,,,,,
+2025,2025,Tampa Bay Buccaneers,2,53,MorrBe00,benjamin-morrison-1,Benjamin Morrison,CB,Notre Dame,6-0,193,,,,,,
+2025,2025,Philadelphia Eagles,2,64,MukuAn00,andrew-mukuba-1,Andrew Mukuba,SAF,Texas,5-11,186,4.45,,,,,
+2025,2025,Tennessee Titans,6,188,MullKa00,kalel-mullings-1,Kalel Mullings,RB,Michigan,6-2,226,,,,,,
+2025,2025,Los Angeles Rams,7,242,MumpKo00,konata-mumpfield-1,Konata Mumpfield,WR,Pittsburgh,5-11,186,4.59,,36,124,,
+2025,2025,New Orleans Saints,6,184,NealDe00,devin-neal-3,Devin Neal,RB,Kansas,5-11,213,4.58,,37.5,124,,
+2025,2025,Atlanta Falcons,7,218,NelsJa01,jack-nelson-1,Jack Nelson,OT,Wisconsin,6-7,314,,,,,,
+2025,2025,Houston Texans,3,79,NoelJa00,jaylin-noel-1,Jaylin Noel,WR,Iowa St.,5-10,194,4.39,23,41.5,134,6.82,4.17
+2025,2025,Arizona Cardinals,1,16,NoleWa00,walter-nolen-1,Walter Nolen,DT,Mississippi,6-4,296,,,,,,
+2025,2025,Kansas City Chiefs,2,63,NormOm00,omarr-norman-lott-1,Omarr Norman-Lott,DT,Tennessee,6-2,291,,,31.5,113,,
+2025,2025,Tennessee Titans,2,52,OladOl00,femi-oladejo-1,Oluwafemi Oladejo,EDGE,UCLA,6-3,259,,20,36.5,120,,
+2025,2025,Green Bay Packers,5,159,OlivCo00,collin-oliver-1,Collin Oliver,EDGE,Oklahoma St.,6-2,240,4.56,,39,126,,
+2025,2025,Seattle Seahawks,5,175,OuztRo00,robbie-ouzts-1,Robbie Ouzts,TE,Alabama,6-3,274,4.91,26,34,119,7.34,4.45
+2025,2025,Tampa Bay Buccaneers,3,84,ParrJa01,jacob-parrish-1,Jacob Parrish,CB,Kansas St.,5-10,191,4.35,12,37.5,129,,
+2025,2025,Baltimore Ravens,6,210,PeebAe00,aeneas-peebles-1,Aeneas Peebles,DT,Virginia Tech,6-1,282,4.94,,32.5,109,,4.7
+2025,2025,Las Vegas Raiders,6,180,PeguJJ00,jj-pegues-1,JJ Pegues,DT,Mississippi,6-3,309,5.15,,27.5,,,
+2025,2025,Las Vegas Raiders,3,68,PortDa00,darien-porter-1,Darien Porter,CB,Iowa St.,6-3,195,4.3,,36.5,131,6.71,4.04
+2025,2025,Philadelphia Eagles,6,209,PoweAn00,antwuan-powell-1,Antwaun Powell-Ryland,EDGE,Virginia Tech,6-3,258,4.69,,36.5,124,,
+2025,2025,Buffalo Bills,7,240,PratKa00,kaden-prather-1,Kaden Prather,WR,Maryland,6-4,204,4.46,,30,114,,
+2025,2025,Jacksonville Jaguars,3,88,RansCa00,caleb-ransaw-1,Caleb Ransaw,CB,Tulane,5-11,197,4.33,16,40,129,,
+2025,2025,Carolina Panthers,4,122,RansLa00,lathan-ransom-1,Lathan Ransom,SAF,Ohio St.,6-0,206,,,,,,
+2025,2025,Detroit Lions,2,57,RatlTa00,tate-ratledge-1,Tate Ratledge,G,Georgia,6-7,308,4.97,,32,113,7.38,
+2025,2025,Houston Texans,6,187,ReedJa04,jaylen-reed-1,Jaylen Reed,SAF,Penn St.,6-0,211,4.49,19,33.5,,,
+2025,2025,New Orleans Saints,4,131,RileQu00,quincy-riley-2,Quincy Riley,CB,Louisville,5-11,194,4.48,,,,,
+2025,2025,Cincinnati Bengals,5,153,RiveJa00,jalen-rivers-1,Jalen Rivers,OT,Miami,6-6,319,5.29,,,108,,
+2025,2025,Tampa Bay Buccaneers,5,157,RobeEl01,elijah-roberts-1,Elijah Roberts,EDGE,SMU,6-4,285,4.78,,31.5,116,,
+2025,2025,Denver Broncos,4,134,RobiQu00,quandarrius-robinson-1,Que Robinson,EDGE,Alabama,6-4,243,,,,,,
+2025,2025,Philadelphia Eagles,4,111,RobiTy02,ty-robinson-1,Ty Robinson,DT,Nebraska,6-5,288,4.83,28,33.5,119,7.58,4.5
+2025,2025,San Francisco 49ers,7,227,RourKu01,kurtis-rourke-1,Kurtis Rourke,QB,Indiana,6-4,220,,,,,,
+2025,2025,Kansas City Chiefs,4,133,RoyaJa00,jalen-royals-1,Jalen Royals,WR,Utah St.,6-0,205,4.42,13,,,,
+2025,2025,Cleveland Browns,4,126,SampDy00,dylan-sampson-1,Dylan Sampson,RB,Tennessee,5-8,200,,13,35,124,,
+2025,2025,Cleveland Browns,5,144,SandSh00,shedeur-sanders-1,Shedeur Sanders,QB,Colorado,6-2,212,,,,,,
+2025,2025,Buffalo Bills,2,41,SandTJ00,tj-sanders-2,T.J. Sanders,DT,South Carolina,6-4,297,,,31.5,112,7.7,4.67
+2025,2025,New Orleans Saints,3,93,SankJo00,jonas-sanker-1,Jonas Sanker,SAF,Virginia,6-0,206,4.48,12,36.5,128,,
+2025,2025,Miami Dolphins,2,37,SavaJo00,jonah-savaiinaea-1,Jonah Savaiinaea,OT,Arizona,6-4,324,4.95,,29,106,,4.66
+2025,2025,Pittsburgh Steelers,4,123,SawyJa00,jack-sawyer-2,Jack Sawyer,EDGE,Ohio St.,6-4,260,,,,,,
+2025,2025,Cleveland Browns,2,33,SchwCa00,carson-schwesinger-1,Carson Schwesinger,LB,UCLA,6-3,242,,20,39.5,,,
+2025,2025,Carolina Panthers,2,51,ScouNi00,nic-caraway-1,Nic Scourton,EDGE,Texas A&M,6-3,257,,,,,,
+2025,2025,New Orleans Saints,2,40,ShouTy00,tyler-shough-1,Tyler Shough,QB,Louisville,6-5,219,4.63,,32,117,,
+2025,2025,Kansas City Chiefs,1,32,SimmJo01,josh-simmons-1,Josh Simmons,OT,Ohio St.,6-5,317,,,,,,
+2025,2025,Arizona Cardinals,4,115,SimoCo01,cody-simon-1,Cody Simon,LB,Ohio St.,6-2,229,,,,,,
+2025,2025,New York Giants,4,105,SkatCa00,cameron-skattebo-1,Cam Skattebo,RB,Arizona St.,5-10,219,,,39.5,123,,
+2025,2025,Tennessee Titans,5,167,SlatJa01,,Jackson Slater,G,Sacramento St.,6-3,311,5.01,,28.5,108,,
+2025,2025,New York Jets,4,110,SmitAr01,arian-smith-1,Arian Smith,WR,Georgia,6-0,179,4.36,,38,127,6.82,4.19
+2025,2025,Kansas City Chiefs,7,228,SmitBr09,brashard-smith-1,Brashard Smith,RB,SMU,5-10,194,4.39,,32.5,117,,
+2025,2025,Houston Texans,3,97,SmitJa11,jaylin-smith-1,Jaylin Smith,CB,USC,5-11,187,4.45,,32.5,122,,
+2025,2025,Green Bay Packers,4,124,SorrBa00,barryn-sorrell-1,Barryn Sorrell,EDGE,Texas,6-3,256,4.68,28,34,121,7.06,4.36
+2025,2025,Baltimore Ravens,1,27,StarMa00,malaki-starks-1,Malaki Starks,SAF,Georgia,6-1,197,4.5,,33,,7.26,4.45
+2025,2025,Los Angeles Rams,3,90,StewJo03,josaiah-stewart-1,Josaiah Stewart,EDGE,Michigan,6-1,249,,,,,,
+2025,2025,Cincinnati Bengals,1,17,StewSh00,shemar-stewart-1,Shemar Stewart,EDGE,Texas A&M,6-5,267,4.59,,40,131,,
+2025,2025,San Francisco 49ers,3,100,StouUp00,upton-stout-1,Upton Stout,CB,Western Kentucky,5-9,181,4.44,21,37.5,128,,4.29
+2025,2025,Buffalo Bills,6,177,StroDo01,dorian-strong-1,Dorian Strong,CB,Virginia Tech,6-1,185,4.5,15,36,116,,
+2025,2025,New Orleans Saints,4,112,StutDa00,danny-stutsman-1,Danny Stutsman,LB,Oklahoma,6-3,233,4.52,,34,,,
+2025,2025,New England Patriots,5,146,SwinBr01,bradyn-swinson-1,Bradyn Swinson,EDGE,LSU,6-4,255,,,,,7.13,4.33
+2025,2025,New York Jets,2,42,TaylMa02,mason-taylor-1,Mason Taylor,TE,LSU,6-5,251,,,,,,
+2025,2025,Detroit Lions,3,70,TeSlIs00,isaac-teslaa-1,Isaac TeSlaa,WR,Arkansas,6-4,214,4.43,17,39.5,129,6.85,4.05
+2025,2025,New York Jets,3,73,ThomAz00,azareyeh-thomas-1,Azareye'h Thomas,CB,Florida St.,6-2,197,,,,122,,
+2025,2025,Dallas Cowboys,7,217,ToiaJa00,jay-toia-1,Jay Toia,DT,UCLA,6-2,342,,,,,,
+2025,2025,Chicago Bears,2,56,TrapOz00,ozzy-trapilo-1,Ozzy Trapilo,OT,Boston Col.,6-8,316,5.21,,,106,7.71,4.7
+2025,2025,Indianapolis Colts,4,127,TravJa00,jalen-travis-1,Jalen Travis,OT,Iowa St.,6-8,339,5.14,,35,112,,
+2025,2025,Indianapolis Colts,2,45,TuimJT00,jt-tuimoloau-1,JT Tuimoloau,EDGE,Ohio St.,6-4,265,,,,,,
+2025,2025,Chicago Bears,2,62,TurnSh00,shemar-turner-1,Shemar Turner,DT,Texas A&M,6-3,290,,,,,,
+2025,2025,Jacksonville Jaguars,4,104,TuteBh00,bhayshul-tuten-1,Bhayshul Tuten,RB,Virginia Tech,5-9,206,4.32,,40.5,130,,4.41
+2025,2025,Carolina Panthers,3,77,UmanPr00,princely-umanmielen-1,Princely Umanmielen,EDGE,Mississippi,6-4,244,4.72,,38,126,7.33,4.46
+2025,2025,Buffalo Bills,4,109,WalkDe04,deone-walker-1,Deone Walker,DT,Kentucky,6-7,331,,,25,104,,
+2025,2025,Atlanta Falcons,1,15,WalkJa02,jalon-walker-1,Jalon Walker,LB,Georgia,6-1,243,,,,,,
+2025,2025,Indianapolis Colts,3,80,WallJu00,justin-walley-1,Justin Walley,CB,Minnesota,5-10,190,4.4,,,,,
+2025,2025,Tennessee Titans,1,1,WardCa00,cameron-ward-1,Cam Ward,QB,Miami,6-2,219,,,,,,
+2025,2025,Indianapolis Colts,1,14,WarrTy00,tyler-warren-1,Tyler Warren,TE,Penn St.,6-6,256,,,,,,
+2025,2025,Atlanta Falcons,3,96,WattXa00,xavier-watts-1,Xavier Watts,SAF,Notre Dame,6-0,204,,,,,,
+2025,2025,San Francisco 49ers,4,113,WestCJ00,cj-west-1,CJ West,DT,Indiana,6-1,316,4.95,,33,,,
+2025,2025,Baltimore Ravens,6,203,WestLa01,lajohntay-wester-1,LaJohntay Wester,WR,Colorado,5-10,163,4.46,,32,121,,
+2025,2025,Philadelphia Eagles,6,207,WillCa04,cameron-williams-1,Cameron Williams,OT,Texas,6-6,317,,,,,,
+2025,2025,New England Patriots,3,69,WillKy03,kyle-williams-11,Kyle Williams,WR,Washington St.,5-11,190,4.4,,36.5,119,,
+2025,2025,San Francisco 49ers,1,11,WillMy00,mykel-williams-1,Mykel Williams,EDGE,Georgia,6-5,260,,,,,,
+2025,2025,Kansas City Chiefs,3,85,WillNo01,nohl-williams-1,Nohl Williams,CB,California,6-0,199,4.5,19,33.5,120,,
+2025,2025,Green Bay Packers,3,87,WillSa01,savion-williams-2,Savion Williams,WR,TCU,6-4,222,4.48,,,,,
+2025,2025,Detroit Lions,1,28,WillTy02,tyleik-williams-1,Tyleik Williams,DT,Ohio St.,6-3,334,,,,,,
+2025,2025,New England Patriots,3,95,WilsJa02,jared-wilson-2,Jared Wilson,C,Georgia,6-3,310,4.84,,32,112,,4.56
+2025,2025,Indianapolis Colts,7,232,WohlHu00,hunter-wohler-1,Hunter Wohler,SAF,Wisconsin,6-2,213,4.57,,37,120,6.72,4.25
+2025,2025,New England Patriots,4,106,WoodCr00,criag-woodson-1,Craig Woodson,SAF,California,6-0,200,4.45,13,36,127,,
