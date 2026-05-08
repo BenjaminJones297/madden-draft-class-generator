@@ -465,6 +465,53 @@ function makeJerseyAllocator() {
 }
 
 // ---------------------------------------------------------------------------
+// Reference-cleaning empty
+//
+// Madden's invariant (verified by 9z against a clean save): no live record
+// references an empty Player row. Calling rec.empty() naively breaks this in
+// every table that pointed at the now-empty row — HistoryEntry, Player[]
+// roster arrays, stat snapshots, etc. — and the franchise won't load.
+//
+// `buildPlayerRefIndex` does a one-time scan of every table and indexes each
+// reference field by the Player row it points at. `nullReferencesTo` then
+// pre-emptively nulls every reference to a target row before we empty it,
+// preserving the invariant.
+// ---------------------------------------------------------------------------
+const NULL_REFERENCE = '0'.repeat(32);   // 15-bit tableId=0 + 17-bit rowNumber=0
+
+async function buildPlayerRefIndex(franchise, playerTableId) {
+  const index = new Map();   // playerRow → Field[]
+  for (const table of franchise.tables) {
+    if (table.name === 'Player') continue;
+    try { await table.readRecords(); } catch (_) { continue; }   // schema gaps — skip
+    for (const rec of table.records) {
+      if (rec.isEmpty) continue;
+      const fields = rec.fieldsArray || [];
+      for (const f of fields) {
+        if (!f.isReference) continue;
+        const r = f.referenceData;
+        if (!r) continue;
+        if (r.tableId === 0 && r.rowNumber === 0) continue;
+        if (r.tableId !== playerTableId) continue;
+        if (!index.has(r.rowNumber)) index.set(r.rowNumber, []);
+        index.get(r.rowNumber).push(f);
+      }
+    }
+  }
+  return index;
+}
+
+function nullReferencesTo(refIndex, playerRow) {
+  const fields = refIndex.get(playerRow);
+  if (!fields) return 0;
+  let nulled = 0;
+  for (const f of fields) {
+    try { f.value = NULL_REFERENCE; nulled++; } catch (_) { /* skip locked field */ }
+  }
+  return nulled;
+}
+
+// ---------------------------------------------------------------------------
 // Franchise open
 // ---------------------------------------------------------------------------
 function openFranchise(filePath) {
@@ -634,7 +681,7 @@ async function main() {
     ratingsUpdated: 0, aliasedCount: 0, nameOnlyFallback: 0,
     teamUpdated: 0, contractFallback: 0,
     unmatched: [],
-    rookiesCleared: 0,
+    rookiesCleared: 0, refsNulled: 0, refIndexBuildMs: 0,
     rookiesInjected: 0, rookiesToFA: 0, rookiesSkipped: 0,
     rookieMetaMissing: 0,
     realDobSet: 0, dobFallback: 0,
@@ -713,16 +760,25 @@ async function main() {
     }
   }
 
-  // ── Pass 2: Clear 2026 rookie slots ───────────────────────────────────────
-  if (ENABLE_PASS_2_CLEAR) for (const rec of playerTable.records) {
-    if (rec.isEmpty) continue;
-    const yd = safeGet(rec, 'YearDrafted');
-    if (yd === 0 || yd === '0') {
-      try {
-        rec.empty();
-        stats.rookiesCleared++;
-      } catch (_) {
-        // Some records can't be emptied; skip silently (matches 9c behavior).
+  // ── Pass 2: Clear 2026 rookie slots (reference-cleaning empty) ────────────
+  if (ENABLE_PASS_2_CLEAR) {
+    console.log('\n  Pass 2: scanning all tables for player references …');
+    const t0 = Date.now();
+    const refIndex = await buildPlayerRefIndex(franchise, playerTable.header.tableId);
+    stats.refIndexBuildMs = Date.now() - t0;
+    console.log(`  Reference index built in ${stats.refIndexBuildMs}ms — ${refIndex.size} player rows referenced`);
+
+    for (const rec of playerTable.records) {
+      if (rec.isEmpty) continue;
+      const yd = safeGet(rec, 'YearDrafted');
+      if (yd === 0 || yd === '0') {
+        try {
+          stats.refsNulled += nullReferencesTo(refIndex, rec.index);
+          rec.empty();
+          stats.rookiesCleared++;
+        } catch (_) {
+          // Some records can't be emptied; skip silently (matches 9c behavior).
+        }
       }
     }
   }
@@ -836,6 +892,7 @@ async function main() {
   console.log('Rookies');
   console.log(`  Source                  : ${path.basename(rookiesResolved.path)} (${rookieEntries.length} entries)`);
   console.log(`  Cleared (YearDrafted=0) : ${stats.rookiesCleared}`);
+  console.log(`  Refs nulled before empty: ${stats.refsNulled} (index built in ${stats.refIndexBuildMs}ms)`);
   console.log(`  Injected on real teams  : ${stats.rookiesInjected - stats.rookiesToFA}`);
   console.log(`  Routed to FA pool       : ${stats.rookiesToFA}`);
   console.log(`  Metadata fallback used  : ${stats.rookieMetaMissing}`);
