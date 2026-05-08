@@ -739,6 +739,71 @@ function removeFromTeamRoster(ctx, teamIndex, playerRow) {
   try { f.value = NULL_REFERENCE; return true; } catch (_) { return false; }
 }
 
+// ---------------------------------------------------------------------------
+// Franchise-level FreeAgents pool maintenance
+//
+// The Franchise table (singleton) holds a FreeAgents field referencing a
+// Player[] sub-table with ~3500 Player0..PlayerN slots. When we move a vet
+// TO the FA pool, we must append their ref here; when we move them OFF FA,
+// we must null their ref. Without this, Madden's sim engine sees a vet whose
+// TeamIndex says "FA" but who isn't in the league FA pool, or a vet whose
+// TeamIndex says "team X" but who's still in the league FA pool — both
+// likely sim-CTD vectors. Identified by Agent B 2026-05-08.
+// ---------------------------------------------------------------------------
+async function buildFreeAgentsContext(franchise, playerTableId) {
+  const fr = franchise.getTableByName('Franchise');
+  if (!fr) return null;
+  await fr.readRecords();
+  const sample = fr.records.find(r => !r.isEmpty);
+  if (!sample) return null;
+  const fa = sample.getFieldByKey('FreeAgents');
+  if (!fa || !fa.isReference) return null;
+  const ref = fa.referenceData;
+  if (!ref || ref.tableId === 0) return null;
+  const arr = franchise.getTableById(ref.tableId);
+  if (!arr) return null;
+  await arr.readRecords();
+  const arrRec = arr.records[ref.rowNumber];
+  if (!arrRec || arrRec.isEmpty) return null;
+  // Count slots (e.g., Player0..Player3499)
+  const fields = arrRec.fieldsArray || [];
+  const slotCount = fields.filter(f => f.isReference && /^Player\d+$/.test(f.key)).length;
+  return { record: arrRec, slotCount, playerTableId };
+}
+
+function findInFreeAgentsPool(faCtx, playerRow) {
+  if (!faCtx) return null;
+  for (let i = 0; i < faCtx.slotCount; i++) {
+    const f = faCtx.record.getFieldByKey(`Player${i}`);
+    if (!f || !f.isReference) continue;
+    const r = f.referenceData;
+    if (r && r.tableId === faCtx.playerTableId && r.rowNumber === playerRow) return f;
+  }
+  return null;
+}
+
+function appendToFreeAgentsPool(faCtx, playerRow) {
+  if (!faCtx) return false;
+  for (let i = 0; i < faCtx.slotCount; i++) {
+    const f = faCtx.record.getFieldByKey(`Player${i}`);
+    if (!f) continue;
+    const r = f.referenceData;
+    if (!r || (r.tableId === 0 && r.rowNumber === 0)) {
+      try {
+        f.value = utilService.getBinaryReferenceData(faCtx.playerTableId, playerRow);
+        return true;
+      } catch (_) { return false; }
+    }
+  }
+  return false;
+}
+
+function removeFromFreeAgentsPool(faCtx, playerRow) {
+  const f = findInFreeAgentsPool(faCtx, playerRow);
+  if (!f) return false;
+  try { f.value = NULL_REFERENCE; return true; } catch (_) { return false; }
+}
+
 // Compact every team's Roster array: pack live Player refs to the start,
 // nulls to the end. Pass 1b's removes + Pass 3's appends leave nulls
 // scattered through the 100-slot array; sim engine likely iterates
@@ -1015,6 +1080,12 @@ async function main() {
   console.log('\n  Building team-roster index …');
   const rosterCtx = await buildTeamRosterContext(franchise, playerTable.header.tableId);
 
+  // Build Franchise.FreeAgents context — needed to add/remove players from
+  // the league-wide FA pool when their TeamIndex changes to/from 32.
+  const faCtx = await buildFreeAgentsContext(franchise, playerTable.header.tableId);
+  if (faCtx) console.log(`  Franchise.FreeAgents pool: ${faCtx.slotCount} slots`);
+  else       console.log('  ! No Franchise.FreeAgents pool found.');
+
   // Build cross-table reference index up front. Lets vet team moves null
   // stale pointers in EVERY team-affiliated Player[] table when a vet
   // changes teams (V7/V9/V10 proved DepthChart-only nulling is insufficient).
@@ -1044,6 +1115,8 @@ async function main() {
     unusedAutoRookiesDisposed: 0,
     vetTeamMatched: 0, vetTeamUnchanged: 0, vetTeamMoved: 0, vetMovedToFA: 0,
     vetRosterRemoved: 0, vetRosterAdded: 0, vetDcRefsNulled: 0,
+    vetContractNormalized: 0,
+    vetAddedToFAPool: 0, vetRemovedFromFAPool: 0,
     capFieldsUpdated: 0, capTeamsTouched: 0,
   };
 
@@ -1142,17 +1215,46 @@ async function main() {
 
           if (targetTeam === TEAM_INDEX_FREE_AGENT) {
             trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
+            // Add to league FreeAgents pool so Madden's FA logic sees them.
+            if (appendToFreeAgentsPool(faCtx, rec.index)) stats.vetAddedToFAPool++;
             stats.vetMovedToFA++;
           } else {
+            // Remove from league FreeAgents pool if they were there
+            // (FA→team move — common case for vets in the FA pool of the
+            // original franchise that we move to a real team per the source).
+            if (currentTeam === TEAM_INDEX_FREE_AGENT) {
+              if (removeFromFreeAgentsPool(faCtx, rec.index)) stats.vetRemovedFromFAPool++;
+            }
             if (appendToTeamRoster(rosterCtx, targetTeam, rec.index)) stats.vetRosterAdded++;
-            // If the source has an explicit ContractStatus (e.g. Signed),
-            // prefer it. Critical for FA→team moves where the in-franchise
-            // ContractStatus would otherwise stay 'FreeAgent'.
             if (targetStatus && targetStatus !== 'FreeAgent') {
               trySet(rec, 'ContractStatus', targetStatus);
             } else {
               trySet(rec, 'ContractStatus', CONTRACT_STATUS_SIGNED);
             }
+            // Normalize the contract layout to match a working franchise's
+            // shape (CAREER-SEAHAWKSWEEK1): ContractYear=0 (fresh), uniform
+            // Salary/Bonus across all 8 contract years, Bonus≈10% of Salary.
+            //
+            // Use the player's CURRENT-YEAR effective salary as the new
+            // uniform per-year value. The original CARDSWEEK1B4SIM has real
+            // NFL contracts where Salary0 is often a placeholder (e.g. 50K)
+            // for already-paid year-0 + the real salary in S{ContractYear};
+            // simply uniformizing Salary0 produced a too-low cap hit (the
+            // V16 bug). Picking S{Y} pulls the player's actual current-year
+            // salary forward as the new uniform value.
+            const cy = Number(safeGet(rec, 'ContractYear')) || 0;
+            let effSalary = Number(safeGet(rec, `ContractSalary${cy}`));
+            if (!Number.isFinite(effSalary) || effSalary < MIN_SALARY_K / 1000) {
+              effSalary = Number(safeGet(rec, 'ContractSalary0')) || MIN_SALARY_K;
+            }
+            const effBonus = Math.max(1, Math.round(effSalary / 9));
+            trySet(rec, 'ContractYear', 0);
+            for (let y = 0; y <= 7; y++) {
+              trySet(rec, `ContractSalary${y}`, effSalary);
+              trySet(rec, `ContractBonus${y}`,  effBonus);
+            }
+            trySet(rec, 'PLYR_CAPSALARY', effSalary + effBonus);
+            stats.vetContractNormalized++;
             stats.vetTeamMoved++;
           }
         }
