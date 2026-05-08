@@ -66,15 +66,12 @@ const CURRENT_LEAGUE_YEAR = 2026;
 // real rookies we inject. The 977 naturally-empty Player slots accommodate
 // the ~265 new rookies without any clearing needed.
 const ENABLE_VET_PASS      = true;
-// OFF by default: nfl_rosters_2026.json doesn't match Madden's curated 2026
-// release rosters (the source of truth users expect). Enabling moves vets
-// to nflverse-derived teams which is strictly worse for accuracy. Also: with
-// the move on, sim CTDs even with Roster + DepthChart-pool maintenance —
-// FA→team moves leave ContractStatus inconsistent and other team-affiliated
-// tables (PracticeSquad / MarketedPlayers / ActiveSignatureData / etc.)
-// still reference moved players at their old teams. Keep helpers in place
-// for if/when a better data source + deeper fix arrives.
-const ENABLE_VET_TEAM_MOVE = false;
+// Reads TeamIndex + ContractStatus from full_solution_2_ratings.json (a Madden
+// franchise export), so vets land on Madden's curated rosters, not nflverse's
+// out-of-sync state. When this is on, Pass 1 also: removes from old team's
+// Roster, nulls stale DepthChart-pool refs, appends to new team's Roster,
+// updates TeamIndex + ContractStatus.
+const ENABLE_VET_TEAM_MOVE = true;
 const ENABLE_PASS_2_CLEAR  = false;  // OFF: emptying causes sim CTD (see comment above)
 const ENABLE_PASS_3_INJECT = true;
 // When ENABLE_PASS_3_INJECT is on, also send any unused auto-rookies to the
@@ -943,31 +940,27 @@ async function main() {
     //     new Roster, set TeamIndex. ContractStatus → FreeAgent if real team
     //     is FA. Contract dollars left intact (the prior overlay clamped most
     //     vets to the 895k floor).
-    if (ENABLE_VET_TEAM_MOVE && rosterCtx) {
-      let rosterHit = rosterByName.get(makeNameOnlyKey(fn, ln));
-      if (!rosterHit) {
-        const aliasTo = aliases[`${fn} ${ln}`];
-        if (aliasTo) {
-          const split = splitName(aliasTo);
-          rosterHit = rosterByName.get(makeNameOnlyKey(split.first, split.last));
-        }
-      }
-      if (rosterHit) {
-        stats.vetTeamMatched++;
-        const rawTeam = String(rosterHit.team || '').toUpperCase();
-        const team = ABBR_NORMALIZE[rawTeam] ?? rawTeam;
-        let targetTeam = -1;
-        if (team === 'FA' || team === '')          targetTeam = TEAM_INDEX_FREE_AGENT;
-        else if (team in NFLVERSE_TO_TEAM_INDEX)   targetTeam = NFLVERSE_TO_TEAM_INDEX[team];
+    if (ENABLE_VET_TEAM_MOVE && rosterCtx && ratingEntry) {
+      // Pull TeamIndex + ContractStatus directly from the ratings entry —
+      // full_solution_2_ratings.json is itself a Madden franchise export, so
+      // its TeamIndex is already in Madden's encoding (0-31, 32=FA) and
+      // matches the curated release rosters (unlike nflverse data which
+      // reflects a different point in time).
+      const targetTeam   = Number(ratingEntry.TeamIndex);
+      const targetStatus = ratingEntry.ContractStatus;
+      const currentTeam  = Number(safeGet(rec, 'TeamIndex'));
 
-        const currentTeam = Number(safeGet(rec, 'TeamIndex'));
-        if (targetTeam < 0 || targetTeam === currentTeam) {
+      if (!Number.isFinite(targetTeam) || targetTeam < 0 || targetTeam > 32) {
+        stats.contractFallback++;
+      } else {
+        stats.vetTeamMatched++;
+        if (targetTeam === currentTeam) {
           stats.vetTeamUnchanged++;
         } else {
           if (currentTeam >= 0 && currentTeam <= 31) {
             if (removeFromTeamRoster(rosterCtx, currentTeam, rec.index)) stats.vetRosterRemoved++;
           }
-          // Null DC entries pointing at this player (old team's depth chart
+          // Null DC entries pointing at this player (old team's depth-chart
           // slot at their position would otherwise be a stale ref → sim CTD).
           stats.vetDcRefsNulled += nullDcReferencesTo(refIndex, rec.index, dcPoolTableId);
 
@@ -978,11 +971,17 @@ async function main() {
             stats.vetMovedToFA++;
           } else {
             if (appendToTeamRoster(rosterCtx, targetTeam, rec.index)) stats.vetRosterAdded++;
+            // If the source has an explicit ContractStatus (e.g. Signed),
+            // prefer it. Critical for FA→team moves where the in-franchise
+            // ContractStatus would otherwise stay 'FreeAgent'.
+            if (targetStatus && targetStatus !== 'FreeAgent') {
+              trySet(rec, 'ContractStatus', targetStatus);
+            } else {
+              trySet(rec, 'ContractStatus', CONTRACT_STATUS_SIGNED);
+            }
             stats.vetTeamMoved++;
           }
         }
-      } else {
-        stats.contractFallback++;
       }
     } else {
       stats.contractFallback++;
