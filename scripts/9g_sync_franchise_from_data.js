@@ -7,14 +7,18 @@
  * pipeline, without needing a separate source franchise as the rating
  * authority. In one pass it:
  *
- *   1. Updates every veteran in place — rating + dev trait from the rating
- *      source, team + contract from nfl_rosters_2026.json. Veterans currently
- *      on the wrong team are re-teamed; this is the difference vs. script 9
- *      (which only signs free agents).
- *   2. Empties every YearDrafted == 0 record (auto-drafted 2026 rookies).
+ *   1. Updates every active veteran's rating + dev trait from
+ *      full_solution_2_ratings.json (with franchise_ratings.json fallback).
+ *      Vet team / contract / depth-chart entries are not touched — the prior
+ *      "Pass 1b" overlay corrupted contracts via floor-clamping and shipped
+ *      vets to the wrong teams without depth-chart maintenance.
+ *   2. (DISABLED — see comment near ENABLE_PASS_2_CLEAR.)
  *   3. Injects each rookie from rookie_ratings_post_madden.json into the next
- *      empty slot, with their post-Madden ratings, real-life draft team, a
- *      rookie-scale contract, and a Wikipedia-sourced birthdate when known.
+ *      naturally-empty Player slot, with their post-Madden ratings, real-life
+ *      draft team, a rookie-scale contract, and a Wikipedia-sourced birthdate
+ *      when known. Each new rookie is also appended to their drafting team's
+ *      Roster array (Player0..Player99 slots) so they appear on rosters,
+ *      depth-chart and adjust-lineup screens.
  *
  * Defaults to dry-run. Pass --apply to write.
  *
@@ -53,11 +57,17 @@ const ALIASES_FILE       = path.join(DATA_DIR, 'player_name_aliases.json');
 
 const CURRENT_LEAGUE_YEAR = 2026;
 
-// Bisect toggles. Branches flip these to isolate which pass causes a Madden
-// load crash. Default (this branch): all three on.
+// Pass toggles. PASS_2_CLEAR is OFF by default: Madden CTDs on sim if we
+// empty the auto-generated rookie pool, even with reference cleaning, because
+// HistoryEntry / PlayerAcquisitionEvaluation / Player[] arrays end up with
+// null refs that the sim engine doesn't tolerate (the load engine does). The
+// auto-rookies are harmless — they live in the future draft pool / FA pool,
+// not on team rosters, so leaving them in place doesn't conflict with the
+// real rookies we inject. The 977 naturally-empty Player slots accommodate
+// the ~265 new rookies without any clearing needed.
 const ENABLE_VET_PASS      = true;
-const ENABLE_PASS_2_CLEAR  = true;   // empty existing auto-rookie slots
-const ENABLE_PASS_3_INJECT = true;   // write 265 rookies from rookie_ratings_post_madden.json
+const ENABLE_PASS_2_CLEAR  = false;  // OFF: emptying causes sim CTD (see comment above)
+const ENABLE_PASS_3_INJECT = true;
 
 // ---------------------------------------------------------------------------
 // nflverse abbr → Madden franchise TeamIndex (0-31). Mirrors script 9 / 9c so
@@ -520,6 +530,80 @@ function nullReferencesTo(refIndex, playerRow) {
 }
 
 // ---------------------------------------------------------------------------
+// Per-team roster maintenance
+//
+// Each Team record (in the 35-record Team table — NOT the 1-record one
+// getTableByName accidentally returns) has a Roster field that points at one
+// row of a Player[] sub-table. That row has 100 fields (Player0..Player99),
+// each a Player reference. Madden's roster screen reads from these slots.
+// 9g must add injected rookies to the right team's row, or they're invisible.
+// ---------------------------------------------------------------------------
+async function buildTeamRosterContext(franchise, playerTableId) {
+  // Find the populated Team table (skip the 1-record stub).
+  const teamCandidates = franchise.tables.filter(t => t.name === 'Team');
+  let teamMain = null;
+  for (const t of teamCandidates) {
+    try { await t.readRecords(); } catch (_) { continue; }
+    const live = t.records.filter(r => !r.isEmpty).length;
+    if (live >= 30) { teamMain = t; break; }
+  }
+  if (!teamMain) {
+    console.warn('  ! No populated Team table found — skipping roster maintenance.');
+    return null;
+  }
+  // Resolve the Roster sub-table from the first live Team record.
+  let rosterTableId = null;
+  for (const rec of teamMain.records) {
+    if (rec.isEmpty) continue;
+    const f = rec.getFieldByKey('Roster');
+    if (f?.isReference) { rosterTableId = f.referenceData.tableId; break; }
+  }
+  if (!rosterTableId) {
+    console.warn('  ! No Roster ref on Team[*] — skipping roster maintenance.');
+    return null;
+  }
+  const rosterTable = franchise.getTableById(rosterTableId);
+  if (!rosterTable) return null;
+  await rosterTable.readRecords();
+
+  // Map: NFL TeamIndex (0-31) → row number inside the roster sub-table.
+  const teamIndexToRosterRow = new Map();
+  for (const rec of teamMain.records) {
+    if (rec.isEmpty) continue;
+    const tiVal = rec.getFieldByKey('TeamIndex')?.value;
+    const rosterRef = rec.getFieldByKey('Roster')?.referenceData;
+    if (tiVal == null || rosterRef == null) continue;
+    teamIndexToRosterRow.set(Number(tiVal), rosterRef.rowNumber);
+  }
+
+  console.log(`  Team table: ${teamMain.records.filter(r => !r.isEmpty).length} live records, roster sub-table id=${rosterTableId}`);
+  return { teamMain, rosterTable, rosterTableId, teamIndexToRosterRow, playerTableId };
+}
+
+const utilService = require('madden-franchise/services/utilService');
+
+function appendToTeamRoster(ctx, teamIndex, playerRow) {
+  if (!ctx) return false;
+  const rosterRowIdx = ctx.teamIndexToRosterRow.get(Number(teamIndex));
+  if (rosterRowIdx == null) return false;
+  const rosterRec = ctx.rosterTable.records[rosterRowIdx];
+  if (!rosterRec || rosterRec.isEmpty) return false;
+  // Find the first null/empty slot and write the new player ref.
+  for (let i = 0; i < 100; i++) {
+    const f = rosterRec.getFieldByKey(`Player${i}`);
+    if (!f) continue;
+    const r = f.referenceData;
+    if (!r || (r.tableId === 0 && r.rowNumber === 0)) {
+      try {
+        f.value = utilService.getBinaryReferenceData(ctx.playerTableId, playerRow);
+        return true;
+      } catch (_) { return false; }
+    }
+  }
+  return false;   // no open slot in roster
+}
+
+// ---------------------------------------------------------------------------
 // Franchise open
 // ---------------------------------------------------------------------------
 function openFranchise(filePath) {
@@ -693,6 +777,7 @@ async function main() {
     rookiesInjected: 0, rookiesToFA: 0, rookiesSkipped: 0,
     rookieMetaMissing: 0,
     realDobSet: 0, dobFallback: 0,
+    rookiesAddedToRoster: 0, rookiesNoRosterSlot: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
@@ -750,6 +835,11 @@ async function main() {
     //               contract the franchise had for them. Only ratings update above.
     stats.contractFallback++;
   }
+
+  // Build per-team roster context once — used by Pass 3 to append rookies
+  // to the right team's roster array (Player0..Player99 slots).
+  console.log('\n  Building team-roster index …');
+  const rosterCtx = await buildTeamRosterContext(franchise, playerTable.header.tableId);
 
   // ── Pass 2: Clear 2026 rookie slots (reference-cleaning empty) ────────────
   if (ENABLE_PASS_2_CLEAR) {
@@ -866,6 +956,14 @@ async function main() {
       setDevTrait(rec, r.traitDevelopment);
     }
 
+    // Add to drafting team's Roster array so the player shows up in Madden's
+    // roster / depth-chart / lineup screens. FA-routed rookies don't get a
+    // team-roster entry — they're in the FA pool by design.
+    if (teamIndex !== TEAM_INDEX_FREE_AGENT) {
+      if (appendToTeamRoster(rosterCtx, teamIndex, idx)) stats.rookiesAddedToRoster++;
+      else                                                stats.rookiesNoRosterSlot++;
+    }
+
     stats.rookiesInjected++;
   }
 
@@ -885,6 +983,8 @@ async function main() {
   console.log(`  Cleared (YearDrafted=0) : ${stats.rookiesCleared}`);
   console.log(`  Refs nulled before empty: ${stats.refsNulled} (index built in ${stats.refIndexBuildMs}ms)`);
   console.log(`  Injected on real teams  : ${stats.rookiesInjected - stats.rookiesToFA}`);
+  console.log(`    added to team Roster  : ${stats.rookiesAddedToRoster}`);
+  console.log(`    no open Roster slot   : ${stats.rookiesNoRosterSlot}`);
   console.log(`  Routed to FA pool       : ${stats.rookiesToFA}`);
   console.log(`  Metadata fallback used  : ${stats.rookieMetaMissing}`);
   console.log(`  Real birthdate set      : ${stats.realDobSet}`);
