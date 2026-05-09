@@ -117,6 +117,13 @@ node scripts/9z_validate_franchise.js --franchise $dst
 
 # 4. (Optional) Layer V20 9g for 2026 rookies + updated ratings.
 node scripts/9g_sync_franchise_from_data.js --franchise $dst --apply --allow-unmatched
+
+# 5. (Optional) Dispose Madden's auto-generated 2026 draft prospects.
+#    CAREER-UPDATED-ROSTER ships with 310 ContractStatus=Draft prospects
+#    (YearDrafted=0, YearsPro=0, TeamIndex=32) that exist alongside the
+#    265 real rookies 9g injects. 9l moves them to FA pool so they don't
+#    appear in the draft pool / create draft-pool duplicates.
+node scripts/9l_dispose_auto_prospects.js --franchise $dst
 ```
 
 TeamIndex map: 0=Bears, 1=Bengals, 2=Bills, 3=Broncos, 4=Browns, 5=Buccaneers,

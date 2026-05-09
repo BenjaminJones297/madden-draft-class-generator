@@ -61,9 +61,18 @@ Optional reference input:
   NOT fix the V19 sim CTD on its own (still kept for diagnostic value /
   future use).
 - `scripts/9k_swap_user_team.js`: **swap the user's controlled team in a
-  franchise.** Edits FranchiseUser.Team + UserEntity refs + Coach
-  IsUserControlled flag. Use to re-bind CAREER-UPDATED-ROSTER (Cards) to
-  any team. See `commands.md` "User-Team Swap on V20 Source" recipe.
+  franchise.** Edits the full 8-binding user-team set (FranchiseUser.Team
+  + UserEntity, Coach.IsUserControlled on old/new HC, Franchise.LeagueOwner,
+  Team.UserCharacter on old/new, ArcContext.Team). Use to re-bind
+  CAREER-UPDATED-ROSTER (Cards) to any team. See `commands.md` "User-Team
+  Swap on V20 Source" recipe.
+- `scripts/9l_dispose_auto_prospects.js`: dispose Madden's pre-generated
+  2026 draft prospects (filter: YearDrafted=0, YearsPro=0,
+  ContractStatus=Draft) to the FA pool. Removes draft-pool duplicates
+  with 9g-injected real rookies. CAREER-UPDATED-ROSTER ships ~310 of these.
+- `scripts/9z_probe_auto_rookies.js`: read-only diagnostic — buckets the
+  Player table by (YearDrafted, YearsPro), shows samples by ContractStatus.
+  Useful for understanding rookie/prospect state before disposal.
 - `scripts/9z_validate_franchise.js`: ref-integrity check. Flags live records
   pointing at empty Player rows (the leading load-CTD class).
 - `scripts/9z_diff_franchises.js`: field-level diff between two franchise files.
