@@ -95,6 +95,37 @@ Output: per-player JSON with team + contract (from nflverse) + ratings
 binary `.ros` file. mf 3.8 / 4.2 can't decompress real `.ros` files
 (`incorrect header check`), so writing one is open work.
 
+## End-to-End Franchise Build (one-line wrapper)
+
+`scripts/build_franchise.ps1` orchestrates the full pipeline. Two phases
+because the middle requires you to advance through the draft + preseason
+in Madden manually.
+
+```powershell
+# Phase 1 — pre-sim build (copy → 9k swap → validate → 9g rookies → 9l dispose)
+./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-HAWKS-FINAL -Phase pre
+
+# (load in Madden, sim through draft + preseason to Week 1, QUIT WITHOUT IN-GAME SAVE)
+
+# Phase 2 — post-sim cleanup (9m purge fake auto-rookies on the autosave)
+./scripts/build_franchise.ps1 -DestName CAREER-HAWKS-FINAL -Phase post
+```
+
+End state: a franchise controlled by your chosen team, with vets on real-life
+teams, 265 real 2026 rookies on real teams, and Madden's auto-generated
+rookies (pre-draft pool + post-draft UDFAs + next-year synthetic class) all
+purged from team rosters.
+
+TeamIndex map: 0=Bears 1=Bengals 2=Bills 3=Broncos 4=Browns 5=Buccaneers
+6=Cardinals 7=Chargers 8=Chiefs 9=Colts 10=Cowboys 11=Dolphins 12=Eagles
+13=Falcons 14=49ers 15=Giants 16=Jaguars 17=Jets 18=Lions 19=Packers
+20=Panthers 21=Patriots 22=Raiders 23=Rams 24=Ravens 25=Commanders
+26=Saints 27=Seahawks 28=Steelers 29=Titans 30=Vikings 31=Texans
+
+**Critical between-phase rule:** **quit Madden without manually saving**
+before phase 2. Phase 2 edits the autosave file directly. If you save
+in-game first, Madden overwrites our edits with in-memory state.
+
 ## Recommended Workflow: User-Team Swap on V20 Source (best for non-Cards control)
 
 **Verified working 2026-05-08 (LATE EVE) — `CAREER-UPDATED-ROSTER-HAWKS`.**

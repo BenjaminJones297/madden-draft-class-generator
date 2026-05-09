@@ -3,6 +3,64 @@
 Append brief handoff notes for meaningful work. This file is for future LLMs,
 not a full changelog.
 
+## 2026-05-08 (LATE EVE +7) - Post-Sim Auto-Rookie Purge + One-Line Build Wrapper
+
+User loaded `CAREER-HAWKS-FINAL` (built from V20 source + 9k swap to SEA +
+9g rookie inject + 9l draft-pool dispose), advanced through draft +
+preseason to Week 1 in Madden. Reported still seeing auto-generated
+rookies on team rosters.
+
+**Root cause**: Madden's natural offseason flow auto-signed many UDFAs
+during the post-draft signing wave. Of the 310 pre-built draft prospects
+9l had pushed to FA, ~223 got signed back to teams. Plus Madden generated
+224 next-year (YearDrafted=1) synthetic prospects, many also signed to
+team rosters.
+
+**Built `scripts/9m_purge_fake_rookies.js`**:
+- Filter: YearsPro=0 on a real team (TI 0-31), name NOT in
+  `data/rookie_ratings_post_madden.json` (normalized)
+- Cut path: TeamIndex=32, ContractStatus=FreeAgent, remove from team
+  Roster array, append to Franchise.FreeAgents pool
+- `--include-yd1` flag also purges next-year synthetic pool
+- No `rec.empty()` (V11-V19 lessons stand)
+
+**Test on `CAREER-HAWKS-FINAL-AUTOSAVE`**:
+- 557 rookie-class records scanned (333 YD=0 + 224 YD=1)
+- 131 already in FA pool (skipped)
+- 285 matched real rookies (kept — note this is more than 265 because
+  some real names match across YD=0 and YD=1 buckets)
+- **141 fakes cut** (16 YD=0 + 125 YD=1) → FA pool, removed from rosters
+- Validator clean (55,606 refs / 0 broken)
+- User confirmed it worked — fakes no longer on rosters
+
+**Critical workflow rule**: 9m edits the autosave file directly. User
+must **quit Madden without saving in-game** first or Madden's next save
+overwrites our edits with in-memory state.
+
+**Built one-line wrapper `scripts/build_franchise.ps1`** that orchestrates
+the full pipeline as two phases (because the middle requires manual
+in-game sim):
+
+```powershell
+./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-HAWKS-FINAL -Phase pre
+# (load Madden, sim through draft + preseason, quit without in-game save)
+./scripts/build_franchise.ps1 -DestName CAREER-HAWKS-FINAL -Phase post
+```
+
+Phase 'pre' chains: copy → 9k → validate → 9g → 9l → validate.
+Phase 'post' chains: 9m --include-yd1 → validate.
+
+Wiki canonical: `commands.md` "End-to-End Franchise Build" + per-script
+`project-map.md` entries.
+
+**Future work flagged by user**: "later we will have to update the
+rookies a little bit." Likely means iterating on rookie ratings or
+re-applying 9g + 9l to an existing franchise after rating changes.
+Pattern would be: re-copy from a Phase 'pre'-output snapshot (kept as
+a backup), edit data/rookie_ratings_post_madden.json, re-run 9g + 9l.
+9g's same-team overlay path means re-running on a fresh franchise
+should be idempotent.
+
 ## 2026-05-08 (LATE EVE +6) - User-Team Swap: Complete Binding Set (8 edits)
 
 After v1 9k worked but left UI weirdness (Week-1 matchups not visible,

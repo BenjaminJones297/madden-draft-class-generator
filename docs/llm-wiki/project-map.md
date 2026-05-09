@@ -70,6 +70,16 @@ Optional reference input:
   2026 draft prospects (filter: YearDrafted=0, YearsPro=0,
   ContractStatus=Draft) to the FA pool. Removes draft-pool duplicates
   with 9g-injected real rookies. CAREER-UPDATED-ROSTER ships ~310 of these.
+- `scripts/9m_purge_fake_rookies.js`: post-sim cleanup. After user advances
+  through draft + preseason, Madden auto-signs UDFAs + generates next-year
+  synthetic prospects with fake names. 9m filters YearsPro=0 records on
+  real teams whose names DON'T appear in `data/rookie_ratings_post_madden.json`
+  and cuts them to FA pool. Use `--include-yd1` to also purge next-year
+  synthetic pool. Edit-the-autosave pattern (quit Madden without saving
+  first). ~140 records on a typical post-preseason save.
+- `scripts/build_franchise.ps1`: PowerShell wrapper orchestrating the
+  pre-sim and post-sim phases. See `commands.md` "End-to-End Franchise
+  Build" recipe.
 - `scripts/9z_probe_auto_rookies.js`: read-only diagnostic — buckets the
   Player table by (YearDrafted, YearsPro), shows samples by ContractStatus.
   Useful for understanding rookie/prospect state before disposal.

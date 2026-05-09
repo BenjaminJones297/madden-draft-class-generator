@@ -1,0 +1,113 @@
+# build_franchise.ps1 — End-to-end franchise build wrapper
+#
+# Phase 'pre'  — Copies V20 source, swaps user team, injects 2026 rookies +
+#                ratings, disposes Madden's pre-built draft pool. Produces a
+#                franchise ready for in-game load + draft sim.
+# Phase 'post' — Run AFTER user advances through the draft + preseason in
+#                Madden. Purges any fake-named auto-rookies Madden auto-signed
+#                during the UDFA wave + next-year synthetic pool.
+# Phase 'both' — runs 'pre', then halts with instructions to sim in Madden.
+#                Re-invoke with -Phase post on the autosave file once done.
+#
+# Usage:
+#   ./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-HAWKS-FINAL -Phase pre
+#   # (load in Madden, sim through draft + preseason to Week 1, save autosave)
+#   ./scripts/build_franchise.ps1 -DestName CAREER-HAWKS-FINAL -Phase post
+#
+# TeamIndex map: 0=Bears 1=Bengals 2=Bills 3=Broncos 4=Browns 5=Buccaneers
+# 6=Cardinals 7=Chargers 8=Chiefs 9=Colts 10=Cowboys 11=Dolphins 12=Eagles
+# 13=Falcons 14=49ers 15=Giants 16=Jaguars 17=Jets 18=Lions 19=Packers
+# 20=Panthers 21=Patriots 22=Raiders 23=Rams 24=Ravens 25=Commanders
+# 26=Saints 27=Seahawks 28=Steelers 29=Titans 30=Vikings 31=Texans
+
+param(
+  [Parameter(Mandatory=$true)]
+  [string]$DestName,
+
+  [int]$TargetTeamIndex = -1,
+
+  [string]$Source = "CAREER-UPDATED-ROSTER",
+
+  [ValidateSet('pre', 'post')]
+  [string]$Phase = 'pre'
+)
+
+$ErrorActionPreference = 'Stop'
+
+$savesDir = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves"
+$srcPath  = Join-Path $savesDir $Source
+$dstPath  = Join-Path $savesDir $DestName
+$autoPath = Join-Path $savesDir "$DestName-AUTOSAVE"
+$repo     = Split-Path -Parent $PSScriptRoot
+
+function Step($msg) {
+  Write-Host ""
+  Write-Host ("=" * 64) -ForegroundColor Cyan
+  Write-Host $msg -ForegroundColor Cyan
+  Write-Host ("=" * 64) -ForegroundColor Cyan
+}
+
+if ($Phase -eq 'pre') {
+  if ($TargetTeamIndex -lt 0 -or $TargetTeamIndex -gt 31) {
+    throw "Phase 'pre' requires -TargetTeamIndex 0..31"
+  }
+  if (-not (Test-Path $srcPath)) {
+    throw "Source not found: $srcPath"
+  }
+
+  Step "Step 1: Copy V20 source → $DestName"
+  Copy-Item -Path $srcPath -Destination $dstPath -Force
+  Write-Host "Copied: $((Get-Item $dstPath).Length) bytes"
+
+  Step "Step 2: 9k — swap user team to TeamIndex $TargetTeamIndex"
+  & node "$repo\scripts\9k_swap_user_team.js" --franchise $dstPath --target-team-index $TargetTeamIndex
+  if ($LASTEXITCODE -ne 0) { throw "9k failed" }
+
+  Step "Step 3: 9z_validate_franchise"
+  & node "$repo\scripts\9z_validate_franchise.js" --franchise $dstPath
+  if ($LASTEXITCODE -ne 0) { throw "validator failed" }
+
+  Step "Step 4: 9g — inject 2026 rookies + update vet ratings"
+  & node "$repo\scripts\9g_sync_franchise_from_data.js" --franchise $dstPath --apply --allow-unmatched
+  if ($LASTEXITCODE -ne 0) { throw "9g failed" }
+
+  Step "Step 5: 9l — dispose Madden's pre-built draft pool"
+  & node "$repo\scripts\9l_dispose_auto_prospects.js" --franchise $dstPath
+  if ($LASTEXITCODE -ne 0) { throw "9l failed" }
+
+  Step "Step 6: Final pre-sim validate"
+  & node "$repo\scripts\9z_validate_franchise.js" --franchise $dstPath
+  if ($LASTEXITCODE -ne 0) { throw "validator failed" }
+
+  Write-Host ""
+  Write-Host "=" * 64 -ForegroundColor Green
+  Write-Host "Phase 'pre' complete. Next steps:" -ForegroundColor Green
+  Write-Host "=" * 64 -ForegroundColor Green
+  Write-Host "  1. Load $DestName in Madden NFL 26."
+  Write-Host "  2. Confirm controlling the new team and rosters look right."
+  Write-Host "  3. Advance through the draft + preseason to Week 1."
+  Write-Host "  4. QUIT MADDEN without manually saving (let autosave persist)."
+  Write-Host "  5. Run phase 'post' to purge auto-generated UDFAs:"
+  Write-Host ""
+  Write-Host "       ./scripts/build_franchise.ps1 -DestName $DestName -Phase post" -ForegroundColor Yellow
+}
+elseif ($Phase -eq 'post') {
+  if (-not (Test-Path $autoPath)) {
+    throw "Autosave not found at: $autoPath`nExpected after phase 'pre' + in-game sim."
+  }
+
+  Step "Phase 'post' — purge auto-generated rookies on $DestName-AUTOSAVE"
+  & node "$repo\scripts\9m_purge_fake_rookies.js" --franchise $autoPath --include-yd1
+  if ($LASTEXITCODE -ne 0) { throw "9m failed" }
+
+  Step "Final validate"
+  & node "$repo\scripts\9z_validate_franchise.js" --franchise $autoPath
+  if ($LASTEXITCODE -ne 0) { throw "validator failed" }
+
+  Write-Host ""
+  Write-Host "=" * 64 -ForegroundColor Green
+  Write-Host "Phase 'post' complete. Final franchise at:" -ForegroundColor Green
+  Write-Host "  $autoPath" -ForegroundColor Green
+  Write-Host ""
+  Write-Host "  Quit Madden if running, then reload — fakes purged."
+}
