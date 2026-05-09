@@ -55,13 +55,29 @@ Optional reference input:
   checklist (`output/roster_changes.md`) of trades / signings / releases the
   user should execute in Madden's UI to make rosters match
   `full_solution_2_ratings.json`.
+- `scripts/9j_fill_depth_chart.js`: standalone depth-chart fill — for each
+  team's DC record, fills null position slots with highest-OVR players at
+  that position (35 position slots × 6 depth × 32 teams). Composable. Did
+  NOT fix the V19 sim CTD on its own (still kept for diagnostic value /
+  future use).
+- `scripts/9k_swap_user_team.js`: **swap the user's controlled team in a
+  franchise.** Edits FranchiseUser.Team + UserEntity refs + Coach
+  IsUserControlled flag. Use to re-bind CAREER-UPDATED-ROSTER (Cards) to
+  any team. See `commands.md` "User-Team Swap on V20 Source" recipe.
 - `scripts/9z_validate_franchise.js`: ref-integrity check. Flags live records
   pointing at empty Player rows (the leading load-CTD class).
 - `scripts/9z_diff_franchises.js`: field-level diff between two franchise files.
 - `scripts/9z_diagnose_rosters.js`: per-team Player counts + ContractStatus
   distribution.
+- `scripts/9z_dump_team_cap.js`: per-team SalCapCapRoom + sum(PLYR_CAPSALARY)
+  diagnostic. Useful for cap-math debugging.
 - `scripts/9z_explore_player_arrays.js`: maps the populated Team table to its
   Roster Player[] sub-table (skips the 1-record stub `getTableByName` returns).
+- `scripts/9z_probe_depthchart.js`: dumps DepthChart record + DC pool schema.
+- `scripts/9z_probe_user_team.js` / `9z_probe_user_binding.js` /
+  `9z_probe_user_full.js`: progressively narrower probes of user→team
+  binding tables (FranchiseUser, Coach, PlayerPersonnel, Owner, etc.).
+  Built while designing 9k.
 - `scripts/10_fetch_current_rosters.py`: fetch current roster data.
 - `scripts/10_fetch_game_results.py`: fetch game results.
 - `scripts/11_apply_game_results.js`: apply game result updates.

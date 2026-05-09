@@ -95,6 +95,49 @@ Output: per-player JSON with team + contract (from nflverse) + ratings
 binary `.ros` file. mf 3.8 / 4.2 can't decompress real `.ros` files
 (`incorrect header check`), so writing one is open work.
 
+## Recommended Workflow: User-Team Swap on V20 Source (best for non-Cards control)
+
+**Verified working 2026-05-08 (LATE EVE) — `CAREER-UPDATED-ROSTER-HAWKS`.**
+
+The V20 source `CAREER-UPDATED-ROSTER` already has vets on real-life teams
+and sims past the draft, but is locked to the Cardinals. Use
+`scripts/9k_swap_user_team.js` to re-bind the user to any team.
+
+```powershell
+# 1. Copy V20 source → fresh destination.
+$src = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-UPDATED-ROSTER"
+$dst = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-UPDATED-ROSTER-HAWKS"
+Copy-Item $src $dst -Force
+
+# 2. Swap user-controlled team to Seahawks (TeamIndex 27).
+node scripts/9k_swap_user_team.js --franchise $dst --target-team-index 27
+
+# 3. Validate.
+node scripts/9z_validate_franchise.js --franchise $dst
+
+# 4. (Optional) Layer V20 9g for 2026 rookies + updated ratings.
+node scripts/9g_sync_franchise_from_data.js --franchise $dst --apply --allow-unmatched
+```
+
+TeamIndex map: 0=Bears, 1=Bengals, 2=Bills, 3=Broncos, 4=Browns, 5=Buccaneers,
+6=Cardinals, 7=Chargers, 8=Chiefs, 9=Colts, 10=Cowboys, 11=Dolphins,
+12=Eagles, 13=Falcons, 14=49ers, 15=Giants, 16=Jaguars, 17=Jets, 18=Lions,
+19=Packers, 20=Panthers, 21=Patriots, 22=Raiders, 23=Rams, 24=Ravens,
+25=Commanders, 26=Saints, 27=Seahawks, 28=Steelers, 29=Titans, 30=Vikings,
+31=Texans.
+
+**What 9k changes:**
+- `FranchiseUser.Team` ref → target team's row in Team table
+- `FranchiseUser.UserEntity` ref → target team's HeadCoach row
+- `Coach.IsUserControlled`: false on old HC, true on new HC
+
+**Known issues (additional user-team bindings to investigate):**
+- Week-1 matchups not visible on schedule UI
+- Trade-block popups for players not on user's team
+
+Probable suspects: `FranchiseUser.TeamSetting`, `PlayerPersonnel`, `Owner`,
+`UserRequestIssuer`. Probe with `scripts/9z_probe_user_*.js`.
+
 ## Recommended Workflow: Pre-Rosters Franchise + 9g (canonical V20 recipe)
 
 **Verified working (CAREER-9G-V20 + V20-AUTOSAVE, 2026-05-08).** Result: vet

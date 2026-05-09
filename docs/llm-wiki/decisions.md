@@ -18,6 +18,45 @@ Implications:
 - Use `data/contracts/` before opening large JSON artifacts.
 - Treat `ARCHITECTURE.md` as future-state planning, not current behavior.
 
+## 2026-05-08 (LATE EVE) - Recommended Recipe: User-Team Swap on V20 Source
+
+**Decision:** For franchises where the user wants to control a non-Cardinals
+team with vets on real teams + sim-clean state, the canonical workflow is now:
+
+1. Start from `CAREER-UPDATED-ROSTER` (the V20 source — vets on real teams,
+   pre-draft, sims past draft).
+2. `Copy-Item` to a new save name.
+3. Run `scripts/9k_swap_user_team.js --target-team-index <N>` to re-bind the
+   user to a different team via FranchiseUser.Team + UserEntity refs +
+   Coach.IsUserControlled flag.
+4. Optionally layer `scripts/9g_sync_franchise_from_data.js` (rookie-stat-baseline
+   branch's V20 9g, no team moves) for 2026 rookies + ratings.
+
+**Why this beats the V11-V19 file-edit team-move approach:** the V11-V19
+branch tried to MOVE vets onto real teams in a stock-Madden franchise. After
+9 distinct iterations + 7 hypotheses tested 2026-05-08 evening (cap math
+in 4 variants, rookie inject interaction, stage-9 vs Week-1 timeline,
+cut+sign decomposition, depth chart fill) — every version produced sim CTDs
+during the draft. The V11-V19 file-edit pattern is **structurally bounded
+against post-franchise bulk vet team moves** by an unidentified Madden sim
+invariant we can't introspect from outside the binary.
+
+The user-team swap sidesteps this entirely: no team moves, no cap edits,
+no roster array maintenance. Just three field edits on a known-working
+franchise. Validator clean, loads, sims past draft (verified 2026-05-08
+late evening on `CAREER-UPDATED-ROSTER-HAWKS`).
+
+**Implications:**
+- The `9g-vets-team-move` branch (V11-V19) is now a research-only artifact.
+  Do not commit further work there expecting sim to clear.
+- The V20 source `CAREER-UPDATED-ROSTER` is the load-bearing artifact. Back
+  it up. Reproducing it from scratch remains open work (see decisions.md
+  2026-05-08 PM late).
+- Known issues with the swap: Week-1 matchups not visible, trade-block
+  popups for non-user-team players. Suggests additional user-team bindings
+  beyond FranchiseUser + Coach (TeamSetting, PlayerPersonnel, Owner,
+  UserRequestIssuer). Iterative work to identify + swap.
+
 ## 2026-05-08 (PM, latest) - .ros Encoding: No Off-The-Shelf Path For M26
 
 `madden-franchise` (3.8.0 + 4.2.2) and `madden-file-tools` (the only sibling
