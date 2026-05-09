@@ -126,17 +126,18 @@ TeamIndex map: 0=Bears, 1=Bengals, 2=Bills, 3=Broncos, 4=Browns, 5=Buccaneers,
 25=Commanders, 26=Saints, 27=Seahawks, 28=Steelers, 29=Titans, 30=Vikings,
 31=Texans.
 
-**What 9k changes:**
-- `FranchiseUser.Team` ref → target team's row in Team table
-- `FranchiseUser.UserEntity` ref → target team's HeadCoach row
-- `Coach.IsUserControlled`: false on old HC, true on new HC
+**What 9k changes** (8 fields total — full user-team binding set, verified
+2026-05-08):
+1. `FranchiseUser.Team` ref → target team's row in Team table
+2. `FranchiseUser.UserEntity` ref → target team's HeadCoach row
+3. `Coach[old HC].IsUserControlled`: true → false
+4. `Coach[new HC].IsUserControlled`: false → true
+5. `Franchise.LeagueOwner` ref → new coach (the primary user binding the UI uses)
+6. `Team[old row].UserCharacter` ref → NULL
+7. `Team[new row].UserCharacter` ref → new coach
+8. `ArcContext.Team` ref → new team
 
-**Known issues (additional user-team bindings to investigate):**
-- Week-1 matchups not visible on schedule UI
-- Trade-block popups for players not on user's team
-
-Probable suspects: `FranchiseUser.TeamSetting`, `PlayerPersonnel`, `Owner`,
-`UserRequestIssuer`. Probe with `scripts/9z_probe_user_*.js`.
+UI-clean: Week-1 matchups visible, no stray cross-team trade-block popups.
 
 ## Recommended Workflow: Pre-Rosters Franchise + 9g (canonical V20 recipe)
 

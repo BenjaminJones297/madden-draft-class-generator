@@ -3,6 +3,42 @@
 Append brief handoff notes for meaningful work. This file is for future LLMs,
 not a full changelog.
 
+## 2026-05-08 (LATE EVE +6) - User-Team Swap: Complete Binding Set (8 edits)
+
+After v1 9k worked but left UI weirdness (Week-1 matchups not visible,
+trade-block popups for non-user-team players), built `scripts/9z_find_refs_to.js`
+to scan all tables for refs still pointing at the old user binding
+(Team row 7 = Cards, Coach row 64 = Matt Lafleur). Found three more
+high-signal bindings 9k v1 missed:
+
+- **`Franchise.LeagueOwner`** → still pointing at old coach (probably the
+  primary user binding the UI uses for league-wide context)
+- **`Team[old].UserCharacter`** → still pointing at old coach
+- **`Team[new].UserCharacter`** → was NULL, should point at new coach
+- **`ArcContext.Team`** → still pointing at old team's row
+
+Extended 9k v2 to apply 8 edits total (4 originals + 4 above). Test on
+`CAREER-UPDATED-ROSTER-HAWKS-V2`: validator clean, **user reports the
+weirdness is fixed.** Week-1 matchups visible; no stray Cards-player popups.
+
+**Complete user-team binding set (canonical for M26 franchise files):**
+
+| # | Field | Source pointer (Cards example) | Target (SEA example) |
+|---|---|---|---|
+| 1 | `FranchiseUser.Team` | Team table row 7 | row 32 |
+| 2 | `FranchiseUser.UserEntity` | Coach row 64 | row 68 |
+| 3 | `Coach[old HC].IsUserControlled` | true | false |
+| 4 | `Coach[new HC].IsUserControlled` | false | true |
+| 5 | `Franchise.LeagueOwner` | Coach row 64 | row 68 |
+| 6 | `Team[old row].UserCharacter` | Coach row 64 | NULL |
+| 7 | `Team[new row].UserCharacter` | NULL | Coach row 68 |
+| 8 | `ArcContext.Team` | Team row 7 | row 32 |
+
+All 8 implemented in `scripts/9k_swap_user_team.js`.
+
+**Diagnostic script kept:** `scripts/9z_find_refs_to.js` — generic ref-scanner
+useful for any future "what else points at X" investigation.
+
 ## 2026-05-08 (LATE EVE +5) - BREAKTHROUGH: User-Team Swap Sidesteps V11-V19
 
 After 7 failed attempts to crack the V11-V19 ceiling on `CAREER-HAWKSSTG9`,

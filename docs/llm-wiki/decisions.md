@@ -52,10 +52,11 @@ late evening on `CAREER-UPDATED-ROSTER-HAWKS`).
 - The V20 source `CAREER-UPDATED-ROSTER` is the load-bearing artifact. Back
   it up. Reproducing it from scratch remains open work (see decisions.md
   2026-05-08 PM late).
-- Known issues with the swap: Week-1 matchups not visible, trade-block
-  popups for non-user-team players. Suggests additional user-team bindings
-  beyond FranchiseUser + Coach (TeamSetting, PlayerPersonnel, Owner,
-  UserRequestIssuer). Iterative work to identify + swap.
+- Initial 9k v1 had UI weirdness (Week-1 matchups not visible + cross-team
+  trade-block popups). Resolved in v2 by extending the swap to 8 total
+  fields: added Franchise.LeagueOwner, Team.UserCharacter (clear old + set
+  new), ArcContext.Team. See task-log.md 2026-05-08 (LATE EVE +6) for the
+  full canonical binding set + table reference.
 
 ## 2026-05-08 (PM, latest) - .ros Encoding: No Off-The-Shelf Path For M26
 

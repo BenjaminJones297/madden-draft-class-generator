@@ -157,12 +157,69 @@ async function loadPopulated(franchise, name, minLive = 30) {
   }
 
   // Reference values are 32-bit binary strings: 15-bit tableId + 17-bit rowNumber
+  const NULL_REF = '0'.repeat(32);
   const teamRefBin = utilService.dec2bin(oldTeamRef.tableId, 15) + utilService.dec2bin(targetTeamRow, 17);
   const coachRefBin = utilService.dec2bin(oldUserEntRef.tableId, 15) + utilService.dec2bin(newCoachRow, 17);
   userRec.getFieldByKey('Team').value = teamRefBin;
   userRec.getFieldByKey('UserEntity').value = coachRefBin;
   oldCoachRec.getFieldByKey('IsUserControlled').value = false;
   coachTbl.records[newCoachRow].getFieldByKey('IsUserControlled').value = true;
+
+  // Additional bindings discovered 2026-05-08 LATE EVE +6 via 9z_find_refs_to.js:
+  //   - Franchise.LeagueOwner ref → user's coach (likely THE primary user binding)
+  //   - Team[old].UserCharacter ref → must be cleared to null
+  //   - Team[new].UserCharacter ref → must point at the new user's coach
+  //   - ArcContext.Team → user's active story arc team binding
+  // Without these, FranchiseUser swap loads + sims but UI still treats the
+  // user as the old team for matchups display + trade-block notifications.
+  const extraEdits = [];
+
+  // Franchise.LeagueOwner
+  const franchiseTbl = fra.getTableById(4635);
+  if (franchiseTbl) {
+    await franchiseTbl.readRecords();
+    const fRec = franchiseTbl.records.find(r => !r.isEmpty);
+    if (fRec) {
+      const loField = fRec.getFieldByKey('LeagueOwner');
+      if (loField && loField.isReference) {
+        loField.value = coachRefBin;
+        extraEdits.push('Franchise.LeagueOwner → new coach');
+      }
+    }
+  }
+
+  // Team.UserCharacter (clear old, set new)
+  const oldTeamRec = teamTbl.records[oldTeamRef.rowNumber];
+  const newTeamRec = teamTbl.records[targetTeamRow];
+  const oldUcField = oldTeamRec?.getFieldByKey('UserCharacter');
+  const newUcField = newTeamRec?.getFieldByKey('UserCharacter');
+  if (oldUcField && oldUcField.isReference) {
+    oldUcField.value = NULL_REF;
+    extraEdits.push(`Team[old row ${oldTeamRef.rowNumber}].UserCharacter → NULL`);
+  }
+  if (newUcField && newUcField.isReference) {
+    newUcField.value = coachRefBin;
+    extraEdits.push(`Team[new row ${targetTeamRow}].UserCharacter → new coach`);
+  }
+
+  // ArcContext.Team
+  const acTbl = fra.getTableById(4283);
+  if (acTbl) {
+    await acTbl.readRecords();
+    const acRec = acTbl.records.find(r => !r.isEmpty);
+    if (acRec) {
+      const teamField = acRec.getFieldByKey('Team');
+      if (teamField && teamField.isReference) {
+        teamField.value = teamRefBin;
+        extraEdits.push('ArcContext.Team → new team');
+      }
+    }
+  }
+
+  if (extraEdits.length > 0) {
+    console.log('\n  Additional bindings updated:');
+    for (const e of extraEdits) console.log(`    + ${e}`);
+  }
 
   console.log('\n  Saving franchise file…');
   await fra.save(franchisePath);
