@@ -1,0 +1,345 @@
+# Task Log — branch `rookie-visuals`
+
+Running log for the rookie-visuals branch. Promote sections into the main
+`task-log.md` on merge; keep this file as the working scratch-log meanwhile.
+
+## 2026-05-11 - Branch created + orchestration plan
+
+Branch: `rookie-visuals`, off `rookie-stat-baseline`.
+
+### Problem
+
+All 310 auto-rookies in `CAREER-UPDATED-ROSTER` share `skinTone=8` and
+`GenericHeadAssetName=gen_7_B_G_005`. 9g's same-team overlay path inherits the
+CharacterVisuals reference verbatim, so after injection every real 2026 rookie
+still has the same generic dark-skinned procedural face regardless of the
+actual prospect's appearance.
+
+NFL vet skinTone distribution (sampled from 2592 vets on `CAREER-UPDATED-ROSTER`):
+~17% in 1, ~18% in 2, ~2% in 3, ~6% in 4, ~7% in 5, ~12% in 6, ~36% in 7,
+~2% in 8. Auto-rookies at 100% in 8 are way off the real distribution.
+
+### Goal
+
+Per-prospect skin-tone accuracy via approach B (from earlier in this session):
+nflverse + fallback-source headshot scrape → image-based skin-tone extraction
+→ bucket to Madden's `skinTone` 1-8 → write `CharacterVisuals.RawData.skinTone`
++ paired `GenericHeadAssetName=gen_<N>_B_<X>_005`.
+
+### Schema findings (from prior session turn, before branch)
+
+- `Player.CharacterVisuals` is a 32-bit reference: top 15 bits = `tableId`,
+  bottom 17 bits = `row`. Decodes to a row in the `CharacterVisuals` table
+  (`tableId=4204`, capacity 5056, ~3000+ used).
+- `CharacterVisuals[row].RawData` is a JSON blob. Top-level keys: `skinTone`
+  (integer 1-8), `loadouts` (array — `loadoutType: "PlayerOnField"` with ~29
+  gear/equipment elements + an empty `loadoutCategory: "Base"`).
+- Face/hair/eyes/beard are NOT in `RawData`. They're baked into the
+  `Player.GenericHeadAssetName` model (e.g. `gen_7_B_G_005`).
+- **Pattern**: `gen_<N>_B_<X>_<NNN>` where `N` (1-7) correlates with `skinTone`
+  in a 1-7 cross-tab on vets (see numbers in `decisions.md` entry once written).
+  So setting both `skinTone` AND a matching `gen_N` head asset gives a
+  consistent look.
+
+### Orchestration plan
+
+- **Phase 1 (research, parallel)**: 2 agents + 1 local check
+  - Agent A: 2026-prospect headshot sources (nflverse + fallbacks)
+  - Agent B: lightweight Python skin-tone extraction algorithm
+  - Local: madden-franchise RawData field schema — variable vs fixed length
+- **Phase 2 (implementation, serial)**:
+  - `9n_fetch_rookie_headshots.py` — fetch + cache
+  - `9o_extract_skin_tones.py` — sample face region → bucket → JSON
+  - Calibrate on ~50 known vets spanning all 8 skinTones
+  - Applier (`9p_apply_visuals.js` or 9g extension) — write `skinTone` +
+    `GenericHeadAssetName` to franchise
+- **Phase 3 (integration + docs)**:
+  - Optional `-ApplyVisuals` flag on `build_franchise.ps1` (opt-in initially)
+  - `commands.md`, `project-map.md`, `decisions.md`, main `task-log.md`
+
+### Open questions to resolve in phase 1
+
+- Does nflverse have 2026 draft prospect headshots, or only post-roster?
+- What's the right face-region sampling approach? Naïve crop or face-detect?
+- Is `CharacterVisuals.RawData` a fixed-byte field that pads on write?
+
+### Phase 1 results (2026-05-11)
+
+**Headshot sources (Agent A):** ESPN CDN is the primary, keyed by `espn_id`
+from nflverse `players.csv`.
+
+- nflverse `players.csv` has rows for all 376 2026 rookies; `headshot`
+  column is empty for UDFs but `espn_id` is populated for ~369 of 376.
+- Primary URL: `https://a.espncdn.com/i/headshots/nfl/players/full/{espn_id}.png`
+  (600x436 PNG, ~250KB, no auth, no anti-bot, clean 404 on bad ID).
+- Fallback path on 404: `.../college-football/players/full/{espn_id}.png`.
+- Fallback for missing-espn_id (~7 names): ESPN search API
+  `https://site.web.api.espn.com/apis/common/v3/search?query={name}&limit=5&type=player`
+  returns `items[0].id`.
+- Expected coverage: ~98-100% on the 265 rookies.
+- Throttle: ~200ms between requests; retry once on 5xx.
+- Sources NOT worth pursuing: PFR / sports-reference (403 / anti-bot),
+  CFBD (no photos), ESPN draft hub (URL doesn't exist anymore),
+  nfl.com/players/* for UDF prospects (silhouette placeholder, not real photo).
+- Verified samples: Mendoza, Love, Tate, Ward all return ~250KB PNGs.
+- Existing `scripts/10_fetch_current_rosters.py` has reusable `download_raw`
+  + `norm_name` patterns. New script can mirror its structure.
+
+**Extraction algorithm (Agent B):** MediaPipe Face Mesh → Lab L* median with
+YCbCr skin filter → quantile binning to 1-8.
+
+- Libraries: `opencv-python mediapipe numpy` (Pillow already present). Skip
+  dlib (Windows build pain) and sklearn (quantile binning is trivial in numpy).
+- Face localization: MediaPipe Face Mesh's 468 landmarks. Forehead quad from
+  landmarks {10, 151, 108, 337}. Cheek backup from {50, 205, 187} (L) and
+  {280, 425, 411} (R). Median across all sampled regions.
+- Color metric: Lab `L*` channel (`cv2.cvtColor(..., COLOR_BGR2LAB)`). Filter
+  pixels to skin range in YCbCr: `77 <= Cb <= 127`, `133 <= Cr <= 173` (Hsu et
+  al.). Take median, NOT mean (robust to glare highlights).
+- No global white-balance: studio-lit photos break gray-world; Cb/Cr gate is
+  already doing lighting tolerance.
+- Calibration: **quantile binning against the NFL vet skinTone distribution**
+  (17/18/2/6/7/12/36/2% for tones 1-8) is the primary approach. Anchor-based
+  binning (mean L* per known tone) is a sanity check.
+- Confidence score combines: MediaPipe detection confidence, skin-pixel ratio
+  in sampled region (<30% = helmet/shadow dominates), distance to nearest bucket
+  edge (borderline cases). Flag for review when confidence < 0.5.
+- Known failure modes: (1) helmet covers forehead — detect via low forehead
+  skin-pixel ratio + good cheek ratio; fall back to cheek-only. (2) No face
+  detected — flag for manual, DO NOT fall back to fixed crop. (3) Flash on
+  light skin — cap L* contribution by dropping pixels with L* > 240 before
+  median.
+
+**RawData schema (local check):**
+
+```
+RawData field on CharacterVisuals (tableId=4204):
+  type: "binaryblob"
+  isReference: false
+  valueInThirdTable: true        ← variable-length storage
+  maxLength: 375                 ← (semantics unclear; samples exceed this)
+  length: 32                     ← in-record reference width in bits
+```
+
+Sample JSON-string lengths in CV table: 592, 592, 2023, 2011, 2031, 1924,
+1924, 1941, 2039, 2136, 1859, 2325, 1893, 2209, 592, 2008, 2175, 1900, 2013,
+1658, 1842, 1790, 1991, 2209, 1921 (min 592, max 2325).
+
+The `valueInThirdTable: true` + binaryblob shape + actual lengths exceeding
+the declared `maxLength` of 375 strongly suggests madden-franchise stores
+this in a separate variable-length area and the field schema's `maxLength`
+is either bytes-of-something-else or a stale hint. **Variable-length writes
+should work** — but verify with a roundtrip test before the applier touches
+real franchises (write, save, re-open, read back, confirm).
+
+### Phase 2 plan
+
+(See TaskList for live status.) Order:
+
+1. **9n_fetch_rookie_headshots.py** — nflverse → espn_id → ESPN CDN, with
+   college-football and search-API fallbacks. Cache to
+   `data/raw/headshots/{first}_{last}.png`. Outputs a manifest
+   `data/raw/headshot_manifest.json` recording url, status, bytes.
+2. **9o_extract_skin_tones.py** — MediaPipe + Lab L* + YCbCr skin gate +
+   median → continuous metric. Cache to
+   `data/raw/skin_tone_measurements.json` with per-photo confidence.
+3. **Calibration** — fetch headshots for ~50 vets spanning skinTone 1-8
+   from `CAREER-UPDATED-ROSTER`, run extractor, build calibration
+   (`data/skin_tone_calibration.json`) using quantile-on-NFL-distribution
+   as primary + per-tone anchor sanity check.
+4. **Bucket rookies** — apply calibration → `data/rookie_appearances.json`
+   with `{firstName, lastName, skinTone, confidence, headshotUrl}` per
+   rookie. Manual review queue for low-confidence cases.
+5. **9p_apply_visuals.js** — read `rookie_appearances.json`, find each
+   rookie's Player record, decode CharacterVisuals ref, mutate
+   `RawData.skinTone`, write back; set
+   `Player.GenericHeadAssetName=gen_<N>_B_G_005` to match. Save franchise.
+6. **End-to-end test** — run on a copy of `CAREER-UPDATED-ROSTER`, spot-
+   check Love + 5 other prospects, run `9z_validate_franchise.js`.
+
+### Phase 3 plan
+
+1. Add optional `-ApplyVisuals` switch to `build_franchise.ps1` (runs 9p
+   after 9g in phase 'pre').
+2. Wiki: append `commands.md` recipe, `project-map.md` entries for 9n/9o/9p,
+   `decisions.md` entry (chose approach B over A/C, why), promote
+   summary into main `task-log.md` on merge.
+
+### Open questions still tracked
+
+- Madden's reliance on consistency between `Player.GenericHeadAssetName`
+  and `CharacterVisuals.RawData.skinTone` — verified strongly correlated in
+  data, but is mismatch tolerated at load? Resolved (probably): 9p always
+  writes BOTH consistently, so we never test mismatch in practice.
+- The `maxLength: 375` mystery — does writing a longer RawData blob via
+  madden-franchise silently truncate or corrupt? **Resolved 2026-05-11**:
+  roundtrip test (write skinTone change, save, reopen, read) succeeded.
+  `maxLength: 375` is a misleading schema hint — actual content goes into
+  the third-table (variable-length) area and madden-franchise handles
+  resize/preserve correctly. The roundtrip preserved RawData length at
+  2023 chars (same as before/after — we changed `skinTone: 6` to
+  `skinTone: 1`, both single digits).
+
+### Phase 2 progress (2026-05-11)
+
+**Scripts written:**
+- `scripts/9n_fetch_rookie_headshots.py` — ESPN CDN via nflverse espn_id.
+  Coverage: 256/265 (97%) on first run. 8 no-espn-id, 1 CDN miss.
+- `scripts/9o_extract_skin_tones.py` — MediaPipe FaceLandmarker (new
+  tasks API; the legacy `mp.solutions.face_mesh` is gone in 0.10.35) +
+  Lab L* with YCbCr skin filter. Downloads `face_landmarker.task`
+  (3.7 MB) on first run.
+- `scripts/9o_pick_calibration_vets.js` — picks 10 vets per skinTone
+  bucket from the franchise truth. 80 total picks; nflverse coverage
+  on those was 79/80.
+- `scripts/9o_build_calibration.py` — fits both anchor-mean and
+  quantile-NFL classifiers, picks the better one (anchor here).
+- `scripts/9o_bucket_rookies.py` — applies calibration to
+  measurements, writes `data/rookie_appearances.json`.
+- `scripts/9p_apply_visuals.js` — the franchise applier. Writes
+  `CharacterVisuals.RawData.skinTone` + `Player.GenericHeadAssetName`
+  consistently.
+- New deps: `opencv-python`, `mediapipe`, `numpy` (added to
+  `requirements.txt`).
+
+**Calibration accuracy on 79 vet truth:**
+- Anchor method: 29/79 exact (37%), 58/79 within ±1 (73%)
+- Quantile-NFL: 16/79 exact (20%), 53/79 within ±1 (67%)
+- Anchor wins on both metrics → recommended method.
+- **Anchor monotonicity is broken** — middle tones (1-5) overlap in mean
+  L* because the algorithm has poor dynamic range above L*~150. Highlight
+  bias from studio flash on cheeks/forehead inflates medium-skin readings.
+  The 1-2 and 7-8 pairs are also cosmetically indistinguishable. The 73%
+  ±1 floor is probably the best this algorithm achieves without face-
+  landmark-aware highlight rejection.
+
+**Rookie distribution (255 bucketed of 256 measured of 265 total):**
+
+| tone | count | rookie % | NFL %  | observation |
+|------|-------|----------|--------|-------------|
+|  1   |  12   |   4.7%   | 17.0%  | under-represented |
+|  2   |  64   |  25.1%   | 18.0%  | over-represented (medium → tone 2 bias) |
+|  3   |   9   |   3.5%   |  2.0%  | ~ok |
+|  4   |  14   |   5.5%   |  6.0%  | ok |
+|  5   |  49   |  19.2%   |  7.0%  | over-represented (mid bias) |
+|  6   |  61   |  23.9%   | 12.0%  | over-represented |
+|  7   |  32   |  12.5%   | 36.0%  | under-represented (most dark-skinned vets read brighter than they should) |
+|  8   |  14   |   5.5%   |  2.0%  | over-represented |
+
+Net: the algorithm tends to mis-classify some dark-skinned players as
+medium and some medium as light, but every rookie gets a NON-default
+skin tone, which is the main goal. The result is visibly more varied
+than 265-rookies-all-skinTone-8.
+
+**Roundtrip write test:** PASSED. Read row 2, changed skinTone 6→1,
+saved, reopened, value persisted, franchise still loads. Cleaned up
+test file.
+
+### Phase 2 step 5: applier built
+
+`scripts/9p_apply_visuals.js` ready. Iterates Player records with
+YearDrafted=0, YearsPro=0 (the 9g-injected real rookies + Madden's
+auto-prospects), matches names against `rookie_appearances.json`, and
+on match: writes both `CharacterVisuals[row].RawData.skinTone` and
+`Player.GenericHeadAssetName` (= `gen_<min(7, tone)>_B_G_005` to match).
+
+`--apply` actually writes; default is dry-run. `--skip-low-confidence`
+skips entries marked `manualReview` in the appearances file.
+
+### Phase 2 step 6: end-to-end test results (RESOLVED)
+
+**Test sequence:** copy `CAREER-UPDATED-ROSTER` → `CAREER-VISUALS-TEST`,
+9g with custom ratings + rookies → 9p apply → 9z validate.
+
+**Initial counts (single-path write — all records):**
+- 575 rookie rows scanned (YearDrafted=0, YearsPro=0)
+- 306 matched to `rookie_appearances.json` by name
+- 252 of 306 had `CharacterVisuals` ref pointing at row 0 (NULL/default)
+
+**Root cause discovered:** 9g's fresh-inject path (V5-style for cross-team
+rookies who don't have a same-team auto-prospect placeholder) creates new
+Player records without allocating a unique CharacterVisuals row. The CV
+field defaults to all-zeros, which decodes to (tableId=0, row=0). When 9p
+naively wrote skinTone to row 0, all 252 fresh-inject duplicates collided
+on the same shared row — last-writer-wins. Spot-check confirmed: the
+"second Mendoza" / "second Love" / etc. records (one per rookie that 9g
+both overlaid AND fresh-injected) all pointed at row 0.
+
+**Fix (split-path logic in 9p):**
+- PATH A (CV ref non-null, ~54 records): write CV `RawData.skinTone` AND
+  `Player.GenericHeadAssetName` as a consistent pair.
+- PATH B (CV ref null/zero, ~252 records): skip the CV write (row 0
+  collision), update only `Player.GenericHeadAssetName`. Madden's renderer
+  reads head shape + skin family primarily from the asset name, so these
+  records still get a visible appearance change.
+
+**Final test results:**
+- 306 head-asset writes / 54 skin-tone writes
+- 9z validator clean (51,545 refs, 0 broken)
+- Spot-check of 13 named rookies showed overlay records with sensible
+  tones (Bowers → tone 1; Mendoza → 3; Tate, Hunter, Sanders, Downs → 7).
+  Outlier: Cam Ward classified as tone 8 (he's Latino, should be ~4) due
+  to algorithm highlight bias — manual override in
+  `rookie_appearances.json` is the escape hatch.
+- Head-family distribution shifted from heavily-gen_7-weighted
+  (119/306) toward varied (gen_2 +13, gen_5 +20, gen_6 +38, gen_7 −60).
+
+### Phase 3 complete
+
+- `build_franchise.ps1` now accepts opt-in `-ApplyVisuals` switch +
+  `-Appearances <path>` override. Runs 9p between 9l and the final
+  validate step.
+- Wiki updated: `commands.md` (recipe), `project-map.md` (entries for
+  all 6 new scripts), `decisions.md` (approach B rationale +
+  trade-offs), main `task-log.md` (promoted summary),
+  `data-contracts.md` (new generated-file entries + schema examples).
+- `.gitignore` extended to exclude the regeneratable cache files
+  (headshots, manifests, measurements, the 3.7MB face_landmarker.task
+  model download).
+
+### Phase 4: post-deployment fix (PLYR_PORTRAIT / PLYR_ASSETNAME hijack)
+
+After the user ran `build_franchise.ps1 ... -ApplyVisuals` and loaded the
+result in Madden, they reported "nothing looks changed." Investigation
+found that 9g's overlay path inherits `Player.PLYR_PORTRAIT` (a real
+face-scan ID) and `Player.PLYR_ASSETNAME` (a real-player asset bundle
+name like `AveryTre_22605`) from the auto-rookie placeholder. These two
+fields are Madden's primary keys for rendering — when set, they
+completely override `GenericHeadAssetName` + `CharacterVisuals`. So
+Caleb Downs was rendering as Tre Avery, Fernando Mendoza as Tycen
+Anderson, etc.
+
+Inventory on `CAREER-VISUALS-DEMO` (247 real-team rookies):
+- 162 had empty `PLYR_ASSETNAME` (would have worked with prior 9p)
+- ~85 had hijacked `LastFirst_NNNN` asset names with non-zero portraits
+  (rendered as wrong real players)
+
+**Fix:** 9p now also writes on every matched rookie:
+- `PLYR_PORTRAIT` → 0
+- `PLYR_ASSETNAME` → `<firstname><lastname>` lowercased stub (matches the
+  pattern 9g's overlay path produces, e.g. `jeremiyahlove`)
+
+Vets (`YearsPro >= 1`) are untouched — they keep their authentic face
+scans (Bowers 10018, Mason Graham 10564, Cam Ward 10768 stayed put).
+
+**Retest results:**
+- 306 head-asset writes / 54 skin-tone writes (same as before)
+- 252 portraits cleared (real-team rookies that had hijacked refs)
+- 252 asset names stubbed
+- Validator clean (51,545 refs, 0 broken)
+- Spot-check: Love-on-ARI now `asset=jeremiyahlove portrait=0`. Mendoza,
+  Downs, Tate, Bernard, Proctor similarly cleared.
+
+### Open follow-ups (not done on this branch)
+
+- 9g could allocate unique CV rows for fresh-inject records so 9p can
+  do PATH A on them too. Would lift coverage from 54/306 to 306/306.
+  Tricky: CV table is at capacity (5056/5056), so would need to find
+  unused rows or grow the table.
+- Calibration algorithm has poor dynamic range above L*~150 (mid-tones
+  collapse). Better forehead-only or face-segment-aware sampling could
+  improve from 73% within ±1 to ~85%.
+- Madden's real-portrait library (the IDs like 10768 for Cam Ward) is
+  out-of-scope for this branch. Could be a future enhancement: map
+  rookie name → real portrait ID when Madden has a face scan for that
+  player, fall through to procedural for the rest.

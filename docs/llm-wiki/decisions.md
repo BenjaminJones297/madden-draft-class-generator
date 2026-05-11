@@ -3,6 +3,72 @@
 Record durable architecture and workflow decisions here. Keep entries short and
 link to source when possible.
 
+## 2026-05-11 - Rookie Skin-Tone Optimization: Approach B (Image-Based)
+
+**Decision:** For per-rookie skin-tone realism, scrape headshots from ESPN
+CDN (via nflverse `espn_id`) and extract a Lab L* metric using MediaPipe
+Face Mesh landmarks + YCbCr skin filtering. Bucket to Madden's `skinTone`
+1-8 via anchor calibration against ~80 vets with known truth.
+
+**Why this beats the alternatives considered:**
+
+- **Approach A (NFL-distribution randomization):** trivial to implement
+  but gets every individual wrong. Rookies look diverse but unrelated to
+  their real selves.
+- **Approach C (manual lookup table):** most accurate but ~265 rows of
+  eyeballing per rookie class; non-reproducible across years; brittle
+  to roster turnover.
+- **Approach B (chosen):** ~97% photo coverage via ESPN CDN, 73% within-±1
+  accuracy on vet calibration. Reproducible: regenerate the appearances
+  file whenever the rookie class changes by re-running 9n/9o. The pipeline
+  is data-source-driven, matching the project's nflverse style.
+
+**Trade-offs accepted:**
+- 37% exact match means ~30% of rookies will be visibly off-tone (e.g.
+  Cam Ward classified as tone 8 instead of tone 4 — algorithm highlight
+  bias from studio flash on cheeks/forehead). Manual override of
+  `data/rookie_appearances.json` after the auto-run is the escape hatch
+  for outliers.
+- 9g's fresh-inject duplicate records have null `CharacterVisuals` refs,
+  so 9p can't write to their CV row 0 (would collide across records).
+  Workaround: write only `GenericHeadAssetName` for those (~252 records);
+  Madden's renderer uses the asset name as the primary appearance driver.
+- The algorithm has poor dynamic range above L*~150, so middle tones
+  (1-5) collapse into a narrow L* band. Calibration tones 1 vs 2 and
+  7 vs 8 are essentially indistinguishable in the algorithm's output.
+
+**Post-deployment fix (2026-05-11):** initial deploy was visually
+ineffective because 9g's overlay path inherits real-player
+`PLYR_PORTRAIT` + `PLYR_ASSETNAME` from auto-rookie placeholders. Madden
+uses those fields as primary rendering keys, overriding our
+`GenericHeadAssetName` + `CharacterVisuals` writes. 9p now also clears
+`PLYR_PORTRAIT = 0` and stubs `PLYR_ASSETNAME = 'firstnamelastname'`
+on every matched rookie, forcing Madden into procedural rendering
+which DOES pick up our visual writes. Vets (`YearsPro >= 1`) are
+untouched — they keep their authentic face scans.
+
+**Implications:**
+- New scripts on the path: `9n_fetch_rookie_headshots.py`,
+  `9o_extract_skin_tones.py`, `9o_pick_calibration_vets.js`,
+  `9o_build_calibration.py`, `9o_bucket_rookies.py`, `9p_apply_visuals.js`.
+- New deps: `opencv-python`, `mediapipe`, `numpy` (added to requirements.txt).
+- `build_franchise.ps1` gets a `-ApplyVisuals` opt-in switch + an
+  `-Appearances <path>` override. Default behavior unchanged.
+- Cache files (`data/raw/headshots/*.png`, `headshot_manifest.json`,
+  `skin_tone_measurements.json`, `skin_tone_calibration.json`,
+  `rookie_appearances.json`) are reproducible from public sources — no
+  need to commit photos.
+
+**Future work tracked:**
+- 9g fresh-inject path could allocate unique CV rows so 9p can write
+  proper RawData blobs for those records too (would lift coverage from
+  ~54/306 skin-tone writes to ~306/306).
+- Replace anchor with a face-segmentation-aware highlight rejector to
+  improve calibration agreement past 73% within ±1.
+- Real-portrait IDs (`PLYR_PORTRAIT`) and asset names
+  (`PLYR_ASSETNAME`) are out-of-scope for this branch; would require
+  a name → portrait-ID mapping table that Madden ships internally.
+
 ## 2026-05-07 - Use A Repo-Local LLM Wiki
 
 Decision: Maintain `docs/llm-wiki/` as the canonical context handoff for LLMs

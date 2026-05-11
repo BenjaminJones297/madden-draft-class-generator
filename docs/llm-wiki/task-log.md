@@ -3,6 +3,68 @@
 Append brief handoff notes for meaningful work. This file is for future LLMs,
 not a full changelog.
 
+## 2026-05-11 (+1) - Rookie skin-tone visuals pass (branch `rookie-visuals`)
+
+End-to-end pipeline that gives each injected 2026 rookie a per-player skin
+tone derived from their real-life headshot, instead of every rookie sharing
+the same `skinTone=8` + `gen_7_B_G_005` template Madden's auto-prospect
+generator produces.
+
+**Full pipeline (one-time build + per-franchise apply):**
+1. `9n_fetch_rookie_headshots.py` — ESPN CDN via nflverse `espn_id`. 97%
+   coverage on the 265-rookie class.
+2. `9o_extract_skin_tones.py` — MediaPipe FaceLandmarker forehead+cheek →
+   YCbCr-filtered Lab L* median → per-photo metric.
+3. `9o_pick_calibration_vets.js` + 9n + 9o on the picks → vet truth pairs.
+4. `9o_build_calibration.py` — fits anchor + quantile classifiers; anchor
+   wins at 37% exact / 73% within ±1.
+5. `9o_bucket_rookies.py` → `data/rookie_appearances.json`.
+6. `9p_apply_visuals.js --apply` writes skinTone + GenericHeadAssetName
+   into a franchise. Wired into `build_franchise.ps1` as opt-in
+   `-ApplyVisuals` switch.
+
+**Decisions:** see `decisions.md` 2026-05-11 entry for the approach-B
+rationale.
+
+**Detailed history:** see `task-log-rookie-visuals.md` for the
+branch-specific working log (schema findings, agent research outputs,
+calibration analysis, end-to-end test results).
+
+**Open follow-ups:**
+- 9g fresh-inject path doesn't allocate unique CV rows, so 9p can only
+  write proper `RawData.skinTone` for ~54/306 matched rookies. The other
+  252 get a `GenericHeadAssetName`-only update (Madden's renderer still
+  picks up skin family from that).
+- Algorithm has poor dynamic range in middle tones; some outliers
+  (e.g. Cam Ward as tone 8) need manual override in
+  `rookie_appearances.json` until calibration improves.
+
+## 2026-05-11 - build_franchise.ps1: forward custom ratings/rookies files
+
+Added optional `-Ratings <path>` and `-Rookies <path>` parameters to
+`scripts/build_franchise.ps1`. When non-empty, they're appended as
+`--ratings`/`--rookies` to the underlying 9g call in Phase 'pre' and (for
+`-Rookies`) the 9m call in Phase 'post' (where the rookies file acts as 9m's
+keep-list for distinguishing real rookies from fake auto-generated ones).
+
+Omitting the params preserves prior behavior — 9g/9m fall back to their built-in
+defaults (`data/full_solution_2_ratings.json`, `data/rookie_ratings_post_madden.json`).
+
+Motivation: lets the one-line wrapper consume local files like
+`data/roster_players_rated_full2.json` + `data/rookie_ratings_post_fix.json`
+without renaming or copying them to the default paths. This is the "skip data
+generation, use what's already on disk" workflow.
+
+Verified `roster_players_rated_full2.json` (script-8 merged shape with nested
+`ratings` object) and `rookie_ratings_post_fix.json` (flat shape) both work
+through 9g unmodified — name/position lookup is shape-tolerant and
+`applyRatingsObject` handles both `entry.ratings` and flat top-level rating
+keys.
+
+Wiki updates: `commands.md` "End-to-End Franchise Build" got an
+`Optional flags` subsection; `project-map.md` build_franchise.ps1 entry now
+mentions the flags.
+
 ## 2026-05-08 (LATE EVE +7) - Post-Sim Auto-Rookie Purge + One-Line Build Wrapper
 
 User loaded `CAREER-HAWKS-FINAL` (built from V20 source + 9k swap to SEA +

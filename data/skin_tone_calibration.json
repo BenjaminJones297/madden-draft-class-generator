@@ -1,0 +1,589 @@
+{
+  "method": "anchor",
+  "anchors": {
+    "1": 175.7,
+    "2": 187.65,
+    "3": 186.3,
+    "4": 176.9,
+    "5": 170.1,
+    "6": 131.4,
+    "7": 111.55555555555556,
+    "8": 117.75
+  },
+  "quantile_edges": [
+    193.0,
+    181.0,
+    180.0,
+    176.5,
+    172.0,
+    146.0,
+    66.0
+  ],
+  "agreement": {
+    "anchor": {
+      "exact": 29,
+      "off1": 58,
+      "n": 79
+    },
+    "quantile_nfl": {
+      "exact": 16,
+      "off1": 53,
+      "n": 79
+    }
+  },
+  "raw_pairs": [
+    {
+      "name": "Kris Abrams-Draine",
+      "trueSkinTone": 1,
+      "l_star": 176.0,
+      "confidence": 1.0,
+      "position": "CB"
+    },
+    {
+      "name": "Chandler Brayboy",
+      "trueSkinTone": 1,
+      "l_star": 186.0,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "Jacob Cowing",
+      "trueSkinTone": 1,
+      "l_star": 115.0,
+      "confidence": 0.903030303030303,
+      "position": "WR"
+    },
+    {
+      "name": "Wesley French",
+      "trueSkinTone": 1,
+      "l_star": 202.0,
+      "confidence": 1.0,
+      "position": "LG"
+    },
+    {
+      "name": "Jaden Hicks",
+      "trueSkinTone": 1,
+      "l_star": 176.5,
+      "confidence": 0.9912536443148688,
+      "position": "SS"
+    },
+    {
+      "name": "Kalen King",
+      "trueSkinTone": 1,
+      "l_star": 115.0,
+      "confidence": 0.6820290873979483,
+      "position": "CB"
+    },
+    {
+      "name": "Seth McLaughlin",
+      "trueSkinTone": 1,
+      "l_star": 199.5,
+      "confidence": 0.8848011891490152,
+      "position": "C"
+    },
+    {
+      "name": "Alec Pierce",
+      "trueSkinTone": 1,
+      "l_star": 191.0,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "Will Shipley",
+      "trueSkinTone": 1,
+      "l_star": 203.0,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Sione Vaki",
+      "trueSkinTone": 1,
+      "l_star": 193.0,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Nate Adkins",
+      "trueSkinTone": 2,
+      "l_star": 179.0,
+      "confidence": 1.0,
+      "position": "TE"
+    },
+    {
+      "name": "Joey Bosa",
+      "trueSkinTone": 2,
+      "l_star": 194.0,
+      "confidence": 1.0,
+      "position": "RE"
+    },
+    {
+      "name": "Evan Deckers",
+      "trueSkinTone": 2,
+      "l_star": 223.0,
+      "confidence": 1.0,
+      "position": "LS"
+    },
+    {
+      "name": "Nick Gates",
+      "trueSkinTone": 2,
+      "l_star": 211.0,
+      "confidence": 1.0,
+      "position": "C"
+    },
+    {
+      "name": "Ozzie Hutchinson",
+      "trueSkinTone": 2,
+      "l_star": 134.0,
+      "confidence": 0.9869281045751634,
+      "position": "C"
+    },
+    {
+      "name": "Hunter Luepke",
+      "trueSkinTone": 2,
+      "l_star": 188.0,
+      "confidence": 1.0,
+      "position": "FB"
+    },
+    {
+      "name": "Jake Moody",
+      "trueSkinTone": 2,
+      "l_star": 176.0,
+      "confidence": 0.9971264367816092,
+      "position": "K"
+    },
+    {
+      "name": "Brock Purdy",
+      "trueSkinTone": 2,
+      "l_star": 179.0,
+      "confidence": 0.9970238095238096,
+      "position": "QB"
+    },
+    {
+      "name": "Dalton Schultz",
+      "trueSkinTone": 2,
+      "l_star": 198.5,
+      "confidence": 1.0,
+      "position": "TE"
+    },
+    {
+      "name": "Ozzy Trapilo",
+      "trueSkinTone": 2,
+      "l_star": 194.0,
+      "confidence": 1.0,
+      "position": "LT"
+    },
+    {
+      "name": "Tyler Batty",
+      "trueSkinTone": 3,
+      "l_star": 169.0,
+      "confidence": 1.0,
+      "position": "LE"
+    },
+    {
+      "name": "Teddye Buchanan",
+      "trueSkinTone": 3,
+      "l_star": 179.0,
+      "confidence": 1.0,
+      "position": "ROLB"
+    },
+    {
+      "name": "Trystan Colon",
+      "trueSkinTone": 3,
+      "l_star": 182.0,
+      "confidence": 1.0,
+      "position": "C"
+    },
+    {
+      "name": "Daniel Faalele",
+      "trueSkinTone": 3,
+      "l_star": 181.0,
+      "confidence": 1.0,
+      "position": "RG"
+    },
+    {
+      "name": "Jayden Higgins",
+      "trueSkinTone": 3,
+      "l_star": 173.5,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "Alec Ingold",
+      "trueSkinTone": 3,
+      "l_star": 190.0,
+      "confidence": 1.0,
+      "position": "FB"
+    },
+    {
+      "name": "Roy Lopez",
+      "trueSkinTone": 3,
+      "l_star": 183.5,
+      "confidence": 0.9667106512026299,
+      "position": "DT"
+    },
+    {
+      "name": "Puka Nacua",
+      "trueSkinTone": 3,
+      "l_star": 194.0,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "Mason Richman",
+      "trueSkinTone": 3,
+      "l_star": 204.0,
+      "confidence": 1.0,
+      "position": "RT"
+    },
+    {
+      "name": "Spencer Shrader",
+      "trueSkinTone": 3,
+      "l_star": 207.0,
+      "confidence": 1.0,
+      "position": "K"
+    },
+    {
+      "name": "Tyler Allgeier",
+      "trueSkinTone": 4,
+      "l_star": 184.0,
+      "confidence": 0.8265895953757226,
+      "position": "HB"
+    },
+    {
+      "name": "Chase Brown",
+      "trueSkinTone": 4,
+      "l_star": 180.0,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Ka'imi Fairbairn",
+      "trueSkinTone": 4,
+      "l_star": 184.0,
+      "confidence": 1.0,
+      "position": "K"
+    },
+    {
+      "name": "Daniel Hardy",
+      "trueSkinTone": 4,
+      "l_star": 184.0,
+      "confidence": 0.847953216374269,
+      "position": "RE"
+    },
+    {
+      "name": "Andrei Iosivas",
+      "trueSkinTone": 4,
+      "l_star": 182.0,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "Chase Lucas",
+      "trueSkinTone": 4,
+      "l_star": 172.0,
+      "confidence": 1.0,
+      "position": "CB"
+    },
+    {
+      "name": "Byron Murphy Jr",
+      "trueSkinTone": 4,
+      "l_star": 176.0,
+      "confidence": 1.0,
+      "position": "CB"
+    },
+    {
+      "name": "Michael Pittman Jr",
+      "trueSkinTone": 4,
+      "l_star": 180.0,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "Justin Simmons",
+      "trueSkinTone": 4,
+      "l_star": 183.0,
+      "confidence": 0.5047281323877068,
+      "position": "FS"
+    },
+    {
+      "name": "JT Tuimoloau",
+      "trueSkinTone": 4,
+      "l_star": 144.0,
+      "confidence": 1.0,
+      "position": "RE"
+    },
+    {
+      "name": "Jaire Alexander",
+      "trueSkinTone": 5,
+      "l_star": 153.0,
+      "confidence": 0.9889348025711663,
+      "position": "CB"
+    },
+    {
+      "name": "Shaun Bradley",
+      "trueSkinTone": 5,
+      "l_star": 188.0,
+      "confidence": 0.874251497005988,
+      "position": "MLB"
+    },
+    {
+      "name": "Dylan Cook",
+      "trueSkinTone": 5,
+      "l_star": 201.0,
+      "confidence": 1.0,
+      "position": "RT"
+    },
+    {
+      "name": "Minkah Fitzpatrick",
+      "trueSkinTone": 5,
+      "l_star": 183.5,
+      "confidence": 0.9980099502487563,
+      "position": "FS"
+    },
+    {
+      "name": "Elijah Higgins",
+      "trueSkinTone": 5,
+      "l_star": 139.0,
+      "confidence": 1.0,
+      "position": "TE"
+    },
+    {
+      "name": "Quentin Lake",
+      "trueSkinTone": 5,
+      "l_star": 148.0,
+      "confidence": 1.0,
+      "position": "SS"
+    },
+    {
+      "name": "Elijah Mitchell",
+      "trueSkinTone": 5,
+      "l_star": 188.0,
+      "confidence": 0.9735973597359736,
+      "position": "HB"
+    },
+    {
+      "name": "Isaiah Oliver",
+      "trueSkinTone": 5,
+      "l_star": 169.0,
+      "confidence": 0.9990281827016521,
+      "position": "SS"
+    },
+    {
+      "name": "Chris Rodriguez Jr",
+      "trueSkinTone": 5,
+      "l_star": 172.0,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Jason Taylor II",
+      "trueSkinTone": 5,
+      "l_star": 159.5,
+      "confidence": 0.4282920469361147,
+      "position": "SS"
+    },
+    {
+      "name": "Israel Abanikanda",
+      "trueSkinTone": 6,
+      "l_star": 89.0,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Baron Browning",
+      "trueSkinTone": 6,
+      "l_star": 111.0,
+      "confidence": 1.0,
+      "position": "LE"
+    },
+    {
+      "name": "Grant Delpit",
+      "trueSkinTone": 6,
+      "l_star": 128.0,
+      "confidence": 1.0,
+      "position": "SS"
+    },
+    {
+      "name": "Antoine Green",
+      "trueSkinTone": 6,
+      "l_star": 146.0,
+      "confidence": 0.9303489474667819,
+      "position": "WR"
+    },
+    {
+      "name": "Nick Jackson",
+      "trueSkinTone": 6,
+      "l_star": 160.0,
+      "confidence": 1.0,
+      "position": "MLB"
+    },
+    {
+      "name": "Isaiah Likely",
+      "trueSkinTone": 6,
+      "l_star": 122.0,
+      "confidence": 1.0,
+      "position": "TE"
+    },
+    {
+      "name": "David Montgomery",
+      "trueSkinTone": 6,
+      "l_star": 139.0,
+      "confidence": 0.9269408900360627,
+      "position": "HB"
+    },
+    {
+      "name": "Jalen Ramsey",
+      "trueSkinTone": 6,
+      "l_star": 115.0,
+      "confidence": 1.0,
+      "position": "FS"
+    },
+    {
+      "name": "Preston Smith",
+      "trueSkinTone": 6,
+      "l_star": 165.0,
+      "confidence": 1.0,
+      "position": "RE"
+    },
+    {
+      "name": "Shaun Wade",
+      "trueSkinTone": 6,
+      "l_star": 139.0,
+      "confidence": 1.0,
+      "position": "CB"
+    },
+    {
+      "name": "Ameer Abdullah",
+      "trueSkinTone": 7,
+      "l_star": 135.0,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Bobby Brown III",
+      "trueSkinTone": 7,
+      "l_star": 54.0,
+      "confidence": 1.0,
+      "position": "DT"
+    },
+    {
+      "name": "Kaden Davis",
+      "trueSkinTone": 7,
+      "l_star": 201.0,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "Willie Gay Jr",
+      "trueSkinTone": 7,
+      "l_star": 111.0,
+      "confidence": 1.0,
+      "position": "LOLB"
+    },
+    {
+      "name": "Darnay Holmes",
+      "trueSkinTone": 7,
+      "l_star": 94.0,
+      "confidence": 1.0,
+      "position": "CB"
+    },
+    {
+      "name": "Bub Means",
+      "trueSkinTone": 7,
+      "l_star": 139.0,
+      "confidence": 1.0,
+      "position": "WR"
+    },
+    {
+      "name": "James Pearce Jr",
+      "trueSkinTone": 7,
+      "l_star": 109.0,
+      "confidence": 1.0,
+      "position": "RE"
+    },
+    {
+      "name": "Nick Scott",
+      "trueSkinTone": 7,
+      "l_star": 91.0,
+      "confidence": 0.8939393939393939,
+      "position": "SS"
+    },
+    {
+      "name": "Princely Umanmielen",
+      "trueSkinTone": 7,
+      "l_star": 70.0,
+      "confidence": 0.8286604361370716,
+      "position": "RE"
+    },
+    {
+      "name": "Tommy Akingbesote",
+      "trueSkinTone": 8,
+      "l_star": 120.0,
+      "confidence": 1.0,
+      "position": "DT"
+    },
+    {
+      "name": "Anthony Belton",
+      "trueSkinTone": 8,
+      "l_star": 119.0,
+      "confidence": 1.0,
+      "position": "LT"
+    },
+    {
+      "name": "Marcus Bryant",
+      "trueSkinTone": 8,
+      "l_star": 118.0,
+      "confidence": 1.0,
+      "position": "RT"
+    },
+    {
+      "name": "Donovan Ezeiruaku",
+      "trueSkinTone": 8,
+      "l_star": 129.5,
+      "confidence": 1.0,
+      "position": "RE"
+    },
+    {
+      "name": "Jay Higgins IV",
+      "trueSkinTone": 8,
+      "l_star": 120.5,
+      "confidence": 1.0,
+      "position": "MLB"
+    },
+    {
+      "name": "Jordan James",
+      "trueSkinTone": 8,
+      "l_star": 132.0,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Bilhal Kone",
+      "trueSkinTone": 8,
+      "l_star": 66.0,
+      "confidence": 1.0,
+      "position": "CB"
+    },
+    {
+      "name": "Armand Membou",
+      "trueSkinTone": 8,
+      "l_star": 113.0,
+      "confidence": 1.0,
+      "position": "RT"
+    },
+    {
+      "name": "Devin Neal",
+      "trueSkinTone": 8,
+      "l_star": 148.5,
+      "confidence": 1.0,
+      "position": "HB"
+    },
+    {
+      "name": "Que Robinson",
+      "trueSkinTone": 8,
+      "l_star": 111.0,
+      "confidence": 1.0,
+      "position": "RE"
+    }
+  ]
+}

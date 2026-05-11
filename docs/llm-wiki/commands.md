@@ -111,6 +111,85 @@ in Madden manually.
 ./scripts/build_franchise.ps1 -DestName CAREER-HAWKS-FINAL -Phase post
 ```
 
+### Optional flags: `-Ratings` and `-Rookies`
+
+Use these to skip the data-generation phase (`run.py` / `roster_run.py`) and
+build directly from local JSON files. Both are optional; omit them to use
+9g/9m's built-in defaults (`data/full_solution_2_ratings.json` and
+`data/rookie_ratings_post_madden.json`).
+
+```powershell
+# Phase 1 with custom inputs
+./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-LOVE-TEST -Phase pre `
+  -Ratings data\roster_players_rated_full2.json `
+  -Rookies data\rookie_ratings_post_fix.json
+
+# Phase 2 — only -Rookies matters here (it's 9m's keep-list)
+./scripts/build_franchise.ps1 -DestName CAREER-LOVE-TEST -Phase post `
+  -Rookies data\rookie_ratings_post_fix.json
+```
+
+Forwarding:
+- `-Ratings` → `9g_sync_franchise_from_data.js --ratings <path>` in Phase pre
+- `-Rookies` → `9g --rookies <path>` in Phase pre AND
+  `9m_purge_fake_rookies.js --rookies <path>` in Phase post (the keep-list)
+- `-ApplyVisuals` → runs `9p_apply_visuals.js --apply` in Phase pre after 9l
+- `-Appearances` → forwards `--appearances <path>` to 9p (default
+  `data/rookie_appearances.json`)
+
+`roster_players_rated_full2.json` (script-8 merged shape, nested `ratings`
+object) and `rookie_ratings_post_fix.json` (flat shape) are both accepted by
+9g without modification — 9g handles both shapes via `applyRatingsObject`.
+
+## Rookie visuals (skin-tone) — one-time build
+
+The `-ApplyVisuals` flag on `build_franchise.ps1` consumes
+`data/rookie_appearances.json`. Build it once per rookie class:
+
+```powershell
+# 1. Fetch headshots from ESPN CDN via nflverse espn_id lookup.
+python scripts/9n_fetch_rookie_headshots.py
+
+# 2. Extract Lab L* metric from each photo using MediaPipe Face Mesh.
+python scripts/9o_extract_skin_tones.py
+
+# 3. Pick ~80 vets across all 8 Madden skinTone buckets for calibration.
+node scripts/9o_pick_calibration_vets.js --per-bucket 10
+
+# 4. Fetch vet headshots + run extractor on them.
+python scripts/9n_fetch_rookie_headshots.py `
+  --input data/calibration_vets.json `
+  --out-dir data/raw/headshots_calibration `
+  --manifest data/raw/headshot_manifest_calibration.json
+python scripts/9o_extract_skin_tones.py `
+  --photo-dir data/raw/headshots_calibration `
+  --manifest data/raw/headshot_manifest_calibration.json `
+  --out data/raw/vet_skin_measurements.json `
+  --debug-overlays 0
+
+# 5. Fit anchor + quantile classifiers; the better one wins.
+python scripts/9o_build_calibration.py
+
+# 6. Apply calibration → data/rookie_appearances.json.
+python scripts/9o_bucket_rookies.py
+```
+
+End state: `data/rookie_appearances.json` is ready, and any future
+`build_franchise.ps1 ... -ApplyVisuals` run uses it.
+
+**Coverage notes:**
+- 9p writes `CharacterVisuals.RawData.skinTone` for rookies that 9g overlaid
+  onto auto-prospect placeholders (CV ref non-null, ~54 records per
+  franchise). It writes `Player.GenericHeadAssetName` for ALL matched
+  rookies (~306, including 9g's fresh-inject duplicates with null CV refs).
+  Madden renders head primarily from the asset name, so even null-CV records
+  get a visible skin family change.
+- Calibration accuracy on 79 vet truth: 37% exact / 73% within ±1. Most
+  errors are off-by-one cosmetic mismatches; some Latino/biracial players
+  (e.g. Cam Ward) classify into an obviously wrong bucket due to algorithm
+  highlight bias. Manual override of `rookie_appearances.json` after step 6
+  is the easiest fix for outliers.
+
 End state: a franchise controlled by your chosen team, with vets on real-life
 teams, 265 real 2026 rookies on real teams, and Madden's auto-generated
 rookies (pre-draft pool + post-draft UDFAs + next-year synthetic class) all

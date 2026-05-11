@@ -78,8 +78,46 @@ Optional reference input:
   synthetic pool. Edit-the-autosave pattern (quit Madden without saving
   first). ~140 records on a typical post-preseason save.
 - `scripts/build_franchise.ps1`: PowerShell wrapper orchestrating the
-  pre-sim and post-sim phases. See `commands.md` "End-to-End Franchise
-  Build" recipe.
+  pre-sim and post-sim phases. Accepts optional `-Ratings <path>` and
+  `-Rookies <path>` flags that forward to 9g (`--ratings`/`--rookies`) and
+  9m (`--rookies`) — lets the wrapper consume custom local files in place of
+  the canonical `full_solution_2_ratings.json` / `rookie_ratings_post_madden.json`
+  defaults. Also accepts `-ApplyVisuals` to run 9p after 9l and
+  `-Appearances <path>` to override 9p's input. See `commands.md` "End-to-End
+  Franchise Build" recipe.
+- `scripts/9n_fetch_rookie_headshots.py`: fetches PNG headshots for the 265
+  rookies via ESPN CDN, keyed by `espn_id` from nflverse `players.csv`.
+  Fallback ladder: `/nfl/players/full/{id}.png` → `/college-football/...` →
+  ESPN search API. Throttled ~200ms. Cache to `data/raw/headshots/` +
+  manifest at `data/raw/headshot_manifest.json`. Coverage ~97% on first run.
+- `scripts/9o_extract_skin_tones.py`: per-photo skin-tone metric extractor.
+  MediaPipe FaceLandmarker (new `mediapipe.tasks` API — auto-downloads
+  `face_landmarker.task` to `data/raw/`) → forehead+cheek landmark
+  polygons → YCbCr skin filter (Hsu et al.) + Lab L* highlight cap → median
+  L* per region → confidence-weighted output to
+  `data/raw/skin_tone_measurements.json`. Supports `--debug-overlays N` to
+  write annotated PNGs for eyeball verification.
+- `scripts/9o_pick_calibration_vets.js`: picks N vets per truth skinTone
+  bucket from a source franchise (default `CAREER-UPDATED-ROSTER`),
+  outputs `data/calibration_vets.json` in rookie shape so 9n consumes it
+  directly. Decodes `CharacterVisuals.RawData.skinTone` as truth.
+- `scripts/9o_build_calibration.py`: joins vet truth + vet measurements,
+  fits both anchor-mean and quantile-NFL classifiers, picks the better one
+  on exact-match agreement (with off-by-one as tiebreaker), writes
+  `data/skin_tone_calibration.json`. Anchor wins in practice (~37% exact /
+  73% within ±1).
+- `scripts/9o_bucket_rookies.py`: applies the chosen calibration method to
+  rookie measurements, writes `data/rookie_appearances.json` (the input 9p
+  consumes). Flags entries with `confidence < 0.5` for manual review.
+- `scripts/9p_apply_visuals.js`: writes per-rookie skin-tone overrides into
+  a franchise. For each rookie in `rookie_appearances.json`, locates the
+  Player record by name, then: (a) if `CharacterVisuals` ref is non-null,
+  updates `CharacterVisuals[row].RawData.skinTone`; (b) updates
+  `Player.GenericHeadAssetName` to `gen_<min(7,tone)>_B_G_005` (consistent
+  with Madden's auto-rookie template). The split path handles 9g's fresh-
+  inject duplicates which have null CV refs — they still get a head-asset
+  update which Madden renders from. Supports `--apply` / dry-run /
+  `--skip-low-confidence`.
 - `scripts/9z_probe_auto_rookies.js`: read-only diagnostic — buckets the
   Player table by (YearDrafted, YearsPro), shows samples by ContractStatus.
   Useful for understanding rookie/prospect state before disposal.

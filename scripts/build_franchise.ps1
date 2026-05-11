@@ -14,6 +14,20 @@
 #   # (load in Madden, sim through draft + preseason to Week 1, save autosave)
 #   ./scripts/build_franchise.ps1 -DestName CAREER-HAWKS-FINAL -Phase post
 #
+#   # With custom ratings / rookies files (skips data-generation phase):
+#   ./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-LOVE-TEST -Phase pre `
+#     -Ratings data\roster_players_rated_full2.json `
+#     -Rookies data\rookie_ratings_post_fix.json
+#   ./scripts/build_franchise.ps1 -DestName CAREER-LOVE-TEST -Phase post `
+#     -Rookies data\rookie_ratings_post_fix.json
+#
+#   # With skin-tone visuals (requires data/rookie_appearances.json already built;
+#   # see commands.md "Rookie visuals (skin-tone)" for the one-time build):
+#   ./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-LOVE-TEST -Phase pre `
+#     -Ratings data\roster_players_rated_full2.json `
+#     -Rookies data\rookie_ratings_post_fix.json `
+#     -ApplyVisuals
+#
 # TeamIndex map: 0=Bears 1=Bengals 2=Bills 3=Broncos 4=Browns 5=Buccaneers
 # 6=Cardinals 7=Chargers 8=Chiefs 9=Colts 10=Cowboys 11=Dolphins 12=Eagles
 # 13=Falcons 14=49ers 15=Giants 16=Jaguars 17=Jets 18=Lions 19=Packers
@@ -29,7 +43,26 @@ param(
   [string]$Source = "CAREER-UPDATED-ROSTER",
 
   [ValidateSet('pre', 'post')]
-  [string]$Phase = 'pre'
+  [string]$Phase = 'pre',
+
+  # Optional: override 9g's veteran ratings input. Forwarded to 9g as --ratings.
+  # Default (when omitted): 9g uses data/full_solution_2_ratings.json.
+  [string]$Ratings,
+
+  # Optional: override 9g + 9m's rookie ratings input. Forwarded as --rookies.
+  # 9m uses this as the keep-list when purging fake auto-rookies.
+  # Default (when omitted): both use data/rookie_ratings_post_madden.json.
+  [string]$Rookies,
+
+  # Optional: also apply per-rookie skin-tone visuals via 9p_apply_visuals.js
+  # after the rookie injection step. Reads data/rookie_appearances.json
+  # (built by the 9n/9o pipeline). See docs/llm-wiki/commands.md for the
+  # one-time build.
+  [switch]$ApplyVisuals,
+
+  # Optional: override the appearances file path (forwarded to 9p as
+  # --appearances). Only used when -ApplyVisuals is set.
+  [string]$Appearances
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,12 +101,23 @@ if ($Phase -eq 'pre') {
   if ($LASTEXITCODE -ne 0) { throw "validator failed" }
 
   Step "Step 4: 9g — inject 2026 rookies + update vet ratings"
-  & node "$repo\scripts\9g_sync_franchise_from_data.js" --franchise $dstPath --apply --allow-unmatched
+  $g9Args = @('--franchise', $dstPath, '--apply', '--allow-unmatched')
+  if ($Ratings) { $g9Args += '--ratings', $Ratings }
+  if ($Rookies) { $g9Args += '--rookies', $Rookies }
+  & node "$repo\scripts\9g_sync_franchise_from_data.js" @g9Args
   if ($LASTEXITCODE -ne 0) { throw "9g failed" }
 
   Step "Step 5: 9l — dispose Madden's pre-built draft pool"
   & node "$repo\scripts\9l_dispose_auto_prospects.js" --franchise $dstPath
   if ($LASTEXITCODE -ne 0) { throw "9l failed" }
+
+  if ($ApplyVisuals) {
+    Step "Step 5b: 9p — apply rookie skin-tone visuals"
+    $p9Args = @('--franchise', $dstPath, '--apply')
+    if ($Appearances) { $p9Args += '--appearances', $Appearances }
+    & node "$repo\scripts\9p_apply_visuals.js" @p9Args
+    if ($LASTEXITCODE -ne 0) { throw "9p failed" }
+  }
 
   Step "Step 6: Final pre-sim validate"
   & node "$repo\scripts\9z_validate_franchise.js" --franchise $dstPath
@@ -97,7 +141,9 @@ elseif ($Phase -eq 'post') {
   }
 
   Step "Phase 'post' — purge auto-generated rookies on $DestName-AUTOSAVE"
-  & node "$repo\scripts\9m_purge_fake_rookies.js" --franchise $autoPath --include-yd1
+  $m9Args = @('--franchise', $autoPath, '--include-yd1')
+  if ($Rookies) { $m9Args += '--rookies', $Rookies }
+  & node "$repo\scripts\9m_purge_fake_rookies.js" @m9Args
   if ($LASTEXITCODE -ne 0) { throw "9m failed" }
 
   Step "Final validate"

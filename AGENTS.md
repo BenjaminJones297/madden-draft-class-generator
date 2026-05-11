@@ -23,6 +23,12 @@ Current runnable entry points:
   documented in `docs/llm-wiki/decisions.md` (2026-05-08 PM, late):** start
   from `CAREER-UPDATED-ROSTER` (vets already on real teams), run default
   9g (no vet TeamIndex moves). Sim past Week 1 works.
+- `scripts/build_franchise.ps1`: one-line wrapper. Accepts optional
+  `-Ratings`/`-Rookies` to consume local files instead of the canonical
+  defaults, and `-ApplyVisuals` (opt-in) to run the rookie skin-tone pass
+  (`scripts/9n` → `scripts/9o_*` → `scripts/9p`). See
+  `docs/llm-wiki/commands.md` "End-to-End Franchise Build" + "Rookie
+  visuals (skin-tone)" recipes.
 
 Important source directories:
 

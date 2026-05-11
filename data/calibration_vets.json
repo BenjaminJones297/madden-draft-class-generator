@@ -1,0 +1,482 @@
+[
+  {
+    "firstName": "Kris",
+    "lastName": "Abrams-Draine",
+    "position": "CB",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Chandler",
+    "lastName": "Brayboy",
+    "position": "WR",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Jacob",
+    "lastName": "Cowing",
+    "position": "WR",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Wesley",
+    "lastName": "French",
+    "position": "LG",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Jaden",
+    "lastName": "Hicks",
+    "position": "SS",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Kalen",
+    "lastName": "King",
+    "position": "CB",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Seth",
+    "lastName": "McLaughlin",
+    "position": "C",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Alec",
+    "lastName": "Pierce",
+    "position": "WR",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Will",
+    "lastName": "Shipley",
+    "position": "HB",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Sione",
+    "lastName": "Vaki",
+    "position": "HB",
+    "trueSkinTone": 1
+  },
+  {
+    "firstName": "Nate",
+    "lastName": "Adkins",
+    "position": "TE",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Joey",
+    "lastName": "Bosa",
+    "position": "RE",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Evan",
+    "lastName": "Deckers",
+    "position": "LS",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Nick",
+    "lastName": "Gates",
+    "position": "C",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Ozzie",
+    "lastName": "Hutchinson",
+    "position": "C",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Hunter",
+    "lastName": "Luepke",
+    "position": "FB",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Jake",
+    "lastName": "Moody",
+    "position": "K",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Brock",
+    "lastName": "Purdy",
+    "position": "QB",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Dalton",
+    "lastName": "Schultz",
+    "position": "TE",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Ozzy",
+    "lastName": "Trapilo",
+    "position": "LT",
+    "trueSkinTone": 2
+  },
+  {
+    "firstName": "Tyler",
+    "lastName": "Batty",
+    "position": "LE",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Teddye",
+    "lastName": "Buchanan",
+    "position": "ROLB",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Trystan",
+    "lastName": "Colon",
+    "position": "C",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Daniel",
+    "lastName": "Faalele",
+    "position": "RG",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Jayden",
+    "lastName": "Higgins",
+    "position": "WR",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Alec",
+    "lastName": "Ingold",
+    "position": "FB",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Roy",
+    "lastName": "Lopez",
+    "position": "DT",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Puka",
+    "lastName": "Nacua",
+    "position": "WR",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Mason",
+    "lastName": "Richman",
+    "position": "RT",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Spencer",
+    "lastName": "Shrader",
+    "position": "K",
+    "trueSkinTone": 3
+  },
+  {
+    "firstName": "Tyler",
+    "lastName": "Allgeier",
+    "position": "HB",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Chase",
+    "lastName": "Brown",
+    "position": "HB",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Ka'imi",
+    "lastName": "Fairbairn",
+    "position": "K",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Daniel",
+    "lastName": "Hardy",
+    "position": "RE",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Andrei",
+    "lastName": "Iosivas",
+    "position": "WR",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Chase",
+    "lastName": "Lucas",
+    "position": "CB",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Byron",
+    "lastName": "Murphy Jr",
+    "position": "CB",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Michael",
+    "lastName": "Pittman Jr",
+    "position": "WR",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Justin",
+    "lastName": "Simmons",
+    "position": "FS",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "JT",
+    "lastName": "Tuimoloau",
+    "position": "RE",
+    "trueSkinTone": 4
+  },
+  {
+    "firstName": "Jaire",
+    "lastName": "Alexander",
+    "position": "CB",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Shaun",
+    "lastName": "Bradley",
+    "position": "MLB",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Dylan",
+    "lastName": "Cook",
+    "position": "RT",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Minkah",
+    "lastName": "Fitzpatrick",
+    "position": "FS",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Elijah",
+    "lastName": "Higgins",
+    "position": "TE",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Quentin",
+    "lastName": "Lake",
+    "position": "SS",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Elijah",
+    "lastName": "Mitchell",
+    "position": "HB",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Isaiah",
+    "lastName": "Oliver",
+    "position": "SS",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Chris",
+    "lastName": "Rodriguez Jr",
+    "position": "HB",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Jason",
+    "lastName": "Taylor II",
+    "position": "SS",
+    "trueSkinTone": 5
+  },
+  {
+    "firstName": "Israel",
+    "lastName": "Abanikanda",
+    "position": "HB",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Baron",
+    "lastName": "Browning",
+    "position": "LE",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Grant",
+    "lastName": "Delpit",
+    "position": "SS",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Antoine",
+    "lastName": "Green",
+    "position": "WR",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Nick",
+    "lastName": "Jackson",
+    "position": "MLB",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Isaiah",
+    "lastName": "Likely",
+    "position": "TE",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "David",
+    "lastName": "Montgomery",
+    "position": "HB",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Jalen",
+    "lastName": "Ramsey",
+    "position": "FS",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Preston",
+    "lastName": "Smith",
+    "position": "RE",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Shaun",
+    "lastName": "Wade",
+    "position": "CB",
+    "trueSkinTone": 6
+  },
+  {
+    "firstName": "Ameer",
+    "lastName": "Abdullah",
+    "position": "HB",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Bobby",
+    "lastName": "Brown III",
+    "position": "DT",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Kaden",
+    "lastName": "Davis",
+    "position": "WR",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Willie",
+    "lastName": "Gay Jr",
+    "position": "LOLB",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Darnay",
+    "lastName": "Holmes",
+    "position": "CB",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Marcus",
+    "lastName": "Jones",
+    "position": "CB",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Bub",
+    "lastName": "Means",
+    "position": "WR",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "James",
+    "lastName": "Pearce Jr",
+    "position": "RE",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Nick",
+    "lastName": "Scott",
+    "position": "SS",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Princely",
+    "lastName": "Umanmielen",
+    "position": "RE",
+    "trueSkinTone": 7
+  },
+  {
+    "firstName": "Tommy",
+    "lastName": "Akingbesote",
+    "position": "DT",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Anthony",
+    "lastName": "Belton",
+    "position": "LT",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Marcus",
+    "lastName": "Bryant",
+    "position": "RT",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Donovan",
+    "lastName": "Ezeiruaku",
+    "position": "RE",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Jay",
+    "lastName": "Higgins IV",
+    "position": "MLB",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Jordan",
+    "lastName": "James",
+    "position": "HB",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Bilhal",
+    "lastName": "Kone",
+    "position": "CB",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Armand",
+    "lastName": "Membou",
+    "position": "RT",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Devin",
+    "lastName": "Neal",
+    "position": "HB",
+    "trueSkinTone": 8
+  },
+  {
+    "firstName": "Que",
+    "lastName": "Robinson",
+    "position": "RE",
+    "trueSkinTone": 8
+  }
+]
