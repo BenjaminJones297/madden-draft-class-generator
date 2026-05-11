@@ -31,6 +31,11 @@
  *     [--aliases <path>]    default: data/player_name_aliases.json (optional)
  *     [--birthdates <path>] default: data/prospect_birthdates.json
  *     [--allow-unmatched]   don't abort on unmatched veterans when --apply
+ *     [--apply-vet-contracts] re-enable the gated vet contract overlay
+ *                           (Change 4 — see decisions.md). Default off.
+ *                           Implies --regenerate-resign.
+ *     [--regenerate-resign] regen PlayerReSignNegotiation queue (Change 5).
+ *                           Default off; auto-on with --apply-vet-contracts.
  */
 
 const fs        = require('fs');
@@ -104,7 +109,14 @@ const CONTRACT_STATUS_FREE_AGENT = 'FreeAgent';
 // ContractStatus values that mean "this isn't an active player anymore" —
 // skip these when re-teaming so we don't resurrect cap ghosts / retirees.
 const CONTRACT_STATUS_INACTIVE = new Set(['Deleted', 'Retired', 'None']);
-const MIN_SALARY_K           = 895;
+// Madden contract fields (ContractSalary{i}, ContractBonus{i}, PLYR_CAPSALARY)
+// are stored in $10k cap-int units, not $1k as we first assumed. Empirically
+// verified 2026-05-11: a stored 12232 on Mahomes displayed as $122M in the
+// franchise UI (= 12232 × $10k). The schema's "max 16383" range × $10k =
+// $163.83M per year, which matches real-world top contracts. NFL league min
+// ($895k–$1M) maps to ~90 units. See task-log-rookie-visuals 2026-05-11.
+const SALARY_UNIT_USD        = 10_000;
+const MIN_SALARY_K           = 90;
 
 // nfl_team_id_to_abbr.json emits AZ/LAR; NFLVERSE_TO_TEAM_INDEX uses ARI/LA.
 // Mirrors utils/4e_fetch_team_mapping.py:NFL_TO_MADDEN inverted.
@@ -360,10 +372,18 @@ function mapContractFields(rosterEntry, leagueYear = CURRENT_LEAGUE_YEAR) {
 
   // Use the recorded signing year only when the deal hasn't already lapsed.
   // Mirrors the Python heuristic so 9g and script 8 stay consistent.
+  // Edge: when nfl_rosters data has a stale contract (yearSigned + years <=
+  // leagueYear) but the player is rostered with aav > 0, the player must have
+  // re-signed since — we just lack new data. Treat the stored deal as a fresh
+  // multi-year contract (yearsLeft = years, ContractYear ends up 0) so Madden
+  // doesn't show it as a walk-year. Without this, Josh Sweat (2021/3yr in
+  // data, on ARI 2025 in real life) displays as a single-year deal.
   const yearSigned = Number.parseInt(rosterEntry.year_signed, 10) || 0;
   let yearsLeft;
   if (yearSigned > 0 && (yearSigned + years) > leagueYear) {
     yearsLeft = Math.min(years, (yearSigned + years) - leagueYear);
+  } else if (yearSigned > 0 && (yearSigned + years) <= leagueYear) {
+    yearsLeft = years;
   } else {
     yearsLeft = Math.max(1, years - Math.min(years - 1, 2));
   }
@@ -399,9 +419,9 @@ function fillContractYears(rec, salaryK, bonusK, length) {
 
 // Write the Madden contract fields onto a Player record.
 function writeContractToRecord(rec, mapped) {
-  const salaryK = Math.max(MIN_SALARY_K, Math.round(mapped.contractSalary / 1000));
+  const salaryK = Math.max(MIN_SALARY_K, Math.round(mapped.contractSalary / SALARY_UNIT_USD));
   const bonusK  = mapped.contractLength > 0
-    ? Math.round(mapped.contractBonus / mapped.contractLength / 1000)
+    ? Math.round(mapped.contractBonus / mapped.contractLength / SALARY_UNIT_USD)
     : 0;
   const length    = Math.max(1, Math.min(7, mapped.contractLength | 0));
   const yearsLeft = Math.max(1, Math.min(length, mapped.contractYearsLeft | 0));
@@ -901,8 +921,13 @@ async function main() {
   const rookiesArg     = findFlag('--rookies');
   const aliasesArg     = findFlag('--aliases');
   const birthdatesArg  = findFlag('--birthdates');
-  const apply          = hasFlag('--apply');
-  const allowUnmatched = hasFlag('--allow-unmatched');
+  const apply             = hasFlag('--apply');
+  const allowUnmatched    = hasFlag('--allow-unmatched');
+  // Change 4: opt-in vet contract overlay. Off by default — the prior
+  // un-gated overlay pinned aav-less vets to 895k and corrupted contracts at
+  // scale. The gated version below skips aav<=0 and routes through
+  // writeContractToRecord (multi-year shape via fillContractYears).
+  const applyVetContracts = hasFlag('--apply-vet-contracts');
 
   const ratingsResolved = ratingsArg
     ? { path: ratingsArg, used: 'cli' }
@@ -1013,6 +1038,7 @@ async function main() {
   console.log(`  Player records  : ${playerTable.records.length} (${playerTable.header.recordCapacity} capacity)`);
 
   console.log(`\n  Vet pass        : ${ENABLE_VET_PASS ? 'ON' : 'OFF (bisect)'}`);
+  console.log(`  Vet contracts   : ${applyVetContracts ? 'ON (--apply-vet-contracts)' : 'OFF (default — pass --apply-vet-contracts)'}`);
   console.log(`  Pass 2 (clear)  : ${ENABLE_PASS_2_CLEAR ? 'ON' : 'OFF (bisect)'}`);
   console.log(`  Pass 3 (inject) : ${ENABLE_PASS_3_INJECT ? 'ON' : 'OFF (bisect)'}`);
 
@@ -1031,6 +1057,7 @@ async function main() {
     unusedAutoRookiesDisposed: 0,
     teamsRecalculated: 0,
     resignEmptied: 0, resignQueued: 0,
+    vetContractsUpdated: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
@@ -1085,13 +1112,31 @@ async function main() {
       stats.unmatched.push(`${fn} ${ln} (${ps})`);
     }
 
-    // 1b. (DISABLED) Team + contract overlay used to come from nfl_rosters_2026.json,
-    //               but it crushed depth-chart consistency and demolished contracts
-    //               for any vet whose nflverse aav was 0 (pinning them to the 895k
-    //               minimum). The diff against the original confirmed thousands of
-    //               unintended contract overwrites. Vets now keep whatever team and
-    //               contract the franchise had for them. Only ratings update above.
-    stats.contractFallback++;
+    // 1b. Vet contract overlay (Change 4 — gated re-enable of what 1b used
+    //     to do unconditionally). Behind --apply-vet-contracts so the old
+    //     damage pattern can't reappear by default. Gates:
+    //       (a) only fires when the flag is set
+    //       (b) only when the player matches a 2026 nfl_rosters entry
+    //       (c) only when aav > 0 — no real-world contract → no overwrite
+    //       (d) currentStatus inactive is already filtered above
+    //     Team moves remain out of scope (see decisions.md — bulk vet
+    //     TeamIndex changes CTD sim across 8 invariants); we only write
+    //     contract fields. Route through writeContractToRecord so the
+    //     multi-year array shape (Change 1) and derived ContractYear
+    //     (Change 2) apply consistently with the rookie path.
+    if (applyVetContracts) {
+      const rosterEntry = rosterByName.get(makeNameOnlyKey(fn, ln));
+      const aav = rosterEntry ? Number(rosterEntry.aav) : 0;
+      if (rosterEntry && aav > 0) {
+        const mapped = mapContractFields(rosterEntry, CURRENT_LEAGUE_YEAR);
+        writeContractToRecord(rec, mapped);
+        stats.vetContractsUpdated++;
+      } else {
+        stats.contractFallback++;
+      }
+    } else {
+      stats.contractFallback++;
+    }
   }
 
   // Build per-team roster context once — used by Pass 3 to append rookies
@@ -1262,13 +1307,18 @@ async function main() {
     // Rookie contract
     const c          = rookieContract(Number(actualDraftPick) || 0, Number(actualDraftRound) || 7);
     const aav        = Math.round(c.totalValue / c.years);
-    const baseSalary = Math.max(MIN_SALARY_K, Math.round((aav - c.signingBonus / c.years) / 1000));
-    const bonusK     = Math.round(c.signingBonus / c.years / 1000);
+    const baseSalary = Math.max(MIN_SALARY_K, Math.round((aav - c.signingBonus / c.years) / SALARY_UNIT_USD));
+    const bonusK     = Math.round(c.signingBonus / c.years / SALARY_UNIT_USD);
     const rookieLength = Math.max(1, Math.min(7, c.years | 0));
     trySet(rec, 'ContractLength', rookieLength);
     trySet(rec, 'ContractYear',   0);   // rookie is in year 0 of the deal
     fillContractYears(rec, baseSalary, bonusK, rookieLength);
     trySet(rec, 'PLYR_CAPSALARY', baseSalary + bonusK);
+    // Change 7: fifth-year option flag for round-1 picks. The engine reads
+    // ContractExtraYearOption when modeling the team-option year on the back
+    // of standard rookie deals — match the real NFL CBA mechanic.
+    const isRound1 = (Number(actualDraftRound) || 0) === 1;
+    trySet(rec, 'ContractExtraYearOption', isRound1);
 
     // Ratings (post-Madden) + dev trait
     applyRatingsObject(rec, r.ratings || r);
@@ -1323,11 +1373,14 @@ async function main() {
   }
 
   // ── Pass 6: regenerate PlayerReSignNegotiation queue ──────────────────────
-  // Off by default — the V20 source has vets in the one-year-shape (Length=1,
-  // Year=0), so regen queues every vet as walk-year (~2000 entries). That
-  // floods Madden's offseason UI. Re-enable once vet contracts get the
-  // multi-year fill (Change 4 in the audit report). CLI: --regenerate-resign.
-  const regenResign = ENABLE_REGEN_RESIGN || hasFlag('--regenerate-resign');
+  // Coupled with --apply-vet-contracts — Change 4 rewrites every vet's
+  // ContractLength/Year through the multi-year writer, which is the
+  // precondition that makes regen safe (otherwise the source's one-year-
+  // shape vets all look walk-year and flood the queue). Also opt-in
+  // standalone via --regenerate-resign.
+  const regenResign = ENABLE_REGEN_RESIGN
+    || hasFlag('--regenerate-resign')
+    || applyVetContracts;
   if (regenResign && rosterCtx && rosterCtx.teamMain) {
     const resign = await regenerateResignTables(franchise, playerTable, rosterCtx.teamMain);
     if (resign.skipped) {
@@ -1355,6 +1408,7 @@ async function main() {
   console.log(`    via alias             : ${stats.aliasedCount}`);
   console.log(`    via name-only fallback: ${stats.nameOnlyFallback}`);
   console.log(`  Team + contract updated : ${stats.teamUpdated}`);
+  console.log(`  Vet contracts overlaid  : ${stats.vetContractsUpdated} (${applyVetContracts ? '--apply-vet-contracts ON' : 'OFF — pass --apply-vet-contracts'})`);
   console.log(`  Contract fallback (kept): ${stats.contractFallback}`);
   console.log(`  Unmatched (no ratings)  : ${stats.unmatched.length}`);
   console.log('Rookies');

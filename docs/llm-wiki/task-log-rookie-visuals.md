@@ -3,6 +3,92 @@
 Running log for the rookie-visuals branch. Promote sections into the main
 `task-log.md` on merge; keep this file as the working scratch-log meanwhile.
 
+## 2026-05-11 (LATE PM) - Contract-accuracy Phase 2.2: vet overlay + fifth-year
+
+Follow-up to the earlier Phase 2 pass. After user-led in-Madden verification
+of commit `a20c7ff`, contracts still appeared as one-year veteran minimums
+across the franchise. Root cause via `output/check_contracts.js` (read-only
+diagnostic, not committed): the dominant 2156 records with `ContractLength=1`
+were vets — which the active 9g leaves untouched (DISABLED block at the
+former Pass 1b). Change 1 was working correctly on the 265 fresh-injected
+rookies (Malik Benson, Caleb Tiernan etc. spot-checked with multi-year
+contracts) but those are 8% of the population, not the players the user
+spot-checked.
+
+Implemented audit changes 4 + 7 + coupling.
+
+### Change 4: Vet contract overlay (gated re-enable)
+- 9g flag `--apply-vet-contracts` (default OFF). Off by default because
+  the prior un-gated overlay pinned aav-less vets to 895k and demolished
+  contracts at scale.
+- Gates: (a) only fires under the flag; (b) only when `rosterByName`
+  matches a 2026 nfl_rosters entry; (c) only when `Number(rosterEntry.aav) > 0`;
+  (d) currentStatus inactive already filtered above.
+- TeamIndex still NOT touched — bulk vet team moves remain out of scope per
+  `decisions.md`. Only contract fields.
+- Routes through the existing `writeContractToRecord` so the multi-year
+  array shape (Change 1) and derived `ContractYear` (Change 2) apply
+  consistently.
+- New stats counter `vetContractsUpdated` surfaced in the Veterans summary
+  alongside the existing `Contract fallback (kept)` counter.
+
+### Change 7: Fifth-year option flag for round-1 rookies
+- Rookie inject block writes `ContractExtraYearOption = (round === 1)`.
+- Models the real NFL CBA mechanic. Engine reads this when modeling the
+  team-option year on round-1 rookie deals.
+
+### Coupling: --apply-vet-contracts implies --regenerate-resign
+- The Pass 6 resign-queue regen (Change 5) was opt-in because the source
+  franchise's one-year-shape vets would flood the queue. With Change 4
+  re-writing those vets' Length/Year through the multi-year writer, the
+  regen becomes safe to enable. So `--apply-vet-contracts` auto-enables
+  Pass 6.
+
+### Apply test on a fresh copy of CAREER-UPDATED-ROSTER
+
+- `Vet contracts overlaid: 958` (out of 2640 ratings-updated vets)
+- `Contract fallback (kept): 1851` — no nfl_rosters match or `aav=0`
+- `ContractLength` distribution shifted: `Length=1` dropped 2156→1493,
+  Length>1 went from 435→1122 (Length=4: 146→587 alone)
+- Resign queue: 2048→1722 (improved; warning still fires — coverage gap)
+- Spot-check of Mahomes (7y/$5.18M/yr filled), Adams (5y/$5.045M),
+  Barkley (4y/$3.899M), Hendrickson (4y/$2.52M — note the BAL FA move
+  did reach this build despite us not touching TeamIndex; he was already
+  on BAL=24 in the V20 source apparently) — all multi-year, ContractYear
+  derived correctly.
+
+### Known data-quality issues (not code bugs)
+
+- `Lamar Jackson` overlaid as 895k/1yr — no aav data for him in
+  `data/nfl_rosters_2026.json` (matched but `aav=0`, hit the gate).
+- `Maxx Crosby` cap=$23.5M but base salary $491k — unusual guarantee/bonus
+  structure in source data (might be a units mismatch). Investigate
+  separately.
+- 1682 vets in the contract-fallback bucket still show source's
+  one-year-shape contracts. Fix is to extend `nfl_rosters_2026.json`
+  coverage, not 9g.
+
+### CLI
+
+```powershell
+# Direct invocation
+node scripts/9g_sync_franchise_from_data.js \
+  --franchise "<path>" --apply --allow-unmatched --apply-vet-contracts
+```
+
+`build_franchise.ps1` does NOT yet forward this flag (the file has
+uncommitted local edits — deliberately left alone). Either invoke 9g
+directly with the flag or add a `-ApplyVetContracts` switch in a
+follow-up.
+
+### Next
+
+User test cycle: load `CAREER-VETCONTRACT-TEST` in Madden, spot-check
+Mahomes/Adams/Barkley contracts visible in roster screens, advance through
+draft + preseason, confirm sim works post-cap-overhaul. Then we extend
+build_franchise.ps1 to forward the flag and consider promotion to main
+task-log.md.
+
 ## 2026-05-11 (PM) - Contract-accuracy pipeline pass
 
 Per a Phase-2 audit cloned from `WiiExpertise/madden-franchise-utils` (cloned

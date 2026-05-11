@@ -3,6 +3,65 @@
 Record durable architecture and workflow decisions here. Keep entries short and
 link to source when possible.
 
+## 2026-05-11 - Madden Contract Field Unit: $10k Per Cap-Int
+
+**Decision:** All player contract fields on the M26 Player record
+(`ContractSalary{0..7}`, `ContractBonus{0..7}`, `PLYR_CAPSALARY`) store values
+in **$10,000 cap-int units**, not $1,000 as the prior code (and the initial
+schema-audit report) assumed. NFL veteran minimum (~$900k) maps to stored 90.
+A $45M Mahomes cap hit maps to stored 4500. The 14-bit field range
+(0..16383) × $10k = up to $163.83M per year, which fits real-world top deals.
+
+**Why this matters:** the prior `/ 1000` conversion in
+`writeContractToRecord` and the rookie inject block was 10× too high. For
+star contracts whose dollar value exceeded $16.383M per year, the lib
+silently truncated to the low 14 bits — Mahomes' "5182" stored value was
+actually `37950 & 0x3FFF`. That produced both wrong displayed amounts
+(everything 10× too high) AND mangled arithmetic (low-14-bit modulo).
+Empirically confirmed via in-Madden inspection 2026-05-11.
+
+**Source:** `scripts/9g_sync_franchise_from_data.js` exposes
+`SALARY_UNIT_USD = 10_000` constant; all contract conversions multiply or
+divide by this. `MIN_SALARY_K = 90` (representing ~$900k league min).
+
+**Implications:**
+- `scripts/9c`, `scripts/9d`, `scripts/9_apply_transactions` still use the
+  old `/ 1000` + `895` floor — they're not in the active build flow
+  (`build_franchise.ps1`) but need the same fix on first reuse.
+- Team-level cap fields (`SalCapCapRoom` etc.) had previously been observed
+  at ~$10,500 per unit; same scale family.
+
+## 2026-05-11 - Vet Contract Overlay: Gated Re-Enable
+
+**Decision:** Re-enable the previously-DISABLED vet contract overlay in
+`9g` Pass 1b, behind `--apply-vet-contracts` flag, default OFF.
+
+**Why:** The prior unconditional overlay damaged contracts by pinning every
+aav-less vet to the 895k floor (the now-corrected MIN_SALARY_K). The gated
+version skips entries where `nfl_rosters_2026.json` has `aav <= 0` or no
+match — those vets keep their source data (which is acceptable since the
+data file is the limiting factor).
+
+**Gates:**
+- (a) Only fires under `--apply-vet-contracts`
+- (b) Only when `rosterByName` matches a 2026 nfl_rosters entry
+- (c) Only when `Number(rosterEntry.aav) > 0`
+- (d) Currently-inactive `ContractStatus` filtered above (Retired/Deleted/None)
+
+**Out of scope:** Vet `TeamIndex` is NOT touched. Bulk vet team moves cause
+sim CTD per the V11-V19 documented failures.
+
+**Stale-contract heuristic:** When `year_signed + contract_years <= leagueYear`
+in the data (contract expired per data but player rostered with aav), treat
+the deal as a fresh multi-year contract (`yearsLeft = years`, `ContractYear = 0`).
+Without this, players like Josh Sweat (whose data shows his old 2021 PHI
+contract) display as walk-year. Better-but-imperfect: shows multi-year shape
+with the stale aav rather than the broken walk-year display.
+
+**Coupled change:** `--apply-vet-contracts` auto-enables Pass 6
+(`regenerateResignTables`), since vet `Length`/`Year` is now reliable.
+
+
 ## 2026-05-11 - Contracts Must Use The Multi-Year Array Shape
 
 **Decision:** Every contract write into a Player record must populate
