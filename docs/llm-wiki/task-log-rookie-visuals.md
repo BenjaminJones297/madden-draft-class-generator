@@ -3,6 +3,71 @@
 Running log for the rookie-visuals branch. Promote sections into the main
 `task-log.md` on merge; keep this file as the working scratch-log meanwhile.
 
+## 2026-05-11 (PM) - Contract-accuracy pipeline pass
+
+Per a Phase-2 audit cloned from `WiiExpertise/madden-franchise-utils` (cloned
+read-only into `.claude/worktrees/wiiexpertise-utils/`, gitignored), adopted
+five low-risk changes into 9g and three sibling scripts to fix the one-year-
+shape bug + add post-write roster-size and resign-queue hygiene. Full audit
+report at `.claude/worktrees/contract-audit-report.md` (not committed).
+
+**The bug.** Every contract-writing script (9c, 9d, 9g, 9_apply_transactions)
+was writing only `ContractSalary0` + `ContractBonus0` and hard-coding
+`ContractYear = 0`. After one sim year the engine increments `ContractYear`
+to 1, reads `ContractSalary1` / `ContractBonus1` which were still 0 — every
+Player collapsed to a one-year deal regardless of `ContractLength`. Schema
+truth comes from `SalaryCapManager.GetPlayerCapHitForYear(player, yearFromCurrent)`
+(M26 schema line 9317, assetId 7046) and `PlayerContractManager.CreateDraftedRookieContract`
+(line 22920) — both confirm per-year array indexing.
+
+**Changes adopted** (audit's ranked plan, low-risk subset only):
+
+1. **Multi-year array fill** — new `fillContractYears(rec, salaryK, bonusK, length)`
+   helper at `9g_sync_franchise_from_data.js`. Writes `ContractSalary{i}` /
+   `ContractBonus{i}` for `i=0..length-1`, zeros slots `[length..7]`. Called
+   from both `writeContractToRecord` (vets path, currently DISABLED) and the
+   rookie inject block.
+2. **ContractYear derived from year_signed** — `writeContractToRecord` now
+   computes `ContractYear = clamp(0, length-1, length - yearsLeft)`. Rookies
+   still hard-code 0 since they're starting year 0. Removed the dead
+   `ContractYearsLeft` write — no such field exists on the M26 Player schema.
+3. **`recalculateRosterSizes(playerTable, teamTable)`** ported from
+   WiiExpertise `Utils/FranchiseUtils.js:1369`. Re-derives `ActiveRosterSize`,
+   `SalCapRosterSize`, `SalCapNextYearRosterSize` per team from actual
+   Player rows. Always on; Pass 5 in 9g.
+5. **`regenerateResignTables(franchise, playerTable, teamTable)`** ported
+   from `Utils/FranchiseUtils.js:1018+1080`. Empties + refills the
+   `PlayerReSignNegotiation` table from current Player state. **Disabled by
+   default** (`ENABLE_REGEN_RESIGN = false`); opt-in via `--regenerate-resign`
+   because the V20 source `CAREER-UPDATED-ROSTER` has pre-existing
+   one-year-shape vet contracts that would flood the offseason UI with ~2048
+   walk-year entries. Wire it on once the vet contract overlay (Change 4) is
+   also implemented. Warns above queue size 200 when enabled.
+6. **`ContractStatus` canonicalised to enum-name strings** in 9c, 9d,
+   9_apply_transactions — `'1'` → `'Signed'`. 9g already used the name form.
+   Eliminates the latent FA `'0' → "Drafted"` foot-gun documented in 9g.
+
+**Skipped** (deferred): Change 4 (vet contract overlay re-enable — medium
+risk; documented in `decisions.md`) and Change 7 (fifth-year option flag —
+not in the user-confirmed scope).
+
+**Dry-run verification on `CAREER-UPDATED-ROSTER`**:
+- 32 teams recalc'd, default flow unchanged.
+- `--regenerate-resign` would queue 2048 walk-year players (warning fires) —
+  confirms the corrupted-source hypothesis; matches audit prediction.
+- `node --check` clean on all four modified scripts.
+
+**Files modified**:
+- `scripts/9g_sync_franchise_from_data.js` (helpers + writeContractToRecord +
+  rookie block + Pass 5/6 calls + new stats counters)
+- `scripts/9c_inject_rookies.js` (CONTRACT_STATUS_SIGNED)
+- `scripts/9d_sync_roster.js` (CONTRACT_STATUS_SIGNED)
+- `scripts/9_apply_transactions.js` (CONTRACT_STATUS_SIGNED)
+
+**Next**: not yet promoted to main `task-log.md` — gated on a live in-Madden
+test (load post-9g franchise, sim one season, confirm vet cap hits track the
+contract year correctly).
+
 ## 2026-05-11 - Branch created + orchestration plan
 
 Branch: `rookie-visuals`, off `rookie-stat-baseline`.

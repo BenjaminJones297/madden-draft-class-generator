@@ -50,7 +50,12 @@ Optional reference input:
   vet ratings + overlays 2026 rookies onto auto-prospect placeholders + adds
   rookies to drafting team's Roster array. **Working recipe: run on a copy of
   `CAREER-UPDATED-ROSTER` (vets already on real teams).** See `decisions.md`
-  for why default does NOT change vet TeamIndex.
+  for why default does NOT change vet TeamIndex. 2026-05-11 (PM): contract
+  writes go through `fillContractYears()` (multi-year shape), Pass 5 recomputes
+  team roster-size counters via `recalculateRosterSizes()`, optional Pass 6
+  regenerates `PlayerReSignNegotiation` queue via `regenerateResignTables()`
+  (opt-in `--regenerate-resign`; off by default — V20 source has corrupted
+  vet contracts).
 - `scripts/9h_generate_roster_changes.js`: read-only diff. Outputs a markdown
   checklist (`output/roster_changes.md`) of trades / signings / releases the
   user should execute in Madden's UI to make rosters match

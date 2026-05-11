@@ -3,6 +3,39 @@
 Record durable architecture and workflow decisions here. Keep entries short and
 link to source when possible.
 
+## 2026-05-11 - Contracts Must Use The Multi-Year Array Shape
+
+**Decision:** Every contract write into a Player record must populate
+`ContractSalary{i}` and `ContractBonus{i}` for `i = 0..ContractLength-1` (slots
+`[ContractLength..7]` left at 0), and `ContractYear` must reflect the actual
+year-of-contract cursor (0 for a new signing, `Length-1` for a walk year).
+Hard-coding `ContractYear=0` plus writing only year-0 indices is forbidden.
+
+**Why:** The M26 sim engine reads `SalaryCapManager.GetPlayerCapHitForYear(player, yearFromCurrent)`
+(schema assetId 7046, line 9317), which indexes the per-year arrays. After one
+sim year Madden increments `ContractYear` and reads `ContractSalary{ContractYear}`
+for the current cap hit — if we only wrote slot 0, every player collapses to a
+one-year deal regardless of `ContractLength`. Confirmed against the schema's
+own `PlayerContractManager.CreateDraftedRookieContract` (line 22920) which
+populates both `SalaryTable` and `BonusTable` for the full contract length.
+
+**Implementation:** `scripts/9g_sync_franchise_from_data.js` exposes
+`fillContractYears(rec, salaryK, bonusK, length)`. Any new contract-writing
+code path must call it. See the contract-audit report at
+`.claude/worktrees/contract-audit-report.md` for the full bug analysis.
+
+**Implications:**
+- `scripts/9c`, `scripts/9d`, `scripts/9_apply_transactions` still write only
+  year-0 indices — they're not in the active build flow
+  (`build_franchise.ps1`), so they're flagged for the same fix on first reuse
+  rather than fixed eagerly.
+- `Player.ContractYearsLeft` does not exist on the M26 Player schema. Any
+  `trySet(rec, 'ContractYearsLeft', …)` write is a silent no-op. Removed in 9g.
+- Resign-queue regeneration (`regenerateResignTables`, opt-in via
+  `--regenerate-resign`) only makes sense once vet contracts are also written
+  through `fillContractYears` — otherwise the queue gets flooded with vets the
+  V20 source franchise wrongly marks as walk-year.
+
 ## 2026-05-11 - Rookie Skin-Tone Optimization: Approach B (Image-Based)
 
 **Decision:** For per-rookie skin-tone realism, scrape headshots from ESPN

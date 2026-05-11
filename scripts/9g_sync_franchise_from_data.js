@@ -72,6 +72,17 @@ const ENABLE_PASS_3_INJECT = true;
 // FA pool so they don't sit in the future draft pool with their auto-generated
 // names. Non-destructive: just changes their TeamIndex + ContractStatus.
 const ENABLE_DISPOSE_UNUSED_AUTO_ROOKIES = true;
+// Post-write hygiene passes (Pass 5/6). Pass 5 is cheap and always-on. Pass 6
+// is gated because the V20 source franchise (CAREER-UPDATED-ROSTER) ships with
+// vet contracts in the one-year shape (Length=1, Year=0), so regenerating the
+// resign queue blindly would flood Madden's offseason UI with ~2000 walk-year
+// vets. Re-enable once vet contract overlay (Change 4 in the contract-audit
+// report) is also applied. CLI: --regenerate-resign forces it on.
+const ENABLE_RECALC_ROSTER_SIZES = true;
+const ENABLE_REGEN_RESIGN        = false;
+// Warning threshold for resign regen — log a loud notice if the queue grows
+// past this. Real NFL walk-year FA class is typically 50-200 players.
+const RESIGN_QUEUE_WARN_THRESHOLD = 200;
 
 // ---------------------------------------------------------------------------
 // nflverse abbr → Madden franchise TeamIndex (0-31). Mirrors script 9 / 9c so
@@ -371,19 +382,42 @@ function mapContractFields(rosterEntry, leagueYear = CURRENT_LEAGUE_YEAR) {
   };
 }
 
+// Fill ContractSalary{i} / ContractBonus{i} for i=0..length-1 with the per-year
+// flat cap-hit values. Slots [length..7] are zeroed — the engine reads them as
+// "no more years on this deal." Without this multi-year fill every Player
+// collapses to a one-year deal as soon as Madden increments ContractYear past
+// 0: the engine reads ContractSalary{ContractYear} for the current cap hit
+// and that index is 0 if we never wrote it. See SalaryCapManager.GetPlayerCapHitForYear
+// in the M26 schema (assetId 7046) and CreateDraftedRookieContract (line 22920).
+function fillContractYears(rec, salaryK, bonusK, length) {
+  for (let i = 0; i < 8; i++) {
+    const onContract = i < length;
+    trySet(rec, `ContractSalary${i}`, onContract ? salaryK : 0);
+    trySet(rec, `ContractBonus${i}`,  onContract ? bonusK  : 0);
+  }
+}
+
 // Write the Madden contract fields onto a Player record.
 function writeContractToRecord(rec, mapped) {
   const salaryK = Math.max(MIN_SALARY_K, Math.round(mapped.contractSalary / 1000));
   const bonusK  = mapped.contractLength > 0
     ? Math.round(mapped.contractBonus / mapped.contractLength / 1000)
     : 0;
-  trySet(rec, 'ContractStatus',   CONTRACT_STATUS_SIGNED);
-  trySet(rec, 'ContractLength',   mapped.contractLength);
-  trySet(rec, 'ContractYearsLeft', mapped.contractYearsLeft);
-  trySet(rec, 'ContractYear',     0);
-  trySet(rec, 'ContractSalary0',  salaryK);
-  trySet(rec, 'ContractBonus0',   bonusK);
-  trySet(rec, 'PLYR_CAPSALARY',   salaryK + bonusK);
+  const length    = Math.max(1, Math.min(7, mapped.contractLength | 0));
+  const yearsLeft = Math.max(1, Math.min(length, mapped.contractYearsLeft | 0));
+  // ContractYear is the engine's "current year of the deal" cursor — 0 = signed
+  // this season, length-1 = walk year. Derive from years-left so a vet two
+  // years into a 4-year deal correctly reads ContractYear=2 and pulls his cap
+  // hit from ContractSalary2/ContractBonus2.
+  const contractYear = Math.max(0, Math.min(length - 1, length - yearsLeft));
+  trySet(rec, 'ContractStatus', CONTRACT_STATUS_SIGNED);
+  trySet(rec, 'ContractLength', length);
+  trySet(rec, 'ContractYear',   contractYear);
+  fillContractYears(rec, salaryK, bonusK, length);
+  // PLYR_CAPSALARY is a cached convenience value the engine recomputes from
+  // SalaryCapManager.GetPlayerCapHitForYear on each league-update tick — but
+  // seeding it correctly avoids a one-frame stale display on first load.
+  trySet(rec, 'PLYR_CAPSALARY', salaryK + bonusK);
 }
 
 // ---------------------------------------------------------------------------
@@ -631,6 +665,194 @@ function removeFromTeamRoster(ctx, teamIndex, playerRow) {
 }
 
 // ---------------------------------------------------------------------------
+// Player-validity + roster-size helpers
+//
+// Adapted from WiiExpertise/madden-franchise-utils Utils/FranchiseUtils.js
+// (isValidPlayer :2481, recalculateRosterSizes :1369). Two-call API: filter
+// records via isValidPlayer, then recalculate the three Team-level roster
+// counters that Madden's sim engine reads during cap evaluation.
+// ---------------------------------------------------------------------------
+
+// Returns true if the player record is in a "real player" state. Default
+// filter includes Signed + Expiring + FA + PracticeSquad; flip the options
+// to exclude any of those (e.g. roster-size counters want FA+PS off).
+function isValidPlayer(rec, opts = {}) {
+  if (rec.isEmpty) return false;
+  if (!opts.includeLegends && safeGet(rec, 'IsLegend')) return false;
+
+  const cs = safeGet(rec, 'ContractStatus');
+  // Exclusions: pass false to drop a state. Statuses we don't recognise here
+  // (or null) fall through as "include" — same behaviour as WiiExpertise.
+  if (opts.includeSignedPlayers    === false && cs === 'Signed')         return false;
+  if (opts.includeFreeAgents       === false && cs === 'FreeAgent')      return false;
+  if (opts.includePracticeSquad    === false && cs === 'PracticeSquad')  return false;
+  if (opts.includeExpiringPlayers  === false && cs === 'Expiring')       return false;
+  // Statuses that are off by default — pass true to include.
+  if (opts.includeDraftPlayers     !== true  && cs === 'Draft')          return false;
+  if (opts.includeRetiredPlayers   !== true  && cs === 'Retired')        return false;
+  if (opts.includeDeletedPlayers   !== true  && cs === 'Deleted')        return false;
+  if (opts.includeCreatedPlayers   !== true  && cs === 'Created')        return false;
+  if (opts.includeNoneTypePlayers  !== true  && cs === 'None')           return false;
+  return true;
+}
+
+// Resign tables (M26 unique IDs from WiiExpertise/Utils/FranchiseTableId.js).
+// Same uniqueId across the M24/M25/M26 generations for the main table; only
+// the array table changed (was 91905499 in M24, became 298416424 in M25/M26).
+const RESIGN_TABLE_UID       = 846670960;
+const RESIGN_ARRAY_TABLE_UID = 298416424;
+
+// Default column values for an emptied resign row. Mirrors WiiExpertise's
+// emptyResignTable defaults (Utils/FranchiseUtils.js:1025-1052). Madden treats
+// a row with these zeros + Invalid/NotReady enum strings as "no pending
+// re-sign negotiation" and re-derives offer values on the next league tick.
+const RESIGN_RECORD_DEFAULTS = {
+  Team: NULL_REFERENCE, Player: NULL_REFERENCE,
+  ActiveRequestID: -2147483648,
+  NegotiationWeek: 0, TeamReSignInterest: 0, ContractSalary: 0,
+  NegotiationCount: 0, PlayerReSignInterest: 0, ContractBonus: 0,
+  PreviousOfferedContractBonus: 0, PreviousOfferedContractSalary: 0,
+  FairMarketContractBonus: 0, FairMarketContractSalary: 0,
+  ActualDesiredContractBonus: 0, ActualDesiredContractSalary: 0,
+  LatestOfferStage: 'PreSeason', ContractLength: 0,
+  FairMarketContractLength: 0, PreviousOfferedContractLength: 0,
+  PreviousReSignStatus: 'Invalid', ReSignStatus: 'NotReady',
+  LatestOfferWeek: 0, PlayerPreviousReSignInterest: 0,
+  InitialContract: false, NegotiationsEnded: false,
+  ActualDesiredContractLength: 0,
+};
+
+// Regenerate the PlayerReSignNegotiation table from the live Player state.
+// Mirrors WiiExpertise's emptyResignTable + fillResignTable (FranchiseUtils.js
+// :1018 and :1080). The resign queue is what Madden's offseason re-sign phase
+// reads to surface "this player wants a new deal" prompts; without regen, the
+// queue stays pinned to whatever the source franchise had — which is wrong as
+// soon as Pass 1 + Pass 3 change any vet's Length/Year math (see Change 1+2
+// in docs/llm-wiki). Returns { skipped?, emptied, queued, arrayTables }.
+async function regenerateResignTables(franchise, playerTable, teamTable) {
+  const resignTable = franchise.getTableByUniqueId(RESIGN_TABLE_UID);
+  if (!resignTable) return { skipped: true, reason: 'no_resign_table' };
+  await resignTable.readRecords();
+
+  // M26 has multiple PlayerReSignNegotiation[] sub-tables — one canonical
+  // array table (UID above) plus per-team / per-role variants. Clear them all
+  // to avoid stale refs pointing at rows we're about to empty.
+  const arrayTables = franchise.getAllTablesByName('PlayerReSignNegotiation[]');
+  for (const t of arrayTables) await t.readRecords();
+
+  // Step 1: zero out + empty every existing resign row.
+  let emptied = 0;
+  for (const rec of resignTable.records) {
+    if (rec.isEmpty) continue;
+    for (const [k, v] of Object.entries(RESIGN_RECORD_DEFAULTS)) trySet(rec, k, v);
+    try { rec.empty(); emptied++; } catch (_) { /* some rows can't be emptied */ }
+  }
+
+  // Step 2: null every ref in every array sub-table.
+  for (const t of arrayTables) {
+    const colNames = (t.offsetTable || []).map(o => o && o.name).filter(Boolean);
+    for (const rec of t.records) {
+      if (rec.isEmpty) continue;
+      for (const name of colNames) trySet(rec, name, NULL_REFERENCE);
+    }
+  }
+
+  // Step 3: build TeamIndex → team binary lookup.
+  const teamBinaryByIndex = new Map();
+  for (const teamRec of teamTable.records) {
+    if (teamRec.isEmpty) continue;
+    const ti = safeGet(teamRec, 'TeamIndex');
+    if (ti == null) continue;
+    teamBinaryByIndex.set(
+      Number(ti),
+      utilService.getBinaryReferenceData(teamTable.header.tableId, teamRec.index)
+    );
+  }
+
+  // Step 4: requeue walk-year players. Use the canonical array table for
+  // the back-ref array (per WiiExpertise — additional [] tables are
+  // role-specific and get filled later by the engine).
+  const primaryArrayTable = arrayTables.find(t => t.header && t.header.uniqueId === RESIGN_ARRAY_TABLE_UID)
+    || (arrayTables.length ? arrayTables[0] : null);
+  const arrayCols = primaryArrayTable
+    ? (primaryArrayTable.offsetTable || []).map(o => o && o.name).filter(Boolean)
+    : [];
+
+  let queued = 0;
+  for (const pRec of playerTable.records) {
+    if (!isValidPlayer(pRec, {
+      includeFreeAgents: false, includePracticeSquad: false,
+    })) continue;
+    const length = Number(safeGet(pRec, 'ContractLength')) || 0;
+    const year   = Number(safeGet(pRec, 'ContractYear'))   || 0;
+    if (length - year !== 1) continue;
+    const ti = Number(safeGet(pRec, 'TeamIndex'));
+    const teamBin = teamBinaryByIndex.get(ti);
+    if (!teamBin) continue;
+
+    // Next empty resign row.
+    let target = null;
+    for (const rec of resignTable.records) {
+      if (rec.isEmpty) { target = rec; break; }
+    }
+    if (!target) break;   // table full — stop queueing
+
+    const playerBin = utilService.getBinaryReferenceData(playerTable.header.tableId, pRec.index);
+    trySet(target, 'Team',            teamBin);
+    trySet(target, 'Player',          playerBin);
+    trySet(target, 'ActiveRequestID', -1);
+    trySet(target, 'NegotiationWeek', 2);
+
+    if (primaryArrayTable && arrayCols.length) {
+      const resignBin = utilService.getBinaryReferenceData(resignTable.header.tableId, target.index);
+      for (const col of arrayCols) {
+        try {
+          const f = primaryArrayTable.records[0].getFieldByKey(col);
+          if (!f) continue;
+          if (f.value === NULL_REFERENCE) {
+            f.value = resignBin;
+            break;
+          }
+        } catch (_) { /* try next slot */ }
+      }
+    }
+    queued++;
+  }
+  return { emptied, queued, arrayTables: arrayTables.length };
+}
+
+// Recompute each team's ActiveRosterSize / SalCapRosterSize / SalCapNextYearRosterSize
+// from the actual Player rows. Without this, those counters drift any time we
+// add/remove/cut players on a team — which then drifts the cap math the engine
+// derives from them. Called as the last write-side step of Pass 3/4 before save.
+async function recalculateRosterSizes(playerTable, teamTable) {
+  let touched = 0;
+  for (const teamRec of teamTable.records) {
+    if (teamRec.isEmpty) continue;
+    const dn = safeGet(teamRec, 'DisplayName');
+    if (dn === 'AFC' || dn === 'NFC') continue;
+    const visible = safeGet(teamRec, 'TEAM_VISIBLE');
+    if (visible === false) continue;
+    const ti = Number(safeGet(teamRec, 'TeamIndex'));
+    if (!Number.isFinite(ti) || ti < 0 || ti > 31) continue;
+
+    let active = 0, salCap = 0, nextYear = 0;
+    for (const pRec of playerTable.records) {
+      if (!isValidPlayer(pRec, { includePracticeSquad: false, includeFreeAgents: false })) continue;
+      if (Number(safeGet(pRec, 'TeamIndex')) !== ti) continue;
+      salCap++;
+      if (!safeGet(pRec, 'IsInjuredReserve')) active++;
+      if (Number(safeGet(pRec, 'ContractLength')) > 1) nextYear++;
+    }
+    trySet(teamRec, 'ActiveRosterSize',         active);
+    trySet(teamRec, 'SalCapRosterSize',         salCap);
+    trySet(teamRec, 'SalCapNextYearRosterSize', nextYear);
+    touched++;
+  }
+  return { touched };
+}
+
+// ---------------------------------------------------------------------------
 // Franchise open
 // ---------------------------------------------------------------------------
 function openFranchise(filePath) {
@@ -807,6 +1029,8 @@ async function main() {
     rookiesAddedToRoster: 0, rookiesNoRosterSlot: 0,
     rookiesFreshInjected: 0,
     unusedAutoRookiesDisposed: 0,
+    teamsRecalculated: 0,
+    resignEmptied: 0, resignQueued: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
@@ -1040,11 +1264,11 @@ async function main() {
     const aav        = Math.round(c.totalValue / c.years);
     const baseSalary = Math.max(MIN_SALARY_K, Math.round((aav - c.signingBonus / c.years) / 1000));
     const bonusK     = Math.round(c.signingBonus / c.years / 1000);
-    trySet(rec, 'ContractLength',  c.years);
-    trySet(rec, 'ContractYear',    0);
-    trySet(rec, 'ContractSalary0', baseSalary);
-    trySet(rec, 'ContractBonus0',  bonusK);
-    trySet(rec, 'PLYR_CAPSALARY',  baseSalary + bonusK);
+    const rookieLength = Math.max(1, Math.min(7, c.years | 0));
+    trySet(rec, 'ContractLength', rookieLength);
+    trySet(rec, 'ContractYear',   0);   // rookie is in year 0 of the deal
+    fillContractYears(rec, baseSalary, bonusK, rookieLength);
+    trySet(rec, 'PLYR_CAPSALARY', baseSalary + bonusK);
 
     // Ratings (post-Madden) + dev trait
     applyRatingsObject(rec, r.ratings || r);
@@ -1085,6 +1309,41 @@ async function main() {
       trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
       stats.unusedAutoRookiesDisposed++;
     }
+  }
+
+  // ── Pass 5: recompute Team-level roster-size counters ─────────────────────
+  // After we've moved rookies onto teams and disposed unused auto-rookies, the
+  // three counters Madden's cap math reads (ActiveRosterSize, SalCapRosterSize,
+  // SalCapNextYearRosterSize) are stale. Re-derive them from the actual Player
+  // table state. Adopted from WiiExpertise.
+  if (ENABLE_RECALC_ROSTER_SIZES && rosterCtx && rosterCtx.teamMain) {
+    const recalc = await recalculateRosterSizes(playerTable, rosterCtx.teamMain);
+    stats.teamsRecalculated = recalc.touched;
+    console.log(`\n  Roster-size recalc      : ${recalc.touched} teams`);
+  }
+
+  // ── Pass 6: regenerate PlayerReSignNegotiation queue ──────────────────────
+  // Off by default — the V20 source has vets in the one-year-shape (Length=1,
+  // Year=0), so regen queues every vet as walk-year (~2000 entries). That
+  // floods Madden's offseason UI. Re-enable once vet contracts get the
+  // multi-year fill (Change 4 in the audit report). CLI: --regenerate-resign.
+  const regenResign = ENABLE_REGEN_RESIGN || hasFlag('--regenerate-resign');
+  if (regenResign && rosterCtx && rosterCtx.teamMain) {
+    const resign = await regenerateResignTables(franchise, playerTable, rosterCtx.teamMain);
+    if (resign.skipped) {
+      console.log(`  Resign regenerate       : skipped (${resign.reason})`);
+    } else {
+      stats.resignEmptied = resign.emptied;
+      stats.resignQueued  = resign.queued;
+      console.log(`  Resign regenerate       : emptied ${resign.emptied}, queued ${resign.queued} walk-year players (across ${resign.arrayTables} array tables)`);
+      if (resign.queued > RESIGN_QUEUE_WARN_THRESHOLD) {
+        console.log(`  ⚠  Resign queue size ${resign.queued} > ${RESIGN_QUEUE_WARN_THRESHOLD} — suggests source franchise has`);
+        console.log(`     vets in one-year contract shape. Madden's offseason UI may surface too many`);
+        console.log(`     re-sign prompts. Apply Change 4 (vet contract overlay) to fix at source.`);
+      }
+    }
+  } else if (rosterCtx && rosterCtx.teamMain) {
+    console.log(`  Resign regenerate       : OFF (use --regenerate-resign to enable; see Pass 6 comment)`);
   }
 
   // ── Summary ───────────────────────────────────────────────────────────────
