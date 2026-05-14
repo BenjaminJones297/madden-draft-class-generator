@@ -28,6 +28,11 @@
 #     -Rookies data\rookie_ratings_post_fix.json `
 #     -ApplyVisuals
 #
+#   # With current veteran contracts overlaid (requires OTC-merged
+#   # data/nfl_rosters_2026.json from 7b/7c):
+#   ./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-LOVE-TEST -Phase pre `
+#     -ApplyVetContracts
+#
 # TeamIndex map: 0=Bears 1=Bengals 2=Bills 3=Broncos 4=Browns 5=Buccaneers
 # 6=Cardinals 7=Chargers 8=Chiefs 9=Colts 10=Cowboys 11=Dolphins 12=Eagles
 # 13=Falcons 14=49ers 15=Giants 16=Jaguars 17=Jets 18=Lions 19=Packers
@@ -59,6 +64,12 @@ param(
   # (built by the 9n/9o pipeline). See docs/llm-wiki/commands.md for the
   # one-time build.
   [switch]$ApplyVisuals,
+
+  # Optional: overlay current veteran contracts onto the franchise. Forwards
+  # --apply-vet-contracts to 9g, which also auto-enables resign-table
+  # regeneration. Requires OTC-merged data/nfl_rosters_2026.json (built by
+  # 7b/7c). See docs/llm-wiki/decisions.md for why this is opt-in.
+  [switch]$ApplyVetContracts,
 
   # Optional: override the appearances file path (forwarded to 9p as
   # --appearances). Only used when -ApplyVisuals is set.
@@ -104,6 +115,7 @@ if ($Phase -eq 'pre') {
   $g9Args = @('--franchise', $dstPath, '--apply', '--allow-unmatched')
   if ($Ratings) { $g9Args += '--ratings', $Ratings }
   if ($Rookies) { $g9Args += '--rookies', $Rookies }
+  if ($ApplyVetContracts) { $g9Args += '--apply-vet-contracts' }
   & node "$repo\scripts\9g_sync_franchise_from_data.js" @g9Args
   if ($LASTEXITCODE -ne 0) { throw "9g failed" }
 
