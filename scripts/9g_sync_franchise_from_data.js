@@ -59,6 +59,11 @@ const PROSPECTS_META     = path.join(DATA_DIR, 'prospects_rated.json');
 const TEAM_MAP_FILE      = path.join(DATA_DIR, 'nfl_team_id_to_abbr.json');
 const BIRTHDATES_FILE    = path.join(DATA_DIR, 'prospect_birthdates.json');
 const ALIASES_FILE       = path.join(DATA_DIR, 'player_name_aliases.json');
+// Over The Cap contract scrape (scripts/7b). Optional — when present, the
+// rookie inject path prefers a rookie's real "Drafted" contract over the
+// hardcoded rookieContract() scale table. Vets already get OTC data via
+// nfl_rosters_2026.json (scripts/7c merges OTC into it).
+const OTC_CONTRACTS_FILE = path.join(DATA_DIR, 'raw', 'otc_contracts.json');
 
 const CURRENT_LEAGUE_YEAR = 2026;
 
@@ -370,20 +375,32 @@ function mapContractFields(rosterEntry, leagueYear = CURRENT_LEAGUE_YEAR) {
   let years        = Number.parseInt(rosterEntry.contract_years, 10) || 0;
   if (years <= 0) years = 1;
 
-  // Use the recorded signing year only when the deal hasn't already lapsed.
-  // Mirrors the Python heuristic so 9g and script 8 stay consistent.
-  // Edge: when nfl_rosters data has a stale contract (yearSigned + years <=
-  // leagueYear) but the player is rostered with aav > 0, the player must have
-  // re-signed since — we just lack new data. Treat the stored deal as a fresh
-  // multi-year contract (yearsLeft = years, ContractYear ends up 0) so Madden
-  // doesn't show it as a walk-year. Without this, Josh Sweat (2021/3yr in
-  // data, on ARI 2025 in real life) displays as a single-year deal.
-  const yearSigned = Number.parseInt(rosterEntry.year_signed, 10) || 0;
+  // Derive years-remaining from the signing year + contract type.
+  //
+  // The contract's first *active* season ("startYear") depends on type:
+  //  - Extension: signed during a prior deal — the new money starts the season
+  //    AFTER signing. Trey McBride signed a 2025 extension that covers
+  //    2026-2029, so in the 2026 league year he has 4 years left, not 3.
+  //  - Everything else (UFA/SFA/Drafted/Franchise/RFA/...): the deal starts the
+  //    year it was signed. Josh Sweat signed with ARI as a 2025 free agent,
+  //    played 2025 on it, so in 2026 he has 3 of 4 years left.
+  //
+  // Edge cases, both resolved to "fresh deal" (yearsLeft = years, year 0):
+  //  - yearsInto <= 0: a future-dated / just-signed extension not yet started.
+  //  - yearsInto >= years: data shows a contract that already expired but the
+  //    player is rostered with aav > 0 — they must have re-signed; we lack the
+  //    new data, so treat the stored deal as fresh rather than walk-year.
+  const yearSigned   = Number.parseInt(rosterEntry.year_signed, 10) || 0;
+  const contractType = String(rosterEntry.otc_contract_type || '').toLowerCase();
+  const startYear    = (contractType === 'extension') ? yearSigned + 1 : yearSigned;
   let yearsLeft;
-  if (yearSigned > 0 && (yearSigned + years) > leagueYear) {
-    yearsLeft = Math.min(years, (yearSigned + years) - leagueYear);
-  } else if (yearSigned > 0 && (yearSigned + years) <= leagueYear) {
-    yearsLeft = years;
+  if (yearSigned > 0) {
+    const yearsInto = leagueYear - startYear;
+    if (yearsInto <= 0 || yearsInto >= years) {
+      yearsLeft = years;
+    } else {
+      yearsLeft = years - yearsInto;
+    }
   } else {
     yearsLeft = Math.max(1, years - Math.min(years - 1, 2));
   }
@@ -959,6 +976,23 @@ async function main() {
   const aliases = fs.existsSync(aliasesPath)
     ? JSON.parse(fs.readFileSync(aliasesPath, 'utf8'))
     : {};
+  // OTC contract scrape (optional). Keyed by otc_id; values carry full_name +
+  // contract fields. Used by the rookie inject path to pull a rookie's real
+  // "Drafted" contract instead of the hardcoded scale table.
+  const otcContractsRaw = fs.existsSync(OTC_CONTRACTS_FILE)
+    ? JSON.parse(fs.readFileSync(OTC_CONTRACTS_FILE, 'utf8'))
+    : {};
+  const otcByName = new Map();   // first|last → OTC contract entry
+  for (const entry of Object.values(otcContractsRaw)) {
+    if (!entry || Number(entry.aav) <= 0) continue;
+    const split = splitName(entry.full_name);
+    if (!split.first || !split.last) continue;
+    const k = makeNameOnlyKey(split.first, split.last);
+    // First-write-wins; team-collision dupes are rare and contract value is
+    // the same player either way.
+    if (!otcByName.has(k)) otcByName.set(k, entry);
+  }
+  console.log(`  OTC contracts   : ${fs.existsSync(OTC_CONTRACTS_FILE) ? otcByName.size + ' usable' : '(none — rookie scale fallback)'}`);
 
   // ── Build veteran rating lookup ───────────────────────────────────────────
   // Each rating entry exposes (firstName, lastName, position, ratings object).
@@ -1058,6 +1092,7 @@ async function main() {
     teamsRecalculated: 0,
     resignEmptied: 0, resignQueued: 0,
     vetContractsUpdated: 0,
+    rookieContractsFromOtc: 0, rookieContractsFromScale: 0,
   };
 
   if (ENABLE_VET_PASS) for (const rec of playerTable.records) {
@@ -1304,19 +1339,31 @@ async function main() {
     // Jersey
     trySet(rec, 'JerseyNum', pickJersey(teamIndex, pos));
 
-    // Rookie contract
-    const c          = rookieContract(Number(actualDraftPick) || 0, Number(actualDraftRound) || 7);
-    const aav        = Math.round(c.totalValue / c.years);
-    const baseSalary = Math.max(MIN_SALARY_K, Math.round((aav - c.signingBonus / c.years) / SALARY_UNIT_USD));
-    const bonusK     = Math.round(c.signingBonus / c.years / SALARY_UNIT_USD);
-    const rookieLength = Math.max(1, Math.min(7, c.years | 0));
-    trySet(rec, 'ContractLength', rookieLength);
-    trySet(rec, 'ContractYear',   0);   // rookie is in year 0 of the deal
-    fillContractYears(rec, baseSalary, bonusK, rookieLength);
-    trySet(rec, 'PLYR_CAPSALARY', baseSalary + bonusK);
+    // Rookie contract. Prefer the rookie's real OTC "Drafted" contract — the
+    // full 2026 draft class is in the OTC scrape — and fall back to the
+    // hardcoded rookieContract() scale table only for UDFAs / players not yet
+    // in OTC. The scale table is coarse (flat $40M for picks 1-5); OTC has the
+    // exact slotted value (e.g. Jeremiyah Love pick 3 = $53M, not $40M).
+    const otcRookie = otcByName.get(makeNameOnlyKey(first, last));
+    if (otcRookie) {
+      writeContractToRecord(rec, mapContractFields(otcRookie));
+      stats.rookieContractsFromOtc++;
+    } else {
+      const c          = rookieContract(Number(actualDraftPick) || 0, Number(actualDraftRound) || 7);
+      const aav        = Math.round(c.totalValue / c.years);
+      const baseSalary = Math.max(MIN_SALARY_K, Math.round((aav - c.signingBonus / c.years) / SALARY_UNIT_USD));
+      const bonusK     = Math.round(c.signingBonus / c.years / SALARY_UNIT_USD);
+      const rookieLength = Math.max(1, Math.min(7, c.years | 0));
+      trySet(rec, 'ContractLength', rookieLength);
+      trySet(rec, 'ContractYear',   0);   // rookie is in year 0 of the deal
+      fillContractYears(rec, baseSalary, bonusK, rookieLength);
+      trySet(rec, 'PLYR_CAPSALARY', baseSalary + bonusK);
+      stats.rookieContractsFromScale++;
+    }
     // Change 7: fifth-year option flag for round-1 picks. The engine reads
     // ContractExtraYearOption when modeling the team-option year on the back
-    // of standard rookie deals — match the real NFL CBA mechanic.
+    // of standard rookie deals — match the real NFL CBA mechanic. Applies
+    // regardless of whether the contract came from OTC or the scale table.
     const isRound1 = (Number(actualDraftRound) || 0) === 1;
     trySet(rec, 'ContractExtraYearOption', isRound1);
 
@@ -1415,6 +1462,8 @@ async function main() {
   console.log(`  Source                  : ${path.basename(rookiesResolved.path)} (${rookieEntries.length} entries)`);
   console.log(`  Auto-rookie pool size   : ${autoRookiePool.length}`);
   console.log(`  Total processed         : ${stats.rookiesInjected}`);
+  console.log(`  Contract from OTC       : ${stats.rookieContractsFromOtc}`);
+  console.log(`  Contract from scale tbl : ${stats.rookieContractsFromScale}`);
   console.log(`    Overlaid (same team)  : ${stats.rookiesInjected - stats.rookiesFreshInjected}`);
   console.log(`    Fresh-injected        : ${stats.rookiesFreshInjected}`);
   console.log(`    Added to team Roster  : ${stats.rookiesAddedToRoster}`);

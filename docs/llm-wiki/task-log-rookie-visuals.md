@@ -3,6 +3,67 @@
 Running log for the rookie-visuals branch. Promote sections into the main
 `task-log.md` on merge; keep this file as the working scratch-log meanwhile.
 
+## 2026-05-11 (LATE PM +2) - OTC contract scraper + extension-aware year math
+
+After the vet contract overlay (Phase 2.2) shipped, in-Madden checks showed
+the limit was data freshness, not code: `nfl_rosters_2026.json` had 1581
+entries (55%) with aav <= 0 and 1125 with contracts expired per data
+(retired players, stale rookie deals). Built an Over The Cap scraper to
+refresh it.
+
+### New scripts
+
+- **`scripts/7b_fetch_otc_contracts.py`** — two-stage OTC scraper. Phase 1:
+  32 `/salary-cap/<team>/` pages → ~2,600 player profile URLs. Phase 2: each
+  `/player/<slug>/<id>/` profile → Contract History table, picks the
+  `Status == "Active"` row. Output `data/raw/otc_contracts.json` keyed by
+  stable `otc_id`. Resumable (`--resume`), 1.5s rate limit, exp backoff on
+  429/503. ~60-90 min full run. Captured 2,600 entries, 100% with aav > 0.
+- **`scripts/7c_merge_otc_into_rosters.py`** — merges OTC contract fields
+  into `nfl_rosters_2026.json` by normalized name. Overwrites
+  aav/total_contract_value/guaranteed/contract_years/year_signed; adds
+  free_agent_year + otc_contract_type + otc_id; preserves all roster-only
+  fields. Warns on team mismatch (keeps roster team). Merged 2,165 of 2,854
+  roster entries.
+
+### 9g changes (same file, builds on commit 74b89fc)
+
+- **Extension-aware ContractYear** — `mapContractFields` now reads
+  `otc_contract_type`. For `Extension` deals, the contract's first active
+  season is `year_signed + 1` (the new money starts the season after
+  signing). Trey McBride signed a 2025 extension covering 2026-2029 — must
+  show 4 years left in the 2026 league year, not 3. Josh Sweat (2025 UFA
+  signing) correctly stays at year 1. Consolidated the prior stale-contract
+  branch into a single `yearsInto <= 0 || yearsInto >= years` "treat fresh"
+  rule.
+- **Rookie contracts prefer OTC** — 9g now loads `data/raw/otc_contracts.json`
+  (optional) and builds an `otcByName` lookup. The rookie inject path uses a
+  rookie's real OTC "Drafted" contract when present, falling back to the
+  hardcoded `rookieContract()` scale table only for UDFAs / unscraped names.
+  Jeremiyah Love (pick 3) now shows his real $53M deal instead of the scale
+  table's flat $40M.
+
+### Apply test on fresh CAREER-UPDATED-ROSTER copy (--apply-vet-contracts)
+
+- OTC contracts loaded: 2,593 usable
+- Vet contracts overlaid: 1,783 (was 958 with stale nflverse data)
+- Contract fallback (kept): 1,026 (was 1,851)
+- Rookie contracts from OTC: 219 / from scale table: 46
+- ContractLength=1 records: 2,156 → 1,006
+- Resign queue: 2,048 → 1,352
+- Spot-checks: McBride 4yr/year-0, Sweat 4yr/year-1, Love $53M total,
+  Mahomes 7yr/$45M (year shifted 3→2 from the extension heuristic).
+
+### Known follow-ups
+
+- `data/raw/otc_contracts.json` `position` field is empty — the profile
+  header position extractor didn't match OTC's layout. Not blocking (merge
+  preserves nflverse position); fix on next iteration if needed.
+- The extension `+1` heuristic is a simplification — without the prior
+  deal's end year we can't know the exact extension start. Works for the
+  common case (extension signed in the final year(s) of the prior deal).
+- `build_franchise.ps1` still doesn't forward `--apply-vet-contracts`.
+
 ## 2026-05-11 (LATE PM) - Contract-accuracy Phase 2.2: vet overlay + fifth-year
 
 Follow-up to the earlier Phase 2 pass. After user-led in-Madden verification

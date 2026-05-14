@@ -34,6 +34,8 @@ Optional reference input:
 | Step | File | Purpose |
 |---|---|---|
 | 7 | `scripts/7_fetch_nfl_roster_and_contracts.py` | Fetch active NFL rosters and contract data. |
+| 7b | `scripts/7b_fetch_otc_contracts.py` | Scrape current contracts from Over The Cap (32 team pages → ~2,600 player profiles). Output `data/raw/otc_contracts.json`. Resumable; ~60-90 min full run. |
+| 7c | `scripts/7c_merge_otc_into_rosters.py` | Merge OTC contract data into `nfl_rosters_2026.json` by normalized name. Run after 7b. |
 | 3 | `scripts/3_extract_roster_ratings.js` | Optional official Madden ratings extraction. |
 | 8 | `scripts/8_generate_roster_ratings.py` | Merge roster, contract, and rating data. |
 
