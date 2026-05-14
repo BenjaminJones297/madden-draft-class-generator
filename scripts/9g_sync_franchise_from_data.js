@@ -391,7 +391,7 @@ function mapContractFields(rosterEntry, leagueYear = CURRENT_LEAGUE_YEAR) {
   //    player is rostered with aav > 0 — they must have re-signed; we lack the
   //    new data, so treat the stored deal as fresh rather than walk-year.
   const yearSigned   = Number.parseInt(rosterEntry.year_signed, 10) || 0;
-  const contractType = String(rosterEntry.otc_contract_type || '').toLowerCase();
+  const contractType = String(rosterEntry.otc_contract_type || rosterEntry.contract_type || '').toLowerCase();
   const startYear    = (contractType === 'extension') ? yearSigned + 1 : yearSigned;
   let yearsLeft;
   if (yearSigned > 0) {
@@ -1091,7 +1091,7 @@ async function main() {
     unusedAutoRookiesDisposed: 0,
     teamsRecalculated: 0,
     resignEmptied: 0, resignQueued: 0,
-    vetContractsUpdated: 0,
+    vetContractsUpdated: 0, vetContractsFromOtc: 0,
     rookieContractsFromOtc: 0, rookieContractsFromScale: 0,
   };
 
@@ -1167,7 +1167,18 @@ async function main() {
         writeContractToRecord(rec, mapped);
         stats.vetContractsUpdated++;
       } else {
-        stats.contractFallback++;
+        // nfl_rosters had no usable contract — either no entry at all, or
+        // aav<=0 because OTC's name didn't match nflverse's during the 7c
+        // merge (e.g. OTC "Will Johnson" vs nflverse "William Johnson").
+        // Fall back to the OTC map keyed off the franchise's own stored
+        // name before giving up and keeping the source contract.
+        const otcEntry = otcByName.get(makeNameOnlyKey(fn, ln));
+        if (otcEntry) {
+          writeContractToRecord(rec, mapContractFields(otcEntry, CURRENT_LEAGUE_YEAR));
+          stats.vetContractsFromOtc++;
+        } else {
+          stats.contractFallback++;
+        }
       }
     } else {
       stats.contractFallback++;
@@ -1456,6 +1467,7 @@ async function main() {
   console.log(`    via name-only fallback: ${stats.nameOnlyFallback}`);
   console.log(`  Team + contract updated : ${stats.teamUpdated}`);
   console.log(`  Vet contracts overlaid  : ${stats.vetContractsUpdated} (${applyVetContracts ? '--apply-vet-contracts ON' : 'OFF — pass --apply-vet-contracts'})`);
+  console.log(`    via OTC name fallback : ${stats.vetContractsFromOtc}`);
   console.log(`  Contract fallback (kept): ${stats.contractFallback}`);
   console.log(`  Unmatched (no ratings)  : ${stats.unmatched.length}`);
   console.log('Rookies');
