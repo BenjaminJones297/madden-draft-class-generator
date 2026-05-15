@@ -22,6 +22,49 @@ finesseMoves 76). The pass also corrected Gracen Halton and Anterio Thompson
 to blockShedding 70 / finesseMoves 76. Follow-up dry-run reported no remaining
 profile conflicts.
 
+## 2026-05-15 - Restore Cardinals LS Aaron Brewer
+
+User noticed the Cardinals had no long snapper after 9m delete cleanup. Diffed
+`CAREER-CARDINALS-AUTOSAVE` against `codex-before-9m-delete`: 9m had deleted
+Edward James, a fake `LS` row (`YearsPro=0`, `YearDrafted=0`, OVR 12) that
+Madden had signed to ARI. That was expected by the fake-rookie criteria, but it
+exposed a separate data issue: the real ARI long snapper is also named Aaron
+Brewer, while the franchise still had only the MIA center Aaron Brewer. The
+stable 9g recipe does not bulk-move/create vets, so the real ARI LS never
+landed in the save.
+
+Added `scripts/9r_restore_roster_player.js`, matching by name + team + position
+to handle duplicate names. It reuses a `Deleted` Player row, writes ratings
+from `data/franchise_ratings.json` and roster/contract metadata from
+`data/roster_players_rated.json`, appends the row to Team.Roster, and
+recalculates roster counters.
+
+Applied after backing up to
+`CAREER-CARDINALS-AUTOSAVE.codex-before-restore-aaron-brewer-ls`:
+
+```powershell
+node scripts/9r_restore_roster_player.js --franchise "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-CARDINALS-AUTOSAVE" --name "Aaron Brewer" --team ARI --pos LS --apply
+```
+
+Result: row 3398 is now `Aaron Brewer / LS / ARI`, jersey 46, YearsPro 14,
+Age 36, Overall 60, LongSnap 68, and is present in the ARI roster array. The
+MIA center Aaron Brewer remains row 293 unchanged. `9z_validate_franchise.js`
+reported 0 broken refs.
+
+Also updated 9m to protect a fake LS when it is the team's last signed LS, so
+future cleanup runs do not leave teams with no long snapper when the source
+franchise is missing a real-life LS move.
+
+Follow-up: `CAREER-CARDINALS` also lacked a Steelers long snapper. There were
+790 true empty Player rows and no remaining `Deleted` rows after the Aaron
+Brewer restore, so 9r was updated to fall back to a verified empty row when no
+deleted row is available. Restored `Christian Kuntz / PIT / LS` from
+`franchise_ratings.json` row 1524 + `roster_players_rated.json`, reusing empty
+row 635. Backed up first to
+`CAREER-CARDINALS.codex-before-restore-christian-kuntz-ls`. Final scan:
+`ARI Aaron Brewer` row 2352, `PIT Christian Kuntz` row 635, and no team missing
+a signed LS. `9z_validate_franchise.js` stayed clean.
+
 ## 2026-05-15 - Fix 9m YD=1 duplicate rookie purge
 
 User reported post-phase cleanup still left "old rookies" on

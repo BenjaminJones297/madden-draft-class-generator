@@ -16,6 +16,12 @@
  * is intentionally ignored because Madden can generate duplicates with the
  * same names as our real 2026 rookies.
  *
+ * One roster-balance safeguard is intentionally built in: a fake LS is not
+ * purged when it is the team's last signed long snapper. The source franchise
+ * can already be missing real-life LS moves because the stable 9g recipe does
+ * not bulk-move vets; deleting Madden's emergency LS filler leaves the roster
+ * invalid in game.
+ *
  * No rec.empty() (V11-V19 lessons: that path causes sim CTDs).
  *
  * Usage:
@@ -259,8 +265,22 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     return false;
   }
 
+  const signedLike = new Set(['Signed', 'Expiring']);
+  const activeLsByTeam = new Map();
+  for (const r of playerTable.records) {
+    if (r.isEmpty) continue;
+    const pos = safeGet(r, 'Position');
+    const ti = Number(safeGet(r, 'TeamIndex'));
+    const cs = safeGet(r, 'ContractStatus');
+    if (pos === 'LS' && Number.isFinite(ti) && ti >= 0 && ti <= 31 && signedLike.has(cs)) {
+      activeLsByTeam.set(ti, (activeLsByTeam.get(ti) || 0) + 1);
+    }
+  }
+
   // Identify fakes
   const fakes = [];
+  const protectedLastLs = [];
+  const pendingLsPurgeByTeam = new Map();
   let realRookies = 0, skippedAlreadyFA = 0, fakeAlreadyFA = 0, scanned = 0, yd1Synthetic = 0, nameUnmatched = 0;
   for (let i = 0; i < playerTable.records.length; i++) {
     const r = playerTable.records[i];
@@ -283,10 +303,23 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     const pos = safeGet(r, 'Position');
     const name = `${fn} ${ln}`;
 
+    function protectIfLastLs(reason) {
+      if (!onRealTeam || pos !== 'LS' || !signedLike.has(cs)) return false;
+      const activeLs = activeLsByTeam.get(ti) || 0;
+      const pending = pendingLsPurgeByTeam.get(ti) || 0;
+      if (activeLs - pending > 1) {
+        pendingLsPurgeByTeam.set(ti, pending + 1);
+        return false;
+      }
+      protectedLastLs.push({ row: i, name, pos, ti, yd, yp, reason });
+      return true;
+    }
+
     if (includeYd1 && yd === 1) {
       yd1Synthetic++;
       if (inFaPool) fakeAlreadyFA++;
       if (inFaPool && !deleteMode) { skippedAlreadyFA++; continue; }
+      if (protectIfLastLs('last signed LS on team')) continue;
       fakes.push({ row: i, name, pos, ti, yd, yp, reason: 'YD=1 synthetic' });
       continue;
     }
@@ -294,6 +327,7 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     nameUnmatched++;
     if (inFaPool) fakeAlreadyFA++;
     if (inFaPool && !deleteMode) { skippedAlreadyFA++; continue; }
+    if (protectIfLastLs('last signed LS on team')) continue;
     fakes.push({ row: i, name, pos, ti, yd, yp });
   }
 
@@ -302,6 +336,7 @@ async function recalculateRosterSizes(playerTable, teamMain) {
   console.log(`    Matched real rookie list : ${realRookies} (kept)`);
   if (includeYd1) console.log(`    YD=1 synthetic records   : ${yd1Synthetic} (will purge even on name match)`);
   console.log(`    Name-unmatched records   : ${nameUnmatched} (will purge)`);
+  console.log(`    Protected last-team LS   : ${protectedLastLs.length} (kept)`);
   console.log(`    Fake / unmatched         : ${fakes.length} (will purge)\n`);
 
   console.log('  First 8 fakes:');
@@ -310,6 +345,14 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     console.log(`    row ${String(f.row).padStart(4)}  TI=${String(f.ti).padStart(2)}  YD=${f.yd}  ${f.pos.padEnd(4)}  ${f.name}${reason}`);
   }
   if (fakes.length > 8) console.log(`    ... ${fakes.length - 8} more`);
+
+  if (protectedLastLs.length) {
+    console.log('\n  Protected last-team LS:');
+    for (const f of protectedLastLs.slice(0, 8)) {
+      console.log(`    row ${String(f.row).padStart(4)}  TI=${String(f.ti).padStart(2)}  YD=${f.yd}  ${f.pos.padEnd(4)}  ${f.name}  ${f.reason}`);
+    }
+    if (protectedLastLs.length > 8) console.log(`    ... ${protectedLastLs.length - 8} more`);
+  }
 
   if (isDryRun || fakes.length === 0) {
     console.log(isDryRun ? '\n(dry-run; no save)' : '\nNothing to purge.');

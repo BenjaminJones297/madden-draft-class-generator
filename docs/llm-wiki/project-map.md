@@ -85,7 +85,9 @@ Optional reference input:
   With `--delete` (used by `build_franchise.ps1` phase post), it marks purged
   rows `ContractStatus=Deleted` and removes them from team rosters plus
   Franchise.FreeAgents; it does not `rec.empty()`. Edit-the-autosave pattern
-  (quit Madden without saving first).
+  (quit Madden without saving first). 2026-05-15: protects a fake LS if it is
+  the team's last signed long snapper; the stable 9g recipe does not bulk-move
+  vets, so some source saves can rely on Madden filler LS rows.
 - `scripts/build_franchise.ps1`: PowerShell wrapper orchestrating the
   pre-sim and post-sim phases. Accepts optional `-Ratings <path>` and
   `-Rookies <path>` flags that forward to 9g (`--ratings`/`--rookies`) and
@@ -133,6 +135,15 @@ Optional reference input:
   to catch post-Madden profile conflicts, currently undersized move-based DTs
   whose ratings still look like block-shed/power profiles. `--include-ol-ghosts`
   enables broader OL defensive-ghost caps; default keeps the pass focused.
+- `scripts/9r_restore_roster_player.js`: targeted restore for a missing real
+  roster player into a franchise save, matching by name + team + position so
+  duplicate-name cases are safe. Reuses a `Deleted` Player row when available,
+  otherwise uses a true empty Player row. Writes ratings from
+  `data/franchise_ratings.json`, roster/contract metadata from
+  `data/roster_players_rated.json`, appends to Team.Roster, and recalculates
+  roster-size counters. Built for `Aaron Brewer / ARI / LS` after 9m delete
+  exposed that the real LS had not been moved/created by the no-vet-move 9g
+  recipe.
 - `scripts/9z_probe_auto_rookies.js`: read-only diagnostic — buckets the
   Player table by (YearDrafted, YearsPro), shows samples by ContractStatus.
   Useful for understanding rookie/prospect state before disposal.

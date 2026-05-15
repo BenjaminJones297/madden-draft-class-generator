@@ -387,6 +387,15 @@ node scripts/9q_polish_rookie_ratings_post_madden.js --apply
 node scripts/9q_polish_rookie_ratings_post_madden.js --input data/rookie_ratings_post_fix.json --output data/rookie_ratings_post_fix_polished.json
 ```
 
+Restore one missing real roster player into a franchise save:
+
+```powershell
+$fp = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\CAREER-CARDINALS-AUTOSAVE"
+Copy-Item $fp "$fp.codex-before-restore-aaron-brewer-ls" -Force
+node scripts/9r_restore_roster_player.js --franchise $fp --name "Aaron Brewer" --team ARI --pos LS --apply
+node scripts/9z_validate_franchise.js --franchise $fp
+```
+
 Trace the pipeline when diagnosing data flow:
 
 ```powershell
