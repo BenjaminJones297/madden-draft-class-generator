@@ -153,7 +153,7 @@ elseif ($Phase -eq 'post') {
   }
 
   Step "Phase 'post' - purge auto-generated rookies on $DestName-AUTOSAVE"
-  $m9Args = @('--franchise', $autoPath, '--include-yd1')
+  $m9Args = @('--franchise', $autoPath, '--include-yd1', '--delete')
   if ($Rookies) { $m9Args += '--rookies', $Rookies }
   & node "$repo\scripts\9m_purge_fake_rookies.js" @m9Args
   if ($LASTEXITCODE -ne 0) { throw "9m failed" }

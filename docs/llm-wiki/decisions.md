@@ -31,6 +31,26 @@ divide by this. `MIN_SALARY_K = 90` (representing ~$900k league min).
 - Team-level cap fields (`SalCapCapRoom` etc.) had previously been observed
   at ~$10,500 per unit; same scale family.
 
+## 2026-05-15 - Post-Sim Fake Rookies Use Deleted, Not rec.empty()
+
+**Decision:** The phase-post cleanup path uses
+`scripts/9m_purge_fake_rookies.js --include-yd1 --delete` by default via
+`build_franchise.ps1`. Purged fake rookie rows are marked
+`ContractStatus=Deleted`, moved to TeamIndex 32, removed from team Roster
+arrays, removed from `Franchise.FreeAgents`, and roster-size counters are
+recalculated.
+
+**Why:** Cutting fake rookies to FA removes them from teams but leaves them
+visible in the FA pool. Physically emptying the Player rows (`rec.empty()`)
+is still forbidden because other live tables can reference those rows and
+Madden can CTD when it dereferences empty Player records. `Deleted` hides the
+rows from active/FA player surfaces while preserving row references.
+
+**Implication:** Diagnostic scripts that bucket raw Player records may still
+see YearDrafted=1 / YearsPro=0 rows after cleanup. Check `ContractStatus`:
+`Deleted` rows are intentionally inactive and should not be treated as
+remaining FA/team rookies.
+
 ## 2026-05-11 - Vet Contract Overlay: Gated Re-Enable
 
 **Decision:** Re-enable the previously-DISABLED vet contract overlay in

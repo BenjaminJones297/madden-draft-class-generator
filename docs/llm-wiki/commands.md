@@ -107,7 +107,7 @@ in Madden manually.
 
 # (load in Madden, sim through draft + preseason to Week 1, QUIT WITHOUT IN-GAME SAVE)
 
-# Phase 2 — post-sim cleanup (9m purge fake auto-rookies on the autosave)
+# Phase 2 — post-sim cleanup (9m delete fake/YD=1 auto-rookies on the autosave)
 ./scripts/build_franchise.ps1 -DestName CAREER-HAWKS-FINAL -Phase post
 ```
 
@@ -194,6 +194,13 @@ End state: a franchise controlled by your chosen team, with vets on real-life
 teams, 265 real 2026 rookies on real teams, and Madden's auto-generated
 rookies (pre-draft pool + post-draft UDFAs + next-year synthetic class) all
 purged from team rosters.
+
+`9m` uses the rookie file as the keep-list for YearDrafted=0 current-year
+rookies. The wrapper's post phase passes `--include-yd1 --delete`:
+YearDrafted=1 / YearsPro=0 players are purged regardless of name, then fake
+rows are marked `ContractStatus=Deleted` and removed from team roster arrays
+plus `Franchise.FreeAgents`. Rows are not physically emptied because live refs
+to empty Player rows are a known Madden CTD vector.
 
 TeamIndex map: 0=Bears 1=Bengals 2=Bills 3=Broncos 4=Browns 5=Buccaneers
 6=Cardinals 7=Chargers 8=Chiefs 9=Colts 10=Cowboys 11=Dolphins 12=Eagles

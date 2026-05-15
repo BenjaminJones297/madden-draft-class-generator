@@ -79,11 +79,13 @@ Optional reference input:
   with 9g-injected real rookies. CAREER-UPDATED-ROSTER ships ~310 of these.
 - `scripts/9m_purge_fake_rookies.js`: post-sim cleanup. After user advances
   through draft + preseason, Madden auto-signs UDFAs + generates next-year
-  synthetic prospects with fake names. 9m filters YearsPro=0 records on
-  real teams whose names DON'T appear in `data/rookie_ratings_post_madden.json`
-  and cuts them to FA pool. Use `--include-yd1` to also purge next-year
-  synthetic pool. Edit-the-autosave pattern (quit Madden without saving
-  first). ~140 records on a typical post-preseason save.
+  synthetic prospects. 9m purges YearsPro=0 records that are not in
+  `data/rookie_ratings_post_madden.json`. With `--include-yd1`, it purges all
+  YearDrafted=1 / YearsPro=0 players even if their names match real rookies.
+  With `--delete` (used by `build_franchise.ps1` phase post), it marks purged
+  rows `ContractStatus=Deleted` and removes them from team rosters plus
+  Franchise.FreeAgents; it does not `rec.empty()`. Edit-the-autosave pattern
+  (quit Madden without saving first).
 - `scripts/build_franchise.ps1`: PowerShell wrapper orchestrating the
   pre-sim and post-sim phases. Accepts optional `-Ratings <path>` and
   `-Rookies <path>` flags that forward to 9g (`--ratings`/`--rookies`) and

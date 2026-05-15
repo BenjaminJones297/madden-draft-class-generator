@@ -3,6 +3,45 @@
 Append brief handoff notes for meaningful work. This file is for future LLMs,
 not a full changelog.
 
+## 2026-05-15 - Fix 9m YD=1 duplicate rookie purge
+
+User reported post-phase cleanup still left "old rookies" on
+`CAREER-CARDINALS-AUTOSAVE`. Re-reading Claude session
+`20b8c80c-8bc3-444e-a983-665d6cf24692` showed the failure landed after
+the wrapper's post phase, not during pre-build.
+
+Root cause: `scripts/9m_purge_fake_rookies.js` kept any YearsPro=0 player
+whose normalized name appeared in `data/rookie_ratings_post_madden.json`.
+Madden's next-year synthetic pool (`YearDrafted=1`, `YearsPro=0`) can contain
+duplicate names from the real class, so `--include-yd1` was accidentally
+protecting many old-rookie duplicates.
+
+Fix: with `--include-yd1`, 9m now purges all `YearDrafted=1` / `YearsPro=0`
+players on real teams regardless of name. It still uses the rookie file as
+the keep-list for `YearDrafted=0` current-year rookies. Also tightened team
+Roster removal, FA-pool duplicate checks, and roster-size counter recalculation.
+
+Verification on current failed save:
+- Before fix: dry-run found only 30 purge targets.
+- After fix: dry-run found 90 purge targets (76 YD=1 synthetic + 14
+  name-unmatched current-year records).
+- Applied to `CAREER-CARDINALS-AUTOSAVE` after saving backup
+  `CAREER-CARDINALS-AUTOSAVE.codex-before-9m-fix`.
+- Follow-up dry-run: 0 purge targets; `9z_validate_franchise.js`: 0 broken refs.
+
+Follow-up same day: user noticed the fakes were cut but still visible in FA.
+Added `--delete` mode to 9m and wired `build_franchise.ps1` phase post to pass
+`--include-yd1 --delete`. Delete mode scans both real teams and FA pool, marks
+fake rows `ContractStatus=Deleted`, removes them from team Roster arrays and
+`Franchise.FreeAgents`, and recalculates roster-size counters without
+`rec.empty()`.
+
+Verification on `CAREER-CARDINALS-AUTOSAVE`:
+- Delete-mode dry-run found 312 fake rows (271 already in FA pool).
+- Applied after saving backup `CAREER-CARDINALS-AUTOSAVE.codex-before-9m-delete`.
+- Wrote 312 `Deleted` statuses, removed 41 team-roster refs and 271 FA-pool refs.
+- Follow-up delete dry-run: 0 purge targets; validator: 0 broken refs.
+
 ## 2026-05-11 (+1) - Rookie skin-tone visuals pass (branch `rookie-visuals`)
 
 End-to-end pipeline that gives each injected 2026 rookie a per-player skin

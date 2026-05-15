@@ -7,8 +7,14 @@
  * rookies (UDFAs + next-year draft pool) and signs many to team rosters
  * with synthetic names. This script identifies any YearsPro=0 player on a
  * real team whose name does NOT appear in data/rookie_ratings_post_madden.json
- * and cuts them: TeamIndex=32, ContractStatus=FreeAgent, removed from team's
- * Roster array, added to Franchise.FreeAgents pool.
+ * and either cuts them or, with --delete, hides them from the player pool:
+ * TeamIndex=32, ContractStatus=Deleted, removed from team's Roster array and
+ * from Franchise.FreeAgents.
+ *
+ * When --include-yd1 is set, YearDrafted=1 / YearsPro=0 players on real teams
+ * are always cut. Those are Madden's next-year synthetic rookies; name matching
+ * is intentionally ignored because Madden can generate duplicates with the
+ * same names as our real 2026 rookies.
  *
  * No rec.empty() (V11-V19 lessons: that path causes sim CTDs).
  *
@@ -17,6 +23,8 @@
  *     [--rookies <path>]      default: data/rookie_ratings_post_madden.json
  *     [--include-yd1]         also purge fake YearDrafted=1, YearsPro=0
  *                             (Madden's next-year synthetic draft pool)
+ *     [--delete]              mark purged rows Deleted and remove them from
+ *                             FreeAgents instead of cutting them to FA
  */
 
 const fs        = require('fs');
@@ -32,6 +40,7 @@ const ENV_PATH      = path.join(PROJECT_ROOT, '.env');
 const NULL_REFERENCE = '0'.repeat(32);
 const TEAM_INDEX_FREE_AGENT = 32;
 const CONTRACT_STATUS_FREE_AGENT = 'FreeAgent';
+const CONTRACT_STATUS_DELETED = 'Deleted';
 
 function findFlag(name) {
   const args = process.argv.slice(2);
@@ -40,6 +49,7 @@ function findFlag(name) {
 }
 function hasFlag(name) { return process.argv.slice(2).includes(name); }
 function safeGet(rec, k) { try { const f = rec.getFieldByKey(k); return f ? f.value : undefined; } catch { return undefined; } }
+function trySet(rec, k, v) { try { const f = rec.getFieldByKey(k); if (!f) return false; f.value = v; return true; } catch { return false; } }
 function loadEnvFile(envPath) {
   if (!fs.existsSync(envPath)) return {};
   const r = {};
@@ -65,6 +75,49 @@ async function loadPopulated(franchise, name, minLive = 30) {
   return null;
 }
 
+function getPlayerSlot(rec, i) {
+  try { return rec.getFieldByKey(`Player${i}`); } catch { return null; }
+}
+
+function isNullishRef(field) {
+  const r = field?.referenceData;
+  return !r || (r.tableId === 0 && r.rowNumber === 0);
+}
+
+function isPlayerRef(field, playerTableId, playerRow) {
+  const r = field?.referenceData;
+  return Boolean(field?.isReference && r && r.tableId === playerTableId && r.rowNumber === playerRow);
+}
+
+async function recalculateRosterSizes(playerTable, teamMain) {
+  let touched = 0;
+  for (const teamRec of teamMain.records) {
+    if (teamRec.isEmpty) continue;
+    const ti = Number(safeGet(teamRec, 'TeamIndex'));
+    if (!Number.isFinite(ti) || ti < 0 || ti > 31) continue;
+
+    let active = 0;
+    let salCap = 0;
+    let nextYear = 0;
+    for (const pRec of playerTable.records) {
+      if (pRec.isEmpty) continue;
+      if (Number(safeGet(pRec, 'TeamIndex')) !== ti) continue;
+      const cs = safeGet(pRec, 'ContractStatus');
+      if (cs !== 'Signed' && cs !== 'Expiring') continue;
+
+      salCap++;
+      if (!safeGet(pRec, 'IsInjuredReserve')) active++;
+      if (Number(safeGet(pRec, 'ContractLength')) > 1) nextYear++;
+    }
+
+    trySet(teamRec, 'ActiveRosterSize', active);
+    trySet(teamRec, 'SalCapRosterSize', salCap);
+    trySet(teamRec, 'SalCapNextYearRosterSize', nextYear);
+    touched++;
+  }
+  return touched;
+}
+
 (async () => {
   console.log('='.repeat(64));
   console.log('Script 9m — Purge Fake Auto-Generated Rookies');
@@ -74,11 +127,12 @@ async function loadPopulated(franchise, name, minLive = 30) {
   const rookiesPath = findFlag('--rookies') || path.join(DATA_DIR, 'rookie_ratings_post_madden.json');
   const isDryRun = hasFlag('--dry-run');
   const includeYd1 = hasFlag('--include-yd1');
+  const deleteMode = hasFlag('--delete');
   if (!franchisePath || !fs.existsSync(franchisePath)) { console.error('--franchise <path> required'); process.exit(1); }
   if (!fs.existsSync(rookiesPath)) { console.error(`Rookies file not found: ${rookiesPath}`); process.exit(1); }
   console.log(`  Franchise   : ${franchisePath}`);
   console.log(`  Real rookies: ${rookiesPath}`);
-  console.log(`  Mode        : ${isDryRun ? 'DRY-RUN' : 'WRITE'}`);
+  console.log(`  Mode        : ${isDryRun ? 'DRY-RUN' : 'WRITE'}${deleteMode ? ' + DELETE' : ' + CUT'}`);
   console.log(`  Include YD=1: ${includeYd1 ? 'yes (also purge next-year synthetic pool)' : 'no'}\n`);
 
   // Build normalized name set from real rookies
@@ -140,32 +194,64 @@ async function loadPopulated(franchise, name, minLive = 30) {
 
   function removeFromRoster(ti, playerRow) {
     const rosterRowIdx = tiToRosterRow.get(ti);
-    if (rosterRowIdx === undefined) return false;
+    if (rosterRowIdx === undefined) return 0;
     const rec = rosterTable.records[rosterRowIdx];
-    if (!rec || rec.isEmpty) return false;
-    for (let i = 0; i < 100; i++) {
-      const f = rec.getFieldByKey(`Player${i}`);
-      if (!f) continue;
-      const r = f.referenceData;
-      if (r && r.tableId === playerTableId && r.rowNumber === playerRow) {
-        try { f.value = NULL_REFERENCE; return true; } catch { return false; }
+    if (!rec || rec.isEmpty) return 0;
+    let removed = 0;
+    for (let i = 0; i < 3500; i++) {
+      const f = getPlayerSlot(rec, i);
+      if (!f) break;
+      if (isPlayerRef(f, playerTableId, playerRow)) {
+        try { f.value = NULL_REFERENCE; removed++; } catch {}
       }
     }
-    return false;
+    return removed;
+  }
+
+  function removeFromAllTeamRosters(playerRow) {
+    let removed = 0;
+    for (const ti of tiToRosterRow.keys()) {
+      removed += removeFromRoster(ti, playerRow);
+    }
+    return removed;
+  }
+
+  function removeFromFreeAgentsPool(playerRow) {
+    if (!faTbl || faRow == null) return 0;
+    const rec = faTbl.records[faRow];
+    if (!rec || rec.isEmpty) return 0;
+    let removed = 0;
+    for (let i = 0; i < 3500; i++) {
+      const f = getPlayerSlot(rec, i);
+      if (!f) break;
+      if (isPlayerRef(f, playerTableId, playerRow)) {
+        try { f.value = NULL_REFERENCE; removed++; } catch {}
+      }
+    }
+    return removed;
   }
 
   function addToFreeAgentsPool(playerRow) {
     if (!faTbl || faRow == null) return false;
     const rec = faTbl.records[faRow];
     if (!rec || rec.isEmpty) return false;
-    // FA pool slots are typically Player0..Player(N-1); typically 3500
+
+    // Do not duplicate a row if a prior run already appended it.
     for (let i = 0; i < 3500; i++) {
-      const f = rec.getFieldByKey(`Player${i}`);
+      const f = getPlayerSlot(rec, i);
       if (!f) break;
-      const r = f.referenceData;
-      if (!r || r.tableId === 0 || r.rowNumber === 0) {
+      if (isPlayerRef(f, playerTableId, playerRow)) return true;
+    }
+
+    // FA pool slots are typically Player0..Player(N-1); usually 3500.
+    for (let i = 0; i < 3500; i++) {
+      const f = getPlayerSlot(rec, i);
+      if (!f) break;
+      if (isNullishRef(f)) {
         try {
-          f.value = utilService.dec2bin(playerTableId, 15) + utilService.dec2bin(playerRow, 17);
+          f.value = utilService.getBinaryReferenceData
+            ? utilService.getBinaryReferenceData(playerTableId, playerRow)
+            : utilService.dec2bin(playerTableId, 15) + utilService.dec2bin(playerRow, 17);
           return true;
         } catch { return false; }
       }
@@ -175,10 +261,12 @@ async function loadPopulated(franchise, name, minLive = 30) {
 
   // Identify fakes
   const fakes = [];
-  let realRookies = 0, alreadyFA = 0, scanned = 0;
+  let realRookies = 0, skippedAlreadyFA = 0, fakeAlreadyFA = 0, scanned = 0, yd1Synthetic = 0, nameUnmatched = 0;
   for (let i = 0; i < playerTable.records.length; i++) {
     const r = playerTable.records[i];
     if (r.isEmpty) continue;
+    const cs = safeGet(r, 'ContractStatus');
+    if (cs === CONTRACT_STATUS_DELETED) continue;
     const yp = Number(safeGet(r, 'YearsPro'));
     const yd = Number(safeGet(r, 'YearDrafted'));
     if (yp !== 0) continue;
@@ -186,23 +274,40 @@ async function loadPopulated(franchise, name, minLive = 30) {
     if (yd !== 0 && !(includeYd1 && yd === 1)) continue;
     scanned++;
     const ti = Number(safeGet(r, 'TeamIndex'));
-    if (ti === TEAM_INDEX_FREE_AGENT) { alreadyFA++; continue; }
-    if (!Number.isFinite(ti) || ti < 0 || ti > 31) continue;
+    const onRealTeam = Number.isFinite(ti) && ti >= 0 && ti <= 31;
+    const inFaPool = ti === TEAM_INDEX_FREE_AGENT;
+    if (!onRealTeam && !inFaPool) continue;
     const fn = safeGet(r, 'FirstName') || '';
     const ln = safeGet(r, 'LastName') || '';
     const key = norm(fn + ln);
+    const pos = safeGet(r, 'Position');
+    const name = `${fn} ${ln}`;
+
+    if (includeYd1 && yd === 1) {
+      yd1Synthetic++;
+      if (inFaPool) fakeAlreadyFA++;
+      if (inFaPool && !deleteMode) { skippedAlreadyFA++; continue; }
+      fakes.push({ row: i, name, pos, ti, yd, yp, reason: 'YD=1 synthetic' });
+      continue;
+    }
     if (realNames.has(key)) { realRookies++; continue; }
-    fakes.push({ row: i, name: `${fn} ${ln}`, pos: safeGet(r,'Position'), ti, yd, yp });
+    nameUnmatched++;
+    if (inFaPool) fakeAlreadyFA++;
+    if (inFaPool && !deleteMode) { skippedAlreadyFA++; continue; }
+    fakes.push({ row: i, name, pos, ti, yd, yp });
   }
 
-  console.log(`  Rookie-class records scanned (YP=0${includeYd1?', YD ∈ {0,1}':', YD=0'}, on a real team): ${scanned}`);
-  console.log(`    Already in FA pool       : ${alreadyFA} (skipped)`);
+  console.log(`  Rookie-class records scanned (YP=0${includeYd1?', YD in {0,1}':', YD=0'}): ${scanned}`);
+  console.log(`    Fake already in FA pool  : ${fakeAlreadyFA} (${deleteMode ? 'will delete' : `${skippedAlreadyFA} skipped`})`);
   console.log(`    Matched real rookie list : ${realRookies} (kept)`);
+  if (includeYd1) console.log(`    YD=1 synthetic records   : ${yd1Synthetic} (will purge even on name match)`);
+  console.log(`    Name-unmatched records   : ${nameUnmatched} (will purge)`);
   console.log(`    Fake / unmatched         : ${fakes.length} (will purge)\n`);
 
   console.log('  First 8 fakes:');
   for (const f of fakes.slice(0, 8)) {
-    console.log(`    row ${String(f.row).padStart(4)}  TI=${String(f.ti).padStart(2)}  YD=${f.yd}  ${f.pos.padEnd(4)}  ${f.name}`);
+    const reason = f.reason ? `  ${f.reason}` : '';
+    console.log(`    row ${String(f.row).padStart(4)}  TI=${String(f.ti).padStart(2)}  YD=${f.yd}  ${f.pos.padEnd(4)}  ${f.name}${reason}`);
   }
   if (fakes.length > 8) console.log(`    ... ${fakes.length - 8} more`);
 
@@ -211,22 +316,33 @@ async function loadPopulated(franchise, name, minLive = 30) {
     return;
   }
 
-  // Apply: cut each fake
-  let cut = 0, rosterRemoved = 0, faPoolAdded = 0;
+  // Apply: cut or delete each fake. Never rec.empty(); live refs to empty rows
+  // are a known Madden load/sim crash vector.
+  let cut = 0, deleted = 0, rosterRemoved = 0, faPoolAdded = 0, faPoolRemoved = 0;
   for (const f of fakes) {
     const rec = playerTable.records[f.row];
-    try {
-      rec.getFieldByKey('TeamIndex').value = TEAM_INDEX_FREE_AGENT;
-      rec.getFieldByKey('ContractStatus').value = CONTRACT_STATUS_FREE_AGENT;
+    if (!trySet(rec, 'TeamIndex', TEAM_INDEX_FREE_AGENT)) continue;
+    if (deleteMode) {
+      trySet(rec, 'ContractStatus', CONTRACT_STATUS_DELETED);
+      deleted++;
+      rosterRemoved += removeFromAllTeamRosters(f.row);
+      faPoolRemoved += removeFromFreeAgentsPool(f.row);
+    } else {
+      trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
       cut++;
-    } catch (_) { continue; }
-    if (removeFromRoster(f.ti, f.row)) rosterRemoved++;
-    if (addToFreeAgentsPool(f.row)) faPoolAdded++;
+      rosterRemoved += removeFromRoster(f.ti, f.row);
+      if (addToFreeAgentsPool(f.row)) faPoolAdded++;
+    }
   }
 
+  const rosterSizesRecalculated = await recalculateRosterSizes(playerTable, teamMain);
+
   console.log(`\n  Cut to FA pool       : ${cut}`);
+  console.log(`  Marked Deleted       : ${deleted}`);
   console.log(`  Removed from Roster  : ${rosterRemoved}`);
   console.log(`  Added to FA pool     : ${faPoolAdded}`);
+  console.log(`  Removed from FA pool : ${faPoolRemoved}`);
+  console.log(`  Roster-size recalc   : ${rosterSizesRecalculated} teams`);
 
   console.log('\n  Saving franchise file…');
   await fra.save(franchisePath);
