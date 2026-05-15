@@ -2,6 +2,8 @@
 
 Generate a **real-world 2026 NFL draft class** and import it directly into Madden NFL 26. The pipeline downloads real combine measurables and scouting data, uses the actual Madden 26 launch ratings for the 2025 class as calibration ground truth, then calls a local Ollama LLM to generate every Madden attribute for each 2026 prospect — no manual editing required.
 
+> **LLM context:** Agents and AI coding assistants should start with [`AGENTS.md`](AGENTS.md) and the repo-local wiki in [`docs/llm-wiki/`](docs/llm-wiki/).
+
 ---
 
 ## How It Works
@@ -404,6 +406,46 @@ OUTPUT_DIR=./data/output
 ```
 
 CLI flags always override `.env` values.
+
+---
+
+## Optional: Per-Rookie Skin Tones
+
+If you're applying the generated rookies into a `.franchise` save via
+`scripts/build_franchise.ps1`, you can also assign each rookie a realistic
+skin tone derived from their actual headshot photo. By default Madden ships
+every auto-prospect with the same dark-skinned procedural head — this pass
+varies them by sampling each prospect's real ESPN headshot.
+
+```powershell
+# One-time build of the appearances file (~5 minutes wall time).
+python scripts/9n_fetch_rookie_headshots.py
+python scripts/9o_extract_skin_tones.py
+node   scripts/9o_pick_calibration_vets.js --per-bucket 10
+python scripts/9n_fetch_rookie_headshots.py `
+  --input data/calibration_vets.json `
+  --out-dir data/raw/headshots_calibration `
+  --manifest data/raw/headshot_manifest_calibration.json
+python scripts/9o_extract_skin_tones.py `
+  --photo-dir data/raw/headshots_calibration `
+  --manifest data/raw/headshot_manifest_calibration.json `
+  --out data/raw/vet_skin_measurements.json --debug-overlays 0
+python scripts/9o_build_calibration.py
+python scripts/9o_bucket_rookies.py
+
+# Apply on every franchise build by adding -ApplyVisuals:
+./scripts/build_franchise.ps1 -TargetTeamIndex 27 -DestName CAREER-DEMO -Phase pre `
+  -Ratings data\roster_players_rated_full2.json `
+  -Rookies data\rookie_ratings_post_fix.json `
+  -ApplyVisuals
+```
+
+Coverage: ~97% of prospects via ESPN CDN, ~73% within ±1 of correct tone
+after calibration against known-truth vets. Edit `data/rookie_appearances.json`
+to manually override individual outliers before re-running with `-ApplyVisuals`.
+
+See `docs/llm-wiki/commands.md` for the full recipe and `decisions.md` for
+trade-offs.
 
 ---
 

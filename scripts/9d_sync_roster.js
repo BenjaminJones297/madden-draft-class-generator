@@ -52,7 +52,8 @@ const NFLVERSE_TO_TEAM_INDEX = {
   BAL: 24, WAS: 25, NO:  26, SEA: 27, PIT: 28, TEN: 29, MIN: 30, HOU: 31,
 };
 const TEAM_INDEX_FREE_AGENT  = 32;
-const CONTRACT_STATUS_SIGNED = '1';
+// Use the enum name not the numeric form — see 9c for why.
+const CONTRACT_STATUS_SIGNED = 'Signed';
 
 // Mirrors scripts/3_extract_roster_ratings.js / scripts/9c_inject_rookies.js
 const FIELD_MAP = {

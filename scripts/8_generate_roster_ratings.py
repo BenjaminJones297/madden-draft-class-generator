@@ -22,6 +22,7 @@ Run:
   (Requires script 3 to have been run first with a valid .ros file.)
 """
 
+import argparse
 import json
 import os
 import re
@@ -44,6 +45,75 @@ MADDEN_RATINGS_FILE  = os.path.join(DATA_DIR, "current_player_ratings_full.json"
 OUTPUT_FILE          = os.path.join(DATA_DIR, "roster_players_rated.json")
 
 CURRENT_LEAGUE_YEAR = 2026
+
+
+# ---------------------------------------------------------------------------
+# Ratings shape adapter
+#
+# Two file shapes feed this script:
+#   1. current_player_ratings_full.json (from script 3 reading a .ros file):
+#      dict { "Josh Allen": { "overall": 99, "speed": 88, ... } }
+#      keys are short camelCase, no "Rating" suffix.
+#
+#   2. full_solution_2_ratings.json (a Madden franchise export):
+#      list of {name, FirstName, LastName, ratings: {OverallRating: 99,
+#      SpeedRating: 88, BCVisionRating: 80, ...}, TeamIndex, ContractStatus, ...}
+#      ratings sub-object uses Madden internal field names (PascalCase + "Rating" suffix).
+#
+# normalize_ratings_input converts either to the dict-shape that the rest
+# of this script expects.
+# ---------------------------------------------------------------------------
+
+# Madden internal rating fields whose canonical short key isn't simply
+# "FieldName"[0].lower() + rest minus "Rating". Most fields convert
+# mechanically; these are the special cases.
+_MADDEN_TO_SHORT = {
+    "BCVisionRating":               "ballCarrierVision",
+    "BallCarrierVisionRating":      "ballCarrierVision",
+    "ImpactBlockingRating":         "impactBlocking",
+    "ImpactBlockRating":            "impactBlocking",
+    "FinesseMoveRating":            "finesseMoves",
+    "PowerMovesRating":             "powerMoves",
+}
+
+
+def _short_key(madden_field: str) -> str:
+    """Convert a Madden internal rating field name → script 8's short key."""
+    if madden_field in _MADDEN_TO_SHORT:
+        return _MADDEN_TO_SHORT[madden_field]
+    s = madden_field
+    if s.endswith("Rating"):
+        s = s[: -len("Rating")]
+    if s:
+        s = s[0].lower() + s[1:]
+    return s
+
+
+def normalize_ratings_input(raw):
+    """Accept either dict-shape (script 3 output) or list-shape
+    (full_solution_2_ratings.json) and return a dict {name → ratings dict}
+    using short keys.
+    """
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, list):
+        return {}
+    converted: dict = {}
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name") or (
+            f"{entry.get('FirstName', '')} {entry.get('LastName', '')}".strip()
+        )
+        if not name:
+            continue
+        rating_block = entry.get("ratings") if isinstance(entry.get("ratings"), dict) else entry
+        short = {}
+        for k, v in rating_block.items():
+            short[_short_key(k)] = v
+        # Some scripts also key by lower-case. Always keep the as-supplied name.
+        converted[name] = short
+    return converted
 
 
 # ---------------------------------------------------------------------------
@@ -222,30 +292,45 @@ def build_rated_player(player: dict, madden_obj: dict | None) -> dict:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build roster JSON with Madden ratings + nflverse contracts")
+    parser.add_argument("--ratings", default=MADDEN_RATINGS_FILE,
+                        help=f"Path to ratings input. Default: {MADDEN_RATINGS_FILE}. Also accepts "
+                             f"full_solution_2_ratings.json shape (list of {{name, ratings: {{...}}}} ).")
+    parser.add_argument("--rosters", default=ROSTER_FILE,
+                        help=f"Path to nfl_rosters_2026.json. Default: {ROSTER_FILE}.")
+    parser.add_argument("--out", default=OUTPUT_FILE,
+                        help=f"Output path. Default: {OUTPUT_FILE}.")
+    args = parser.parse_args()
+
     print("=" * 60)
     print("Script 8 — Build roster with official Madden ratings")
     print("=" * 60)
+    print(f"  Ratings : {args.ratings}")
+    print(f"  Rosters : {args.rosters}")
+    print(f"  Out     : {args.out}")
 
     # ── Load inputs ──────────────────────────────────────────────────────────
-    if not os.path.isfile(ROSTER_FILE):
-        print(f"\n✗ Roster file not found: {ROSTER_FILE}", file=sys.stderr)
+    if not os.path.isfile(args.rosters):
+        print(f"\n✗ Roster file not found: {args.rosters}", file=sys.stderr)
         print("  Run script 7 first: python scripts/7_fetch_nfl_roster_and_contracts.py")
         sys.exit(1)
 
-    with open(ROSTER_FILE, encoding="utf-8") as fh:
+    with open(args.rosters, encoding="utf-8") as fh:
         roster_players = json.load(fh)
 
-    if not os.path.isfile(MADDEN_RATINGS_FILE):
-        print(f"  ⚠  Madden ratings file not found: {MADDEN_RATINGS_FILE}")
+    if not os.path.isfile(args.ratings):
+        print(f"  ⚠  Madden ratings file not found: {args.ratings}")
         print("  Continuing with position-default ratings for all players.")
-        print("  Tip: run step 3 with a .ros file for official Madden ratings.")
+        print("  Tip: run step 3 with a .ros file or supply --ratings full_solution_2_ratings.json")
         madden_ratings_raw = {}
     else:
-        with open(MADDEN_RATINGS_FILE, encoding="utf-8") as fh:
+        with open(args.ratings, encoding="utf-8") as fh:
             madden_ratings_raw = json.load(fh)
+        # Normalize list-shape (full_solution_2_ratings.json) → dict-shape
+        madden_ratings_raw = normalize_ratings_input(madden_ratings_raw)
 
     print(f"\n  Roster players : {len(roster_players):,}")
-    print(f"  Madden ratings : {len(madden_ratings_raw):,} players in file")
+    print(f"  Madden ratings : {len(madden_ratings_raw):,} players in file (normalized)")
 
     # ── Build name lookup ─────────────────────────────────────────────────────
     lookup = build_name_lookup(madden_ratings_raw)
@@ -282,9 +367,9 @@ def main() -> None:
     ))
 
     # ── Save output ───────────────────────────────────────────────────────────
-    os.makedirs(os.path.dirname(OUTPUT_FILE) if os.path.dirname(OUTPUT_FILE) else DATA_DIR,
+    os.makedirs(os.path.dirname(args.out) if os.path.dirname(args.out) else DATA_DIR,
                 exist_ok=True)
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as fh:
+    with open(args.out, "w", encoding="utf-8") as fh:
         json.dump(rated, fh, indent=2)
 
     # ── Print summary ─────────────────────────────────────────────────────────
@@ -318,7 +403,7 @@ def main() -> None:
             top  = max(ovrs)
             print(f"    {pos:<4}  n={len(ovrs):<4}  avg={avg:5.1f}  top={top}")
 
-    print(f"\n  Output → {os.path.relpath(OUTPUT_FILE, PROJECT_ROOT)}")
+    print(f"\n  Output → {os.path.relpath(args.out, PROJECT_ROOT)}")
     print("\n✓ Done.")
 
 

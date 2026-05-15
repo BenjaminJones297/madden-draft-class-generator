@@ -4,3 +4,8 @@ lxml>=4.9.0
 ollama>=0.4.0
 tqdm>=4.66.0
 python-dotenv>=1.0.0
+
+# Used by 9o_extract_skin_tones.py (rookie-visuals pass)
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0

@@ -43,8 +43,10 @@ const NFLVERSE_TO_TEAM_INDEX = {
   BAL: 24, WAS: 25, NO:  26, SEA: 27, PIT: 28, TEN: 29, MIN: 30, HOU: 31,
 };
 
-// ContractStatus enum values (binary strings used by madden-franchise)
-const CONTRACT_STATUS_SIGNED    = '1';    // Signed to a team
+// PlayerContractStatus enum. Use the enum NAME — madden-franchise resolves
+// it via the schema; the numeric '1' happens to work for Signed but '0' for
+// a free agent would write decimal-0 = "Drafted", not FreeAgent.
+const CONTRACT_STATUS_SIGNED    = 'Signed';
 const TEAM_INDEX_FREE_AGENT     = 32;     // Free-agent / practice pool
 
 // Minimum Madden base salary (in thousands of dollars)

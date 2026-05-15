@@ -54,7 +54,11 @@ const NFLVERSE_TO_TEAM_INDEX = {
   BAL: 24, WAS: 25, NO:  26, SEA: 27, PIT: 28, TEN: 29, MIN: 30, HOU: 31,
 };
 const TEAM_INDEX_FREE_AGENT  = 32;
-const CONTRACT_STATUS_SIGNED = '1';
+// PlayerContractStatus is a 4-bit enum. madden-franchise resolves enums by name
+// first, then formatted value, then unformatted value. '1' happens to write
+// decimal-1 = Signed but the symmetric FA write of '0' would silently mean
+// decimal-0 = Drafted — write the enum NAME so adjacent FA writes stay safe.
+const CONTRACT_STATUS_SIGNED = 'Signed';
 
 // ---------------------------------------------------------------------------
 // Mapping: prospects_rated.json rating key  → franchise Player field name(s).
