@@ -3,6 +3,25 @@
 Append brief handoff notes for meaningful work. This file is for future LLMs,
 not a full changelog.
 
+## 2026-05-15 - Post-Madden rookie rating polish pass
+
+Added `scripts/9q_polish_rookie_ratings_post_madden.js` for the flat
+`data/rookie_ratings_post_madden.json` file consumed by 9g/9m. Existing
+`polish_ratings*` scripts only operate on nested `prospects_rated.json`, so
+post-Madden franchise/export edits had no lightweight profile-sanity pass.
+
+The new script is dry-run by default and joins rookies back to
+`prospects_2026.json` / `prospects_rated.json` notes. Current default rule
+catches undersized, move-based interior DT profiles whose ratings still look
+like block-shed/power defenders. `--include-ol-ghosts` enables a broader
+offensive-line defensive-ghost cap, but it is opt-in to avoid noisy churn.
+
+Applied to `data/rookie_ratings_post_madden.json`: Kaleb Proctor already
+matched the intended shape after the user's manual edit (blockShedding 70,
+finesseMoves 76). The pass also corrected Gracen Halton and Anterio Thompson
+to blockShedding 70 / finesseMoves 76. Follow-up dry-run reported no remaining
+profile conflicts.
+
 ## 2026-05-15 - Fix 9m YD=1 duplicate rookie purge
 
 User reported post-phase cleanup still left "old rookies" on

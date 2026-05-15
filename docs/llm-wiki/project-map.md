@@ -127,6 +127,12 @@ Optional reference input:
   inject duplicates which have null CV refs — they still get a head-asset
   update which Madden renders from. Supports `--apply` / dry-run /
   `--skip-low-confidence`.
+- `scripts/9q_polish_rookie_ratings_post_madden.js`: dry-run/apply polish
+  for the flat `data/rookie_ratings_post_madden.json` shape consumed by 9g/9m.
+  Joins rookies back to `prospects_2026.json` / `prospects_rated.json` notes
+  to catch post-Madden profile conflicts, currently undersized move-based DTs
+  whose ratings still look like block-shed/power profiles. `--include-ol-ghosts`
+  enables broader OL defensive-ghost caps; default keeps the pass focused.
 - `scripts/9z_probe_auto_rookies.js`: read-only diagnostic — buckets the
   Player table by (YearDrafted, YearsPro), shows samples by ContractStatus.
   Useful for understanding rookie/prospect state before disposal.

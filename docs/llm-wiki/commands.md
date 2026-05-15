@@ -374,6 +374,19 @@ Audit generated ratings:
 node scripts/audit_ratings.js
 ```
 
+Polish the post-Madden flat rookie ratings file used by 9g/9m:
+
+```powershell
+# Dry-run: reports profile conflicts only
+node scripts/9q_polish_rookie_ratings_post_madden.js
+
+# Apply in place to data/rookie_ratings_post_madden.json
+node scripts/9q_polish_rookie_ratings_post_madden.js --apply
+
+# Write a polished copy instead
+node scripts/9q_polish_rookie_ratings_post_madden.js --input data/rookie_ratings_post_fix.json --output data/rookie_ratings_post_fix_polished.json
+```
+
 Trace the pipeline when diagnosing data flow:
 
 ```powershell

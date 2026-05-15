@@ -11,6 +11,7 @@ files. Many `data/*.json` files are generated artifacts and can be large.
 | `data/calibration_set.json` | `scripts/2_extract_calibration.js` | `scripts/5_generate_ratings.py` | Madden 2025 calibration examples grouped by position. |
 | `data/current_player_ratings.json` | `scripts/3_extract_roster_ratings.js` | `scripts/5_generate_ratings.py` | Optional current-player anchors grouped by position. |
 | `data/prospects_rated.json` | `scripts/5_generate_ratings.py`, polish scripts | `scripts/6_create_draft_class.js` | Generated Madden attributes for prospects. |
+| `data/rookie_ratings_post_madden.json` | Madden round-trip/manual export plus optional `scripts/9q_polish_rookie_ratings_post_madden.js` | `scripts/9g_sync_franchise_from_data.js`, `scripts/9m_purge_fake_rookies.js` | Flat per-rookie ratings/teams used for franchise injection and fake-rookie keep-list. |
 | `data/roster_players_rated.json` | `scripts/8_generate_roster_ratings.py` | Roster/sync workflows | Active NFL players with ratings and contract fields. |
 | `data/reference_draft_class.json` | `scripts/extract_reference_class.js` | `scripts/5_generate_ratings.py` | Optional community reference class anchor. |
 | `data/prospect_profiles.json` | Prospect fetch/enrichment scripts | `scripts/5_generate_ratings.py` | Enriched prospect profiles used in prompts. |
@@ -115,4 +116,3 @@ ignores everything else.
 - If modifying generated formats, update `data/contracts/*.schema.json` and this
   page.
 - If adding fields consumed by both Python and Node, update both enum/util sides.
-
