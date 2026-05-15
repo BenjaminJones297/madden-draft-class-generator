@@ -1,12 +1,12 @@
-# build_franchise.ps1 — End-to-end franchise build wrapper
+# build_franchise.ps1 - End-to-end franchise build wrapper
 #
-# Phase 'pre'  — Copies V20 source, swaps user team, injects 2026 rookies +
+# Phase 'pre'  - Copies V20 source, swaps user team, injects 2026 rookies +
 #                ratings, disposes Madden's pre-built draft pool. Produces a
 #                franchise ready for in-game load + draft sim.
-# Phase 'post' — Run AFTER user advances through the draft + preseason in
+# Phase 'post' - Run AFTER user advances through the draft + preseason in
 #                Madden. Purges any fake-named auto-rookies Madden auto-signed
 #                during the UDFA wave + next-year synthetic pool.
-# Phase 'both' — runs 'pre', then halts with instructions to sim in Madden.
+# Phase 'both' - runs 'pre', then halts with instructions to sim in Madden.
 #                Re-invoke with -Phase post on the autosave file once done.
 #
 # Usage:
@@ -99,11 +99,11 @@ if ($Phase -eq 'pre') {
     throw "Source not found: $srcPath"
   }
 
-  Step "Step 1: Copy V20 source → $DestName"
+  Step "Step 1: Copy V20 source -> $DestName"
   Copy-Item -Path $srcPath -Destination $dstPath -Force
   Write-Host "Copied: $((Get-Item $dstPath).Length) bytes"
 
-  Step "Step 2: 9k — swap user team to TeamIndex $TargetTeamIndex"
+  Step "Step 2: 9k - swap user team to TeamIndex $TargetTeamIndex"
   & node "$repo\scripts\9k_swap_user_team.js" --franchise $dstPath --target-team-index $TargetTeamIndex
   if ($LASTEXITCODE -ne 0) { throw "9k failed" }
 
@@ -111,7 +111,7 @@ if ($Phase -eq 'pre') {
   & node "$repo\scripts\9z_validate_franchise.js" --franchise $dstPath
   if ($LASTEXITCODE -ne 0) { throw "validator failed" }
 
-  Step "Step 4: 9g — inject 2026 rookies + update vet ratings"
+  Step "Step 4: 9g - inject 2026 rookies + update vet ratings"
   $g9Args = @('--franchise', $dstPath, '--apply', '--allow-unmatched')
   if ($Ratings) { $g9Args += '--ratings', $Ratings }
   if ($Rookies) { $g9Args += '--rookies', $Rookies }
@@ -119,12 +119,12 @@ if ($Phase -eq 'pre') {
   & node "$repo\scripts\9g_sync_franchise_from_data.js" @g9Args
   if ($LASTEXITCODE -ne 0) { throw "9g failed" }
 
-  Step "Step 5: 9l — dispose Madden's pre-built draft pool"
+  Step "Step 5: 9l - dispose Madden's pre-built draft pool"
   & node "$repo\scripts\9l_dispose_auto_prospects.js" --franchise $dstPath
   if ($LASTEXITCODE -ne 0) { throw "9l failed" }
 
   if ($ApplyVisuals) {
-    Step "Step 5b: 9p — apply rookie skin-tone visuals"
+    Step "Step 5b: 9p - apply rookie skin-tone visuals"
     $p9Args = @('--franchise', $dstPath, '--apply')
     if ($Appearances) { $p9Args += '--appearances', $Appearances }
     & node "$repo\scripts\9p_apply_visuals.js" @p9Args
@@ -152,7 +152,7 @@ elseif ($Phase -eq 'post') {
     throw "Autosave not found at: $autoPath`nExpected after phase 'pre' + in-game sim."
   }
 
-  Step "Phase 'post' — purge auto-generated rookies on $DestName-AUTOSAVE"
+  Step "Phase 'post' - purge auto-generated rookies on $DestName-AUTOSAVE"
   $m9Args = @('--franchise', $autoPath, '--include-yd1')
   if ($Rookies) { $m9Args += '--rookies', $Rookies }
   & node "$repo\scripts\9m_purge_fake_rookies.js" @m9Args
@@ -167,5 +167,5 @@ elseif ($Phase -eq 'post') {
   Write-Host "Phase 'post' complete. Final franchise at:" -ForegroundColor Green
   Write-Host "  $autoPath" -ForegroundColor Green
   Write-Host ""
-  Write-Host "  Quit Madden if running, then reload — fakes purged."
+  Write-Host "  Quit Madden if running, then reload - fakes purged."
 }
