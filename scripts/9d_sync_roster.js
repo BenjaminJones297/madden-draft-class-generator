@@ -138,71 +138,6 @@ const POSITION_JERSEY_RANGES = {
 
 const DEV_TRAIT_STRINGS = ['Normal', 'Star', 'Superstar', 'XFactor'];
 
-const ROOKIE_POSITION_SPLITS = {
-  T:    ['LT', 'RT'],
-  OT:   ['LT', 'RT'],
-  G:    ['LG', 'RG'],
-  OG:   ['LG', 'RG'],
-  DE:   ['LE', 'RE'],
-  EDGE: ['LE', 'RE'],
-  OLB:  ['LOLB', 'ROLB'],
-  LB:   ['LOLB', 'MLB', 'ROLB'],
-  S:    ['FS', 'SS'],
-  DB:   ['CB', 'FS', 'SS'],
-  RB:   ['HB'],
-};
-
-const ROOKIE_POSITION_ALIASES = {
-  QB: 'QB',
-  HB: 'HB',
-  FB: 'FB',
-  WR: 'WR',
-  TE: 'TE',
-  LT: 'LT',
-  LG: 'LG',
-  C:  'C',
-  RG: 'RG',
-  RT: 'RT',
-  LE: 'LE',
-  RE: 'RE',
-  DT: 'DT',
-  LOLB: 'LOLB',
-  MLB:  'MLB',
-  ILB:  'MLB',
-  ROLB: 'ROLB',
-  CB: 'CB',
-  FS: 'FS',
-  SS: 'SS',
-  K:  'K',
-  P:  'P',
-  LS: 'LS',
-};
-
-const DEFAULT_PLAYER_TYPE_BY_POSITION = {
-  QB:   'QB_FieldGeneral',
-  HB:   'HB_ElusiveBack',
-  FB:   'FB_Utility',
-  WR:   'WR_Playmaker',
-  TE:   'TE_VerticalThreat',
-  LT:   'OT_Power',
-  RT:   'OT_Power',
-  LG:   'G_Power',
-  RG:   'G_Power',
-  C:    'C_Agile',
-  LE:   'DE_SmallerSpeedRusher',
-  RE:   'DE_SmallerSpeedRusher',
-  DT:   'DT_NoseTackle',
-  LOLB: 'OLB_RunStopper',
-  MLB:  'MLB_FieldGeneral',
-  ROLB: 'OLB_RunStopper',
-  CB:   'CB_MantoMan',
-  FS:   'S_Zone',
-  SS:   'S_Zone',
-  K:    'KP_Power',
-  P:    'KP_Power',
-  LS:   'LS_Accurate',
-};
-
 // Identity / roster fields we copy verbatim (subject to YearDrafted shift).
 const IDENTITY_FIELDS = [
   'FirstName', 'LastName', 'Position', 'College', 'Age', 'Height', 'Weight',
@@ -355,20 +290,6 @@ function makeJerseyAllocator() {
   };
 }
 
-function makeRookiePositionResolver() {
-  const splitCounts = {};
-  return function resolveRookiePosition(rawPosition) {
-    const raw = String(rawPosition || 'WR').trim().toUpperCase();
-    const split = ROOKIE_POSITION_SPLITS[raw];
-    if (split) {
-      const idx = splitCounts[raw] || 0;
-      splitCounts[raw] = idx + 1;
-      return split[idx % split.length];
-    }
-    return ROOKIE_POSITION_ALIASES[raw] || 'WR';
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Source-record snapshot / write
 // ---------------------------------------------------------------------------
@@ -395,11 +316,7 @@ function snapshotRecord(record) {
 function applyRecord(record, data, opts = {}) {
   const yearDraftedShift = opts.yearDraftedShift || 0;
 
-  // Position marks an emptied Player row as in-use on some Madden schemas.
-  if ('Position' in data) trySet(record, 'Position', data.Position);
-
   for (const name of IDENTITY_FIELDS) {
-    if (name === 'Position') continue;
     if (!(name in data)) continue;
     let value = data[name];
     if (name === 'YearDrafted' && typeof value === 'number') {
@@ -418,10 +335,7 @@ function applyRecord(record, data, opts = {}) {
 // ---------------------------------------------------------------------------
 function openFranchise(filePath) {
   return new Promise((resolve, reject) => {
-    const fra = new Franchise(filePath, {
-      gameYearOverride: 26,
-      autoUnempty:      true,
-    });
+    const fra = new Franchise(filePath, { gameYearOverride: 26 });
     fra.on('error', (err) => reject(new Error(`Franchise error (${filePath}): ${err?.message || err}`)));
     fra.on('ready', () => resolve(fra));
   });
@@ -512,7 +426,6 @@ async function main() {
 
   // ── Pass 3: inject 2026 rookies on their real teams ──────────────────────
   const pickJersey  = makeJerseyAllocator();
-  const resolveRookiePosition = makeRookiePositionResolver();
   let injected      = 0;
   let injectedFA    = 0;
   let injectSkipped = 0;
@@ -528,14 +441,10 @@ async function main() {
     const idx = targetPlayerTable.header.nextRecordToUse;
     if (idx >= targetPlayerTable.header.recordCapacity) { injectSkipped++; continue; }
     const record = targetPlayerTable.records[idx];
-    const rawPosition = String(p.pos || 'WR').trim().toUpperCase();
-    const franchisePosition = resolveRookiePosition(rawPosition);
-    const playerType = DEFAULT_PLAYER_TYPE_BY_POSITION[franchisePosition] || 'WR_Playmaker';
 
-    trySet(record, 'Position',        franchisePosition);
-    trySet(record, 'PlayerType',      playerType);
     trySet(record, 'FirstName',       String(p.firstName || '').slice(0, 11));
     trySet(record, 'LastName',        String(p.lastName  || '').slice(0, 14));
+    trySet(record, 'Position',        String(p.pos || 'WR'));
     trySet(record, 'College',         String(p.school || '').slice(0, 24));
     trySet(record, 'Age',             22);
     trySet(record, 'Height',          parseHeight(p.ht));
@@ -546,7 +455,7 @@ async function main() {
     trySet(record, 'YearsPro',        0);
     trySet(record, 'PLYR_DRAFTROUND', Math.max(0, Math.min(7,  Number(p.actual_draft_round || p.draftRound || 7))));
     trySet(record, 'PLYR_DRAFTPICK',  Math.max(0, Math.min(99, Number(p.actual_draft_pick  || p.draftPick  || 99))));
-    trySet(record, 'JerseyNum',       pickJersey(teamIndex, rawPosition));
+    trySet(record, 'JerseyNum',       pickJersey(teamIndex, p.pos));
 
     const c          = rookieContract(Number(p.actual_draft_pick || p.draftPick || 0),
                                       Number(p.actual_draft_round || p.draftRound || 7));

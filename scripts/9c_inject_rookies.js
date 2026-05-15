@@ -155,71 +155,6 @@ const POSITION_JERSEY_RANGES = {
 // time via getFieldByKey error catching.
 const DEV_TRAIT_STRINGS = ['Normal', 'Star', 'Superstar', 'XFactor'];
 
-const ROOKIE_POSITION_SPLITS = {
-  T:    ['LT', 'RT'],
-  OT:   ['LT', 'RT'],
-  G:    ['LG', 'RG'],
-  OG:   ['LG', 'RG'],
-  DE:   ['LE', 'RE'],
-  EDGE: ['LE', 'RE'],
-  OLB:  ['LOLB', 'ROLB'],
-  LB:   ['LOLB', 'MLB', 'ROLB'],
-  S:    ['FS', 'SS'],
-  DB:   ['CB', 'FS', 'SS'],
-  RB:   ['HB'],
-};
-
-const ROOKIE_POSITION_ALIASES = {
-  QB: 'QB',
-  HB: 'HB',
-  FB: 'FB',
-  WR: 'WR',
-  TE: 'TE',
-  LT: 'LT',
-  LG: 'LG',
-  C:  'C',
-  RG: 'RG',
-  RT: 'RT',
-  LE: 'LE',
-  RE: 'RE',
-  DT: 'DT',
-  LOLB: 'LOLB',
-  MLB:  'MLB',
-  ILB:  'MLB',
-  ROLB: 'ROLB',
-  CB: 'CB',
-  FS: 'FS',
-  SS: 'SS',
-  K:  'K',
-  P:  'P',
-  LS: 'LS',
-};
-
-const DEFAULT_PLAYER_TYPE_BY_POSITION = {
-  QB:   'QB_FieldGeneral',
-  HB:   'HB_ElusiveBack',
-  FB:   'FB_Utility',
-  WR:   'WR_Playmaker',
-  TE:   'TE_VerticalThreat',
-  LT:   'OT_Power',
-  RT:   'OT_Power',
-  LG:   'G_Power',
-  RG:   'G_Power',
-  C:    'C_Agile',
-  LE:   'DE_SmallerSpeedRusher',
-  RE:   'DE_SmallerSpeedRusher',
-  DT:   'DT_NoseTackle',
-  LOLB: 'OLB_RunStopper',
-  MLB:  'MLB_FieldGeneral',
-  ROLB: 'OLB_RunStopper',
-  CB:   'CB_MantoMan',
-  FS:   'S_Zone',
-  SS:   'S_Zone',
-  K:    'KP_Power',
-  P:    'KP_Power',
-  LS:   'LS_Accurate',
-};
-
 // ---------------------------------------------------------------------------
 // .env parsing
 // ---------------------------------------------------------------------------
@@ -275,10 +210,6 @@ function safeRating(val) {
   return Math.max(0, Math.min(99, Math.round(n)));
 }
 
-function isZero(value) {
-  return value === 0 || value === '0';
-}
-
 /** Safe contract numbers — rookie scale by overall draft pick. Returns dollars. */
 function rookieContract(overallPick, round) {
   // Approximate 2026 CBA rookie scale (signing bonus + 4-yr base totals).
@@ -324,20 +255,6 @@ function makeJerseyAllocator() {
       }
     }
     return 0;
-  };
-}
-
-function makeRookiePositionResolver() {
-  const splitCounts = {};
-  return function resolveRookiePosition(rawPosition) {
-    const raw = String(rawPosition || 'WR').trim().toUpperCase();
-    const split = ROOKIE_POSITION_SPLITS[raw];
-    if (split) {
-      const idx = splitCounts[raw] || 0;
-      splitCounts[raw] = idx + 1;
-      return split[idx % split.length];
-    }
-    return ROOKIE_POSITION_ALIASES[raw] || 'WR';
   };
 }
 
@@ -413,10 +330,7 @@ async function main() {
 
   // ── Open franchise file ───────────────────────────────────────────────────
   await new Promise((resolve, reject) => {
-    const franchise = new Franchise(franchisePath, {
-      gameYearOverride: 26,
-      autoUnempty:      true,
-    });
+    const franchise = new Franchise(franchisePath, { gameYearOverride: 26 });
     franchise.on('error', (err) => reject(new Error(`Franchise error: ${err?.message || err}`)));
 
     franchise.on('ready', async () => {
@@ -426,17 +340,13 @@ async function main() {
         await playerTable.readRecords();
         console.log(`  Player records : ${playerTable.records.length} (${playerTable.header.recordCapacity} capacity)\n`);
 
-        // ── Pass 1: empty existing generated rookies (drafted this year, no pro years) ──
+        // ── Pass 1: empty existing 2026 rookies (YearDrafted == 0) ──────────
         let cleared = 0;
         for (const record of playerTable.records) {
           if (record.isEmpty) continue;
           let yd;
-          let yp;
-          try {
-            yd = record.getFieldByKey('YearDrafted')?.value;
-            yp = record.getFieldByKey('YearsPro')?.value;
-          } catch (_) { continue; }
-          if (isZero(yd) && isZero(yp)) {
+          try { yd = record.getFieldByKey('YearDrafted')?.value; } catch (_) { continue; }
+          if (yd === 0 || yd === '0') {
             try {
               record.empty();
               cleared++;
@@ -450,7 +360,6 @@ async function main() {
 
         // ── Pass 2: write each prospect into an empty slot ──────────────────
         const pickJersey = makeJerseyAllocator();
-        const resolveRookiePosition = makeRookiePositionResolver();
         let written = 0;
         let toFA    = 0;
         let skipped = 0;
@@ -474,15 +383,11 @@ async function main() {
             continue; // Player table is full — nothing we can do
           }
           const record = playerTable.records[idx];
-          const rawPosition = String(p.pos || 'WR').trim().toUpperCase();
-          const franchisePosition = resolveRookiePosition(rawPosition);
-          const playerType = DEFAULT_PLAYER_TYPE_BY_POSITION[franchisePosition] || 'WR_Playmaker';
 
           // ── Identity ─────────────────────────────────────────────────────
-          trySet(record, 'Position',  franchisePosition);
-          trySet(record, 'PlayerType', playerType);
           trySet(record, 'FirstName', String(p.firstName || '').slice(0, 11));
           trySet(record, 'LastName',  String(p.lastName  || '').slice(0, 14));
+          trySet(record, 'Position',  String(p.pos || 'WR'));
           trySet(record, 'Age', 22);
 
           // ── Physicals ────────────────────────────────────────────────────
@@ -498,7 +403,7 @@ async function main() {
           trySet(record, 'PLYR_DRAFTPICK',  Math.max(0, Math.min(99, Number(p.actual_draft_pick  || p.draftPick  || 99))));
 
           // ── Jersey number ────────────────────────────────────────────────
-          trySet(record, 'JerseyNum', pickJersey(teamIndex, rawPosition));
+          trySet(record, 'JerseyNum', pickJersey(teamIndex, p.pos));
 
           // ── Rookie contract ──────────────────────────────────────────────
           const c = rookieContract(Number(p.actual_draft_pick || p.draftPick || 0),

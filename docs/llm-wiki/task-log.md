@@ -3,6 +3,41 @@
 Append brief handoff notes for meaningful work. This file is for future LLMs,
 not a full changelog.
 
+## 2026-05-15 - 9c/9d/9e legacy cleanup + 9f source-franchise inject alternative
+
+`scripts/build_franchise.ps1` uses `9g_sync_franchise_from_data.js` as its
+canonical injection path, not 9c/9d/9e. The latter were the original pre-9g
+scripts and the working tree had them carrying patterns that no longer made
+sense for their demoted "manual/reference" role:
+
+- `ROOKIE_POSITION_SPLITS` / `ROOKIE_POSITION_ALIASES` /
+  `DEFAULT_PLAYER_TYPE_BY_POSITION` constants and the
+  `makeRookiePositionResolver()` helper were duplicated across 9c and 9d. They
+  remapped raw scout positions to franchise position enums and assigned a
+  default PlayerType. 9g handles this differently (via the data file's already-
+  resolved position), so the resolver in 9c/9d was dead overhead.
+- The `autoUnempty: true` flag on the Franchise open was inconsistent with the
+  scripts' empty-and-rewrite flow. The 9f docstring documents the consequence:
+  without `autoUnempty`, writes to previously-empty slots silently no-op. 9c's
+  injection was relying on `autoUnempty` to make Pass 2 writes stick, but the
+  combination with manual `record.empty()` calls is the V11-V19 known bad
+  pattern. Stripping it makes 9c/9d explicit about which slots they write to.
+- 9e tightened its veteran-rating reference filter: source records with
+  `YearDrafted == 0` (e.g. 2025 rookies in a year-shifted source) are no
+  longer used as veteran-rating references.
+
+`scripts/9f_inject_rookies_from_franchise.js` (new) is an alternative to 9g
+for the case where a second franchise already holds the desired 2026 class.
+It copies every `YearDrafted == 0` Player record from source to target's
+empty slots verbatim — identity, ratings, team, contract, dev trait. It
+intentionally keeps `autoUnempty: true` because that is the supported way to
+write into empty slots when you are NOT clearing/refilling the table yourself.
+9f was already listed in `docs/llm-wiki/project-map.md` from a prior commit;
+this commit is the first time the script file itself is tracked.
+
+None of these scripts is invoked by `build_franchise.ps1` and the wrapper
+pipeline is unchanged.
+
 ## 2026-05-15 - Post-Madden rookie rating polish pass
 
 Added `scripts/9q_polish_rookie_ratings_post_madden.js` for the flat

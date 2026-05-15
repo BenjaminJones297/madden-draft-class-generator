@@ -175,12 +175,6 @@ function makeKey(firstName, lastName, position) {
 function makeNameOnlyKey(firstName, lastName) {
   return `${norm(firstName)}|${norm(lastName)}`;
 }
-function isZero(value) {
-  return value === 0 || value === '0';
-}
-function isOne(value) {
-  return value === 1 || value === '1';
-}
 
 // ---------------------------------------------------------------------------
 // Snapshot helpers
@@ -260,9 +254,12 @@ async function main() {
   const byNameOnly    = new Map();   // first|last          → array of { position, snapshot }
   let srcConsidered   = 0;
   let srcSkippedEmpty = 0;
+  let srcSkippedRookie= 0;
 
   for (const rec of srcTable.records) {
     if (rec.isEmpty) { srcSkippedEmpty++; continue; }
+    const yd = safeGet(rec, 'YearDrafted');
+    if (yd === 0 || yd === '0') { srcSkippedRookie++; continue; }   // 2025 rookie — not a veteran reference
     const fn = safeGet(rec, 'FirstName');
     const ln = safeGet(rec, 'LastName');
     const ps = safeGet(rec, 'Position');
@@ -275,7 +272,7 @@ async function main() {
     byNameOnly.get(k2).push({ position: ps, snapshot: snap });
     srcConsidered++;
   }
-  console.log(`  Source players  : ${srcConsidered} active players  (skipped: ${srcSkippedEmpty} empty)`);
+  console.log(`  Source players  : ${srcConsidered} active veterans  (skipped: ${srcSkippedRookie} rookies, ${srcSkippedEmpty} empty)`);
 
   // --- Target: walk veterans, apply ratings -------------------------------
   console.log('\n  Opening target franchise …');
@@ -300,12 +297,11 @@ async function main() {
     const yd = safeGet(rec, 'YearDrafted');
     const yp = safeGet(rec, 'YearsPro');
     if (!fn || !ln) { skippedNoName++; continue; }
-    // Skip generated/current-draft rookies, but allow current official rookies with YearsPro > 0.
-    const rookieLike = (isZero(yd) && isZero(yp)) || (isOne(yd) && isZero(yp));
-    if (rookieLike) {
+    // Skip rookie-like records: drafted-this-year or pre-draft rookies still showing yp=0.
+    if (yd === 0 || yd === '0' || ((yd === 1 || yd === '1') && (yp === 0 || yp === '0'))) {
       skippedRookie++; continue;
     }
-    if (rookieNames.has(makeNameOnlyKey(fn, ln)) && rookieLike) { skippedRookie++; continue; }   // belt + suspenders
+    if (rookieNames.has(makeNameOnlyKey(fn, ln))) { skippedRookie++; continue; }   // belt + suspenders
     const k = makeKey(fn, ln, ps);
     const snap = byKey.get(k);
     if (snap) {
