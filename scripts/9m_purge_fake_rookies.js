@@ -29,8 +29,18 @@
  *     [--rookies <path>]      default: data/rookie_ratings_post_madden.json
  *     [--include-yd1]         also purge fake YearDrafted=1, YearsPro=0
  *                             (Madden's next-year synthetic draft pool)
+ *     [--include-retired]     also tombstone Retired YearsPro=0 rookies (the
+ *                             disposal pile). Madden un-retires these on
+ *                             offseason processing and re-signs them as YD=1
+ *                             duplicates; deleting them prevents that recurrence.
+ *                             Requires --delete (cutting a Retired player to FA
+ *                             would revive it).
  *     [--delete]              mark purged rows Deleted and remove them from
  *                             FreeAgents instead of cutting them to FA
+ *
+ * Array removal uses shift-compact (never null-in-place): nulling a Player ref
+ * inside a Player[] record shrinks its arraySize and orphans later slots
+ * (FranchiseFileRecord.js:146-151) — verified to decimate team rosters.
  */
 
 const fs        = require('fs');
@@ -47,6 +57,7 @@ const NULL_REFERENCE = '0'.repeat(32);
 const TEAM_INDEX_FREE_AGENT = 32;
 const CONTRACT_STATUS_FREE_AGENT = 'FreeAgent';
 const CONTRACT_STATUS_DELETED = 'Deleted';
+const CONTRACT_STATUS_RETIRED = 'Retired';
 
 function findFlag(name) {
   const args = process.argv.slice(2);
@@ -95,6 +106,53 @@ function isPlayerRef(field, playerTableId, playerRow) {
   return Boolean(field?.isReference && r && r.tableId === playerTableId && r.rowNumber === playerRow);
 }
 
+// Remove a Player ref from a Player[] sub-table record WITHOUT triggering the
+// arraySize-shrink truncation bug (FranchiseFileRecord.js:146-151). Nulling a
+// ref in-place at index < arraySize shrinks arraySize to that index, orphaning
+// every later slot (verified: it decimated 27 team rosters here). For a counted
+// array we shift the tail down by one and null ONLY the trailing slot (the one
+// null-in-place the lib handles correctly). For an uncounted array (arraySize
+// null) a null-in-place does not shrink and is safe. Returns occurrences removed.
+function compactRemovePlayerFromRecord(rec, playerTableId, playerRow) {
+  if (!rec || rec.isEmpty) return 0;
+  const counted = rec.arraySize !== null && rec.arraySize !== undefined;
+  if (!counted) {
+    let removed = 0;
+    for (let i = 0; i < 3600; i++) {
+      const f = getPlayerSlot(rec, i);
+      if (!f) break;
+      if (isPlayerRef(f, playerTableId, playerRow)) { try { f.value = NULL_REFERENCE; removed++; } catch {} }
+    }
+    return removed;
+  }
+  let removed = 0;
+  for (;;) {
+    const size = Number(rec.arraySize ?? 0);
+    let slotIdx = -1;
+    for (let i = 0; i < size; i++) {
+      const f = getPlayerSlot(rec, i);
+      if (!f) break;
+      if (isPlayerRef(f, playerTableId, playerRow)) { slotIdx = i; break; }
+    }
+    if (slotIdx < 0) break;
+    const tail = [];
+    for (let i = slotIdx + 1; i < size; i++) {
+      const f = getPlayerSlot(rec, i);
+      if (!f) break;
+      tail.push(f.value);
+    }
+    for (let i = 0; i < tail.length; i++) {
+      const dst = getPlayerSlot(rec, slotIdx + i);
+      if (!dst) break;
+      dst.value = tail[i];
+    }
+    const last = getPlayerSlot(rec, size - 1);
+    if (last) last.value = NULL_REFERENCE;
+    removed++;
+  }
+  return removed;
+}
+
 async function recalculateRosterSizes(playerTable, teamMain) {
   let touched = 0;
   for (const teamRec of teamMain.records) {
@@ -133,13 +191,15 @@ async function recalculateRosterSizes(playerTable, teamMain) {
   const rookiesPath = findFlag('--rookies') || path.join(DATA_DIR, 'rookie_ratings_post_madden.json');
   const isDryRun = hasFlag('--dry-run');
   const includeYd1 = hasFlag('--include-yd1');
+  const includeRetired = hasFlag('--include-retired');
   const deleteMode = hasFlag('--delete');
   if (!franchisePath || !fs.existsSync(franchisePath)) { console.error('--franchise <path> required'); process.exit(1); }
   if (!fs.existsSync(rookiesPath)) { console.error(`Rookies file not found: ${rookiesPath}`); process.exit(1); }
   console.log(`  Franchise   : ${franchisePath}`);
   console.log(`  Real rookies: ${rookiesPath}`);
   console.log(`  Mode        : ${isDryRun ? 'DRY-RUN' : 'WRITE'}${deleteMode ? ' + DELETE' : ' + CUT'}`);
-  console.log(`  Include YD=1: ${includeYd1 ? 'yes (also purge next-year synthetic pool)' : 'no'}\n`);
+  console.log(`  Include YD=1: ${includeYd1 ? 'yes (also purge next-year synthetic pool)' : 'no'}`);
+  console.log(`  Include Retired: ${includeRetired ? 'yes (also purge Retired YP=0 disposal pile — prevents Madden resurrection)' : 'no'}\n`);
 
   // Build normalized name set from real rookies
   const rookies = JSON.parse(fs.readFileSync(rookiesPath, 'utf8'));
@@ -181,6 +241,30 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     if (Number.isFinite(ti) && row !== undefined) tiToRosterRow.set(ti, row);
   }
 
+  // Build PracticeSquad roster map (TeamIndex -> PS sub-table row). Purged
+  // players sit in these Player[] arrays too, and leaving a ref to a Deleted
+  // player behind is a dangling ref — remove them (shift-compact) as well.
+  let psTableId = null;
+  for (const rec of teamMain.records) {
+    if (rec.isEmpty) continue;
+    const f = rec.getFieldByKey('PracticeSquad');
+    if (f?.isReference) { psTableId = f.referenceData.tableId; break; }
+  }
+  let psTable = null;
+  const tiToPsRow = new Map();
+  if (psTableId) {
+    psTable = fra.getTableById(psTableId);
+    await psTable.readRecords();
+    for (const rec of teamMain.records) {
+      if (rec.isEmpty) continue;
+      const ti = Number(safeGet(rec, 'TeamIndex'));
+      const row = rec.getFieldByKey('PracticeSquad')?.referenceData?.rowNumber;
+      if (Number.isFinite(ti) && row !== undefined) tiToPsRow.set(ti, row);
+    }
+  } else {
+    console.warn('  ! No Team.PracticeSquad ref — skipping practice-squad maintenance');
+  }
+
   // Find FreeAgents pool sub-table on Franchise singleton
   const franchiseTbl = fra.getTableById(4635);
   await franchiseTbl.readRecords();
@@ -202,16 +286,7 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     const rosterRowIdx = tiToRosterRow.get(ti);
     if (rosterRowIdx === undefined) return 0;
     const rec = rosterTable.records[rosterRowIdx];
-    if (!rec || rec.isEmpty) return 0;
-    let removed = 0;
-    for (let i = 0; i < 3500; i++) {
-      const f = getPlayerSlot(rec, i);
-      if (!f) break;
-      if (isPlayerRef(f, playerTableId, playerRow)) {
-        try { f.value = NULL_REFERENCE; removed++; } catch {}
-      }
-    }
-    return removed;
+    return compactRemovePlayerFromRecord(rec, playerTableId, playerRow);
   }
 
   function removeFromAllTeamRosters(playerRow) {
@@ -222,19 +297,20 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     return removed;
   }
 
+  function removeFromAllPracticeSquads(playerRow) {
+    if (!psTable) return 0;
+    let removed = 0;
+    for (const psRow of tiToPsRow.values()) {
+      const rec = psTable.records[psRow];
+      removed += compactRemovePlayerFromRecord(rec, playerTableId, playerRow);
+    }
+    return removed;
+  }
+
   function removeFromFreeAgentsPool(playerRow) {
     if (!faTbl || faRow == null) return 0;
     const rec = faTbl.records[faRow];
-    if (!rec || rec.isEmpty) return 0;
-    let removed = 0;
-    for (let i = 0; i < 3500; i++) {
-      const f = getPlayerSlot(rec, i);
-      if (!f) break;
-      if (isPlayerRef(f, playerTableId, playerRow)) {
-        try { f.value = NULL_REFERENCE; removed++; } catch {}
-      }
-    }
-    return removed;
+    return compactRemovePlayerFromRecord(rec, playerTableId, playerRow);
   }
 
   function addToFreeAgentsPool(playerRow) {
@@ -281,7 +357,7 @@ async function recalculateRosterSizes(playerTable, teamMain) {
   const fakes = [];
   const protectedLastLs = [];
   const pendingLsPurgeByTeam = new Map();
-  let realRookies = 0, skippedAlreadyFA = 0, fakeAlreadyFA = 0, scanned = 0, yd1Synthetic = 0, nameUnmatched = 0;
+  let realRookies = 0, skippedAlreadyFA = 0, fakeAlreadyFA = 0, scanned = 0, yd1Synthetic = 0, nameUnmatched = 0, retiredPurged = 0;
   for (let i = 0; i < playerTable.records.length; i++) {
     const r = playerTable.records[i];
     if (r.isEmpty) continue;
@@ -290,8 +366,9 @@ async function recalculateRosterSizes(playerTable, teamMain) {
     const yp = Number(safeGet(r, 'YearsPro'));
     const yd = Number(safeGet(r, 'YearDrafted'));
     if (yp !== 0) continue;
-    // Filter: YD=0 (this year) or YD=1 (next year synthetic, opt-in via flag)
-    if (yd !== 0 && !(includeYd1 && yd === 1)) continue;
+    // Filter: YD=0 (this year) or YD=1 (next year synthetic, opt-in via flag).
+    // With --include-retired, let any Retired YP=0 rookie through regardless of YD.
+    if (yd !== 0 && !(includeYd1 && yd === 1) && !(includeRetired && cs === CONTRACT_STATUS_RETIRED)) continue;
     scanned++;
     const ti = Number(safeGet(r, 'TeamIndex'));
     const onRealTeam = Number.isFinite(ti) && ti >= 0 && ti <= 31;
@@ -315,6 +392,17 @@ async function recalculateRosterSizes(playerTable, teamMain) {
       return true;
     }
 
+    // Retired YP=0 rookies are the pipeline's disposal pile. Madden un-retires
+    // them on offseason processing and re-signs them as YD=1 duplicates, so with
+    // --include-retired we tombstone them (Deleted). Only meaningful with --delete:
+    // cutting a Retired player to FA would REVIVE it (the opposite of hardening).
+    if (includeRetired && cs === CONTRACT_STATUS_RETIRED) {
+      if (!deleteMode) continue;
+      retiredPurged++;
+      if (protectIfLastLs('last signed LS on team')) continue;
+      fakes.push({ row: i, name, pos, ti, yd, yp, reason: 'Retired disposal' });
+      continue;
+    }
     if (includeYd1 && yd === 1) {
       yd1Synthetic++;
       if (inFaPool) fakeAlreadyFA++;
@@ -335,6 +423,7 @@ async function recalculateRosterSizes(playerTable, teamMain) {
   console.log(`    Fake already in FA pool  : ${fakeAlreadyFA} (${deleteMode ? 'will delete' : `${skippedAlreadyFA} skipped`})`);
   console.log(`    Matched real rookie list : ${realRookies} (kept)`);
   if (includeYd1) console.log(`    YD=1 synthetic records   : ${yd1Synthetic} (will purge even on name match)`);
+  if (includeRetired) console.log(`    Retired disposal records : ${retiredPurged} (will tombstone as Deleted)`);
   console.log(`    Name-unmatched records   : ${nameUnmatched} (will purge)`);
   console.log(`    Protected last-team LS   : ${protectedLastLs.length} (kept)`);
   console.log(`    Fake / unmatched         : ${fakes.length} (will purge)\n`);
@@ -361,7 +450,7 @@ async function recalculateRosterSizes(playerTable, teamMain) {
 
   // Apply: cut or delete each fake. Never rec.empty(); live refs to empty rows
   // are a known Madden load/sim crash vector.
-  let cut = 0, deleted = 0, rosterRemoved = 0, faPoolAdded = 0, faPoolRemoved = 0;
+  let cut = 0, deleted = 0, rosterRemoved = 0, psRemoved = 0, faPoolAdded = 0, faPoolRemoved = 0;
   for (const f of fakes) {
     const rec = playerTable.records[f.row];
     if (!trySet(rec, 'TeamIndex', TEAM_INDEX_FREE_AGENT)) continue;
@@ -369,11 +458,13 @@ async function recalculateRosterSizes(playerTable, teamMain) {
       trySet(rec, 'ContractStatus', CONTRACT_STATUS_DELETED);
       deleted++;
       rosterRemoved += removeFromAllTeamRosters(f.row);
+      psRemoved += removeFromAllPracticeSquads(f.row);
       faPoolRemoved += removeFromFreeAgentsPool(f.row);
     } else {
       trySet(rec, 'ContractStatus', CONTRACT_STATUS_FREE_AGENT);
       cut++;
       rosterRemoved += removeFromRoster(f.ti, f.row);
+      psRemoved += removeFromAllPracticeSquads(f.row);
       if (addToFreeAgentsPool(f.row)) faPoolAdded++;
     }
   }
@@ -383,6 +474,7 @@ async function recalculateRosterSizes(playerTable, teamMain) {
   console.log(`\n  Cut to FA pool       : ${cut}`);
   console.log(`  Marked Deleted       : ${deleted}`);
   console.log(`  Removed from Roster  : ${rosterRemoved}`);
+  console.log(`  Removed from PracSqd : ${psRemoved}`);
   console.log(`  Added to FA pool     : ${faPoolAdded}`);
   console.log(`  Removed from FA pool : ${faPoolRemoved}`);
   console.log(`  Roster-size recalc   : ${rosterSizesRecalculated} teams`);

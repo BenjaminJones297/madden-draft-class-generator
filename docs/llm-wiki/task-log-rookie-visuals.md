@@ -3,6 +3,83 @@
 Running log for the rookie-visuals branch. Promote sections into the main
 `task-log.md` on merge; keep this file as the working scratch-log meanwhile.
 
+## 2026-07-01 - Purge resurrected duplicate rookies + fix 9m array-shrink corruption (branch `rookie-visuals-fix-load`)
+
+User saw duplicate rookies on wrong teams (Rueben Bain Jr. on CLE though really
+TB; Ben Minich — a bad prospect — on SEA). **Root cause:** the build disposed of
+the ~316 extra/duplicate rookie records with `ContractStatus=Retired` (not
+`Deleted`). Madden **un-retires** Retired `YearsPro=0` rookies on offseason
+processing and re-signs them as a next-year (`YearDrafted=1`) synthetic pool —
+resurrecting the disposed duplicates onto random teams. Base `CAREER-SEAHAWKS`
+held them dormant (316 Retired, invisible in-game); the AUTOSAVE had 122 of them
+re-signed as YD=1 dups (same Player rows, e.g. Bain #1471 flipped Retired→Signed,
+YD 0→1).
+
+**Autosave fix:** `9m --include-yd1 --delete` purged the YD=1 cohort (224) + YD=0
+name-unmatched filler (86) → 310 removed; 256 live rookies, 0 dup names. Protected
+2 real players whose first names Madden **truncated to the field width** so they
+failed name-match: `De'Zhaun-Ryan`→`De'Zhaun-Ry` Stribling, `Quintayvious`→
+`Quintayviou` Hutchins (temp-reference protection, no permanent data edits). Verify
+caught one over-protection — a truncated Stribling dup coexisting with the
+full-name matched copy — and that dup was then purged.
+
+**9m array-shrink bug — FIRED, then FIXED.** 9m removed roster refs with
+**null-in-place**, tripping `FranchiseFileRecord.js:146-151` (nulling a ref at
+index<arraySize shrinks arraySize to that index). The first write **orphaned 235
+players across 27 teams** (IND arraySize 0 = whole roster gone, LV 1, PIT 3, NE
+11). Detected by verifying against the backup with the *populated* Team table (the
+initial "safe" audit had read an empty placeholder Team table → false negative).
+Restored the backup and rewrote 9m removal to **shift-compact** (snapshot tail →
+shift down → null only the trailing slot), added the same for the **FreeAgents
+pool** (also null-in-place, arraySize 1369) and **PracticeSquad arrays** (9m
+ignored them → 56 dangling refs to Deleted players). Post-fix: 0 orphans / 0
+dangling on all three array types, both saves.
+
+**Base-save hardening:** added `9m --include-retired` (requires `--delete`) to
+tombstone the 316 Retired `YP=0` disposal records so Madden can't resurrect them;
+also deduped the 2 truncated-name shadows (Stribling #540, Hutchins #1388) whose
+full-name twins are Signed; kept unique Signed filler (Anthony Smith WR, protected).
+Result: 0 Retired, 0 dup names, rosters intact (257 signed, all YD=0).
+
+Backups: `CAREER-SEAHAWKS-AUTOSAVE.before-purge`, `CAREER-SEAHAWKS.before-harden`.
+In-game load/render not yet user-verified.
+
+## 2026-06-30 - Rookie faces uniform → per-rookie head models from vet pool (branch `rookie-visuals-fix-load`)
+
+After the Phase-5 CV-allocation fix, user reported rookies rendered as the
+SAME look rather than default. Root cause: 9p wrote a per-rookie `skinTone`
+but pinned `GenericHeadAssetName` to a fixed `_B_G_005` suffix (only swapping
+the leading `gen_<N>` skin family). The *face* is encoded in the whole
+`gen_<N>_<X>_<Y>_<NNN>` string, so every rookie in a skin family shared one
+identical face — ~7 distinct faces across the class. Worse, the ~269 filler
+prospects (not in `rookie_appearances.json`) were `continue`'d entirely, so
+they all stayed cloned as `gen_7_B_G_005`.
+
+Probe on CAREER-SEAHAWKS: 270 rookies on `gen_7_B_G_005`; the CV template
+(`default_visuals.json`) carries only gear + body-type loadout elements (no
+face/skin material), confirming the face comes from `GenericHeadAssetName`,
+not the CV blob. Vets, however, use **253 distinct valid `gen_` head models**.
+
+**Fix (9p):** build a head pool from veterans (`YearsPro>=1`), bucketed by
+skin family (leading `gen_<N>`) plus a flat list. Matched rookies get a
+distinct face from their skin-family bucket; filler prospects (no measured
+tone) get a face from the full flat pool, whose `gen_<N>` also sets a
+plausible skin tone. Pick index = `hashName(name) % bucket.length` (djb2) —
+deterministic, so re-runs are idempotent (pool is vets-only → stable).
+
+**Results:** distinct head models used 7→**216** (SEAHAWKS) / **189**
+(AUTOSAVE); top single face 270→**9**; 268/91 filler diversified; validator
+clean (52,550 / 54,570 refs, 0 broken) on both. Per-rookie skin tones for the
+real 2026 class are unchanged and still image-derived from
+`rookie_appearances.json`.
+
+**Known tunable:** filler skin skews `gen_7`-heavy because the flat vet pool
+has the most distinct `gen_7` heads (uniform-over-distinct-values pick, not
+NFL-population-weighted). Fine for anonymous filler; weight by the NFL
+distribution if a more balanced filler spread is wanted. In-game render not
+yet user-verified. Backups: `.before-visuals` (pristine) +
+`.before-headvariety` (uniform-face state).
+
 ## 2026-05-11 (LATE PM +2) - OTC contract scraper + extension-aware year math
 
 After the vet contract overlay (Phase 2.2) shipped, in-Madden checks showed
@@ -542,12 +619,56 @@ scans (Bowers 10018, Mason Graham 10564, Cam Ward 10768 stayed put).
 - Spot-check: Love-on-ARI now `asset=jeremiyahlove portrait=0`. Mendoza,
   Downs, Tate, Bernard, Proctor similarly cleared.
 
+### Phase 5: in-game rendering still defaulted, fixed via fresh CV alloc (2026-05-15)
+
+User reported after the Phase 4 fix: rookies still rendered with default
+appearance in-game, despite the edit screen showing some changes. Re-probed
+CAREER-CARDINALS and found Jeremiyah Love on Cards (row 602) had
+`CharacterVisuals = all-zeros` — no CV row to read skin/loadout from. The
+~252 fresh-inject rookies all had this. The PATH B branch in 9p was a
+deliberate skip ("can't write to row 0"); but without ANY CV row Madden's
+renderer falls back to a fully-generic default model regardless of
+`Player.GenericHeadAssetName`. The edit screen reads the string asset name
+(visible to user as "some changes"); the in-game 3D loader needs the
+RawData blob from CharacterVisuals.
+
+**CV table is NOT at capacity.** Earlier wiki note was wrong: probe showed
+1962 empty rows out of 5056 (capacity not in use). The
+`madden-franchise` lib auto-unEmpty's an empty row when we write its
+`RawData` field and advances `cvT.header.nextRecordToUse` to the next
+empty in the chain — so allocation is a single write + ref-encode.
+
+**Fix:** 9p now allocates a fresh CV row per Player whose
+`Player.CharacterVisuals` is null/zero. The new row is seeded from
+`data/raw/default_visuals.json` (a real 2025 rookie's RawData — 31
+PlayerOnField loadout elements + Base CharacterBodyType element), with the
+top-level `genericHeadName` stripped (vets don't have it) and `skinTone`
+set to the rookie's target. `Player.CharacterVisuals` is then re-bound to
+`encodeCVRef(4204, newRow)`.
+
+**Verification on a fresh copy of CAREER-CARDINALS:**
+
+- 306 matched rookies, 252 CV rows allocated, 306 skinTone writes, 306
+  head-asset writes. 0 allocation failures.
+- Validator clean (52,550 refs, 0 broken).
+- Re-running 9p is idempotent: second run allocates 0, writes the same
+  skinTone/head values.
+- Spot-check: Mendoza-on-Raiders (row 74) now `CV row=571` with parseable
+  RawData, `skinTone=3`, 31 PlayerOnField elements; Downs-on-Cowboys (row
+  108) `CV row=987` with `skinTone=7`; Bernard-on-Steelers (row 267)
+  `CV row=2214` with `skinTone=7`.
+
+**Affected files:**
+
+- `scripts/9p_apply_visuals.js`: added `encodeCVRef`, `allocateCVRow`,
+  template-blob loader (loads `data/raw/default_visuals.json` with
+  fallback to a minimal inline blob). The CV-resolve branch in the main
+  loop now allocates on null-ref instead of skipping. Stats counters
+  renamed (`cvAllocated`, `cvAllocFail`, `cvAllocWouldBeNeeded` replace
+  `cvNullRef`); docstring rewritten.
+
 ### Open follow-ups (not done on this branch)
 
-- 9g could allocate unique CV rows for fresh-inject records so 9p can
-  do PATH A on them too. Would lift coverage from 54/306 to 306/306.
-  Tricky: CV table is at capacity (5056/5056), so would need to find
-  unused rows or grow the table.
 - Calibration algorithm has poor dynamic range above L*~150 (mid-tones
   collapse). Better forehead-only or face-segment-aware sampling could
   improve from 73% within ±1 to ~85%.
