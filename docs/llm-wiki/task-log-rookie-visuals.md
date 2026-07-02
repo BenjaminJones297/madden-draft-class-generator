@@ -3,6 +3,29 @@
 Running log for the rookie-visuals branch. Promote sections into the main
 `task-log.md` on merge; keep this file as the working scratch-log meanwhile.
 
+## 2026-07-02 - Status probe: duplicates gone; new draft pool is fictional
+
+Read-only probe of both saves to answer the 2026-07-01 open question (does the
+duplicate class regenerate after cleanup?). Result: **no recurrence.**
+
+- Base `CAREER-SEAHAWKS` (post-harden): 257 signed YD=0 rookies, 0 dup names,
+  0 YD=1, 0 Retired.
+- `CAREER-SEAHAWKS-AUTOSAVE` (written by Madden Jul 1 18:30, i.e. AFTER the
+  purge/harden): 0 YD=1 signed-on-team, and Madden generated a **fictional**
+  next-year class — 402 YD=0/ContractStatus=Draft records, 0 of which match a
+  real 2026 class name. Only residue: 2 synthetic filler names duplicated x2
+  (andrescastaneda, juanamaro) — harmless; `9t --purge-filler` would clear the
+  signed copies if desired.
+- `scripts/9t_dedupe_rookies.js` (written 2026-07-01, still untracked) dry-run
+  verified on the autosave: 0 to delete, 0 conversions, 0 array orphans. It is
+  the standing tool if dups ever return.
+- Contract shape in both saves: all 701/528 multi-year vets have
+  `ContractSalary1 > 0` (no one-year-collapse regression). Mahomes 4yr /
+  year 0 / $45M cap. Residue is the known data-coverage gap: ~1,651 vets on
+  1-year shapes in the base save, including ~19 with cap ≥ $15M (Adebo, Banks,
+  Barmore, T. Campbell, Fries, Jurgens…) — 2025-offseason signings whose
+  aav/years didn't survive the OTC/nflverse merge. Data fix, not code.
+
 ## 2026-07-01 - Purge resurrected duplicate rookies + fix 9m array-shrink corruption (branch `rookie-visuals-fix-load`)
 
 User saw duplicate rookies on wrong teams (Rueben Bain Jr. on CLE though really

@@ -159,6 +159,19 @@ on every matched rookie, forcing Madden into procedural rendering
 which DOES pick up our visual writes. Vets (`YearsPro >= 1`) are
 untouched — they keep their authentic face scans.
 
+**Second-deployment fix (2026-05-15):** after the PLYR_PORTRAIT fix, the
+~250 fresh-inject rookies still rendered defaulted in-game (edit screen
+showed our head-asset writes, but the 3D model used a fully-generic
+appearance). Root cause: their `Player.CharacterVisuals` was all-zeros —
+no CV row pointing to any skin/loadout data. The CV table is NOT at
+capacity (probe shows ~1962 of 5056 empty rows available) and the
+`madden-franchise` lib auto-allocates on write to an empty record's
+`RawData` field. 9p now allocates a fresh CV row per null-ref rookie,
+seeded from `data/raw/default_visuals.json` (or a minimal fallback) with
+the rookie's target skinTone, and re-binds `Player.CharacterVisuals`. CV
+allocations are idempotent — re-running 9p sees the now-non-null refs
+and updates the existing rows.
+
 **Implications:**
 - New scripts on the path: `9n_fetch_rookie_headshots.py`,
   `9o_extract_skin_tones.py`, `9o_pick_calibration_vets.js`,
@@ -172,9 +185,6 @@ untouched — they keep their authentic face scans.
   need to commit photos.
 
 **Future work tracked:**
-- 9g fresh-inject path could allocate unique CV rows so 9p can write
-  proper RawData blobs for those records too (would lift coverage from
-  ~54/306 skin-tone writes to ~306/306).
 - Replace anchor with a face-segmentation-aware highlight rejector to
   improve calibration agreement past 73% within ±1.
 - Real-portrait IDs (`PLYR_PORTRAIT`) and asset names
@@ -356,6 +366,55 @@ Implications:
   `YearDrafted=0` catches 2025 rookies + UDFAs that must not be touched.
 - See `scripts/9z_validate_franchise.js` for the reference-integrity check
   that surfaced this issue.
+
+## 2026-05-18 - madden-franchise Auto-Shrinks Array On Null-In-Place
+
+**Decision:** Never null a Player reference in-place inside a `Player[]`
+sub-table record (e.g. `Team.Roster`). Use shift-compact instead — copy
+slots `K+1..arraySize-1` down by one, then null only the (now-vacated) last
+slot. See `scripts/9s_force_trade.js` → `compactRemoveFromRoster` for the
+reference implementation.
+
+**Why:** `node_modules/madden-franchise/FranchiseFileRecord.js:146-151`
+auto-shrinks `arraySize` to `field.offset.index` when any reference field
+inside an array record is set to the null reference (`tableId=0,
+rowNumber=0`):
+
+```js
+else if (field.isReference) {
+  if (referenceData.tableId === 0 && referenceData.rowNumber === 0) {
+    this.arraySize = field.offset.index;
+  }
+}
+```
+
+Nulling slot K therefore truncates the array to length K, orphaning every
+Player ref at slots `K+1..arraySize-1`. Madden's roster reader respects
+`arraySize` and treats slots past it as nonexistent. On load, Madden
+re-derives `DepthChart` from the truncated Roster, picking the next-best
+player at each position — which surfaces as wrong-position players in the
+depth chart (e.g. a DT showing up as the team's best Guard).
+
+**How verified:** 9s --apply on a post-sim autosave with the original
+null-in-place pattern produced exactly this symptom (Wyatt DT → G,
+Holland S → C, Burns DE → G on the NYG depth chart). After switching to
+shift-compact, the same trade left the depth chart intact (verified
+2026-05-18).
+
+**Implications:**
+- `scripts/9g_sync_franchise_from_data.js` → `removeFromTeamRoster` (line
+  698) uses the same null-in-place pattern. It is only called by Pass 4
+  for auto-rookie disposal; the rookies are typically at trailing slots so
+  the truncation is mostly benign, but the bug is latent and any cross-team
+  use will hit it.
+- The append direction is also affected: appending must write at index
+  `arraySize` so the lib grows the array by exactly 1. Searching for
+  "first internal null" is safe (no arraySize change) but writing past
+  arraySize without going via the boundary slot would silently
+  over-extend the array.
+- Any future code that mutates a `Player[]` sub-table — `Team.PracticeSquad`,
+  `Team.MarketedPlayers`, `Franchise.FreeAgents`, depth-chart pool rows,
+  etc. — must use the shift-compact pattern, not null-in-place.
 
 ## 2026-05-08 (PM) - File-Edit Vet Team Moves Are Structurally Hard
 

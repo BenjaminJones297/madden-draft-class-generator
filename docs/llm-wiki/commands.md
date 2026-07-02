@@ -396,6 +396,32 @@ node scripts/9r_restore_roster_player.js --franchise $fp --name "Aaron Brewer" -
 node scripts/9z_validate_franchise.js --franchise $fp
 ```
 
+Force one one-way trade in an existing franchise (verified 2026-05-18 on a
+post-sim autosave). Do NOT loop this for bulk moves — see decisions.md
+2026-05-08 PM:
+
+```powershell
+$fp = "$env:USERPROFILE\OneDrive\Documents\Madden NFL 26\saves\YOUR-AUTOSAVE"
+Copy-Item $fp "$fp.before-9s" -Force
+
+# Dry-run first.
+node scripts/9s_force_trade.js --franchise $fp `
+  --name "Player Name" --from-team SEA --to-team KC --pos QB
+
+# Apply.
+node scripts/9s_force_trade.js --franchise $fp `
+  --name "Player Name" --from-team SEA --to-team KC --pos QB --apply
+
+# Validate + diff.
+node scripts/9z_validate_franchise.js --franchise $fp
+node scripts/9z_diff_franchises.js --before "$fp.before-9s" --after $fp --summary
+```
+
+Touches: `Player.TeamIndex`, `PrevTeamIndex`, `PLYR_CONSECYEARSWITHTEAM`,
+nulls old `Team.Roster` slot + appends to new, recalcs roster-size counters
+on both teams. Skips DepthChart / ContractOffer / PlayerReSignNegotiation
+(run 9j after if the depth chart looks wrong).
+
 Trace the pipeline when diagnosing data flow:
 
 ```powershell

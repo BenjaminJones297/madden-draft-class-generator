@@ -122,12 +122,14 @@ Optional reference input:
   consumes). Flags entries with `confidence < 0.5` for manual review.
 - `scripts/9p_apply_visuals.js`: writes per-rookie skin-tone overrides into
   a franchise. For each rookie in `rookie_appearances.json`, locates the
-  Player record by name, then: (a) if `CharacterVisuals` ref is non-null,
-  updates `CharacterVisuals[row].RawData.skinTone`; (b) updates
-  `Player.GenericHeadAssetName` to `gen_<min(7,tone)>_B_G_005` (consistent
-  with Madden's auto-rookie template). The split path handles 9g's fresh-
-  inject duplicates which have null CV refs — they still get a head-asset
-  update which Madden renders from. Supports `--apply` / dry-run /
+  Player record by name, then writes `CharacterVisuals.RawData.skinTone`,
+  `Player.GenericHeadAssetName`, `Player.PLYR_PORTRAIT=0`, and a stub
+  `Player.PLYR_ASSETNAME`. For 9g fresh-inject rookies whose
+  `CharacterVisuals` ref is null (~250 of 306), allocates a fresh CV row
+  seeded from `data/raw/default_visuals.json` (template loadouts +
+  skinTone) and re-binds `Player.CharacterVisuals` to it — without this
+  Madden has no skin/loadout data and renders a fully-generic default
+  model regardless of the head-asset name. Supports `--apply` / dry-run /
   `--skip-low-confidence`.
 - `scripts/9q_polish_rookie_ratings_post_madden.js`: dry-run/apply polish
   for the flat `data/rookie_ratings_post_madden.json` shape consumed by 9g/9m.
@@ -144,6 +146,16 @@ Optional reference input:
   roster-size counters. Built for `Aaron Brewer / ARI / LS` after 9m delete
   exposed that the real LS had not been moved/created by the no-vet-move 9g
   recipe.
+- `scripts/9s_force_trade.js`: force one one-way player move in an existing
+  franchise save. Matches by name + position + from-team (duplicate-name safe),
+  flips `Player.TeamIndex`/`PrevTeamIndex`, resets `PLYR_CONSECYEARSWITHTEAM`,
+  **shift-compacts** the old `Team.Roster` to remove the player (NOT a
+  null-in-place — see decisions.md 2026-05-18), appends to new `Team.Roster`
+  at the arraySize boundary, and recalculates roster-size counters on both
+  teams. Dry-run by default; `--apply` to write. Verified post-sim autosave
+  on 2026-05-18. Single-player scope only — do NOT loop for bulk moves per
+  decisions.md 2026-05-08 (PM). Skips DepthChart / ContractOffer /
+  PlayerReSignNegotiation cleanup; Madden re-derives DC from Roster on load.
 - `scripts/9z_probe_auto_rookies.js`: read-only diagnostic — buckets the
   Player table by (YearDrafted, YearsPro), shows samples by ContractStatus.
   Useful for understanding rookie/prospect state before disposal.
