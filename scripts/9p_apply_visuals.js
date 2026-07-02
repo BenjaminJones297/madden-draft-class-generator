@@ -4,50 +4,31 @@
  * Script 9p — Apply rookie skin-tone overrides to a Madden 26 franchise.
  *
  * For each rookie in data/rookie_appearances.json (built by 9o), locate the
- * Player record by (firstName, lastName), then apply one of two paths
- * depending on whether the record has a usable CharacterVisuals reference:
+ * Player record by (firstName, lastName) and write:
  *
- *   PATH A — CV ref non-null (typical for 9g overlay records, ~54/306):
- *     1. Decode Player.CharacterVisuals (32-bit ref) → (tableId=4204, row).
- *     2. Parse CharacterVisuals[row].RawData JSON, set skinTone = target.
- *     3. Write the updated JSON back to the same field.
- *     4. Set Player.GenericHeadAssetName to `gen_<N>_<X>_<Y>_<NNN>` where N =
- *        min(7, target_skinTone) and the (X, Y, NNN) suffix is preserved from
- *        the current asset name (falls back to `_B_G_005` if no suffix).
+ *   1. CharacterVisuals[row].RawData.skinTone   (the in-game render input)
+ *   2. Player.GenericHeadAssetName              (head-shape asset; gen_<N>_…)
+ *   3. Player.PLYR_PORTRAIT     →  0            (clear hijacked face-scan ID)
+ *   4. Player.PLYR_ASSETNAME    →  stub         (clear hijacked player asset)
  *
- *   PATH B — CV ref null/zero (typical for 9g fresh-inject duplicates, ~252/306):
- *     1. Skip the CV JSON write (row 0 is shared; writes would collide).
- *     2. Still set Player.GenericHeadAssetName as in PATH A. Madden's
- *        renderer picks up skin family primarily from the asset name, so
- *        the visual still changes even without a proper CV blob.
+ * If the Player has no CharacterVisuals row yet (the 9g fresh-inject case —
+ * applies to ~250 of 306 rookies), this script allocates a fresh row in the
+ * CharacterVisuals table (tableId=4204) and points Player.CharacterVisuals at
+ * it. The new row is seeded from a default RawData template (loadouts +
+ * skinTone). Without this, Madden has no skin/gear data to render the rookie
+ * with and falls back to a fully-generic default appearance regardless of
+ * what GenericHeadAssetName says — which was the symptom prior to this fix:
+ * edit screen showed our writes but in-game rendering used defaults.
  *
- * Both paths ALSO clear two fields that Madden uses as primary keys for
- * face/body rendering — without this step, the GenericHeadAssetName +
- * CharacterVisuals writes above have no visible effect:
- *
- *   Player.PLYR_PORTRAIT  →  0   (face-scan ID; non-zero means Madden has
- *                                  a real face for this asset and will use
- *                                  it instead of the generic head asset)
- *   Player.PLYR_ASSETNAME →  "firstnamelastname"   (lowercase stub; replaces
- *                                  inherited hijacked real-player asset
- *                                  names like "AveryTre_22605")
- *
- * 9g's overlay path inherits PLYR_PORTRAIT + PLYR_ASSETNAME from the
- * auto-rookie placeholder. Many auto-rookies (especially "Day1Starter"-tagged
- * ones used for high-pick slots) reference real players' face scans — so
- * post-9g, a rookie like Caleb Downs (pick 10, Cowboys) was rendering as
- * "Tre Avery" (portrait 2760). Clearing forces Madden's procedural path.
- *
- * The `gen_*_*_*_NNN` template family is what Madden's auto-rookies use, so
- * the asset names we write are guaranteed to exist in the game.
+ * The two other field writes (3, 4) are still required because 9g's overlay
+ * path inherits real-player face-scan ID + asset bundle from the
+ * auto-rookie placeholder; without clearing these Madden renders the
+ * rookie as the hijacked real player and ignores the generic head asset.
  *
  * Skipped entirely when:
  *   - rookie's name doesn't match any Player record (counts → notFound)
  *   - rookie's confidence < CONFIDENCE_MIN (default 0.3) — hard floor
  *   - --skip-low-confidence is set AND rookie has manualReview=true
- *
- * Output report includes per-path write counts so you can tell how many
- * records got the full skinTone update vs head-asset-only.
  *
  * Run:
  *   node scripts/9p_apply_visuals.js --franchise <path> --apply
@@ -62,9 +43,22 @@ const Franchise = require('madden-franchise');
 
 const PROJECT_ROOT  = path.join(__dirname, '..');
 const DEFAULT_APP   = path.join(PROJECT_ROOT, 'data', 'rookie_appearances.json');
+const DEFAULT_VIS   = path.join(PROJECT_ROOT, 'data', 'raw', 'default_visuals.json');
 
 const CV_TABLE_ID    = 4204;
 const CONFIDENCE_MIN = 0.30;   // hard floor — never apply if below this
+
+// Fallback used when data/raw/default_visuals.json is missing. Minimal blob:
+// PlayerOnField + Base loadouts (empty element lists) + skinTone placeholder.
+// Madden's renderer accepts variable-element loadouts; empty arrays render
+// the per-position defaults — fine for procedural rookies.
+const FALLBACK_VISUALS_BLOB = {
+  loadouts: [
+    { loadoutType: 'PlayerOnField', loadoutElements: [] },
+    { loadoutCategory: 'Base',      loadoutElements: [] },
+  ],
+  skinTone: 5,
+};
 
 // ---------------------------------------------------------------------------
 function findFlag(name, def) {
@@ -85,6 +79,38 @@ function safeGet(r, key) {
 }
 function trySet(r, key, value) {
   try { r.getFieldByKey(key).value = value; return true; } catch (_) { return false; }
+}
+
+// 32-bit ref: top 15 bits = tableId, bottom 17 bits = row.
+function encodeCVRef(tableId, row) {
+  return tableId.toString(2).padStart(15, '0') + row.toString(2).padStart(17, '0');
+}
+
+// Allocate a fresh CharacterVisuals row by writing rawJson into the table's
+// next-empty record. The madden-franchise lib auto-unEmpty's the record on
+// write (autoUnempty: true) and advances cvT.header.nextRecordToUse to the
+// next empty slot in the chain. Returns the new row index, or -1 if no
+// capacity is available.
+function allocateCVRow(cvT, rawJson) {
+  const idx = cvT.header.nextRecordToUse;
+  if (idx >= cvT.header.recordCapacity) return -1;
+  const rec = cvT.records[idx];
+  if (!rec || !rec.isEmpty) return -1;
+  try {
+    rec.getFieldByKey('RawData').value = rawJson;
+    return idx;
+  } catch (_) {
+    return -1;
+  }
+}
+
+// Deterministic 32-bit string hash (djb2). Used to assign each rookie a
+// stable index into the head-model pool so re-runs pick the same face
+// (idempotent) instead of reshuffling appearances every apply.
+function hashName(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h >>> 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +152,30 @@ async function main() {
   const appearances = JSON.parse(fs.readFileSync(appearancesPath, 'utf8'));
   console.log(`  Entries      : ${appearances.length}`);
 
+  // Template blob used when a Player has no CharacterVisuals row yet.
+  // data/raw/default_visuals.json is a real rookie's RawData (extracted by
+  // script 2 from the 2025 launch class) — has 31 PlayerOnField loadout
+  // elements + Base CharacterBodyType element. Fall back to a minimal blob
+  // if the file is missing; Madden still renders a default loadout but with
+  // the correct skinTone applied.
+  let templateBlob;
+  if (fs.existsSync(DEFAULT_VIS)) {
+    try {
+      templateBlob = JSON.parse(fs.readFileSync(DEFAULT_VIS, 'utf8'));
+      // Strip genericHeadName from the template — vets' RawData blobs don't
+      // include it, and we set Player.GenericHeadAssetName separately. Avoids
+      // a stale value persisting in the JSON.
+      delete templateBlob.genericHeadName;
+      console.log(`  Template     : ${DEFAULT_VIS} (loadouts: ${(templateBlob.loadouts||[]).length})`);
+    } catch (_) {
+      templateBlob = FALLBACK_VISUALS_BLOB;
+      console.log(`  Template     : fallback (default_visuals.json parse failed)`);
+    }
+  } else {
+    templateBlob = FALLBACK_VISUALS_BLOB;
+    console.log(`  Template     : fallback (default_visuals.json missing)`);
+  }
+
   // Build name → entry lookup
   const byName = new Map();
   for (const a of appearances) {
@@ -143,14 +193,45 @@ async function main() {
   console.log(`  Player rows  : ${playerT.records.length}`);
   console.log(`  CV rows      : ${cvT.records.length}`);
 
+  // Build the generic-head pool from veterans (YearsPro >= 1). These are
+  // real, valid procedural head models already shipped in the franchise.
+  // Bucket by skin family (leading gen_<N>) so a rookie can be given a
+  // distinct FACE within its measured skin tone; keep a flat list for filler
+  // prospects that have no measured tone (they get a face + plausible skin
+  // family together). Vets only → the pool is stable across re-runs, which
+  // keeps hashName()-based picks idempotent.
+  const headPool = new Map();     // N (1-7) -> sorted distinct head strings
+  const headPoolFlat = [];        // all distinct vet heads, sorted
+  {
+    const perFamily = new Map();
+    const flatSeen = new Set();
+    for (const r of playerT.records) {
+      if (r.isEmpty) continue;
+      if (!(safeGet(r, 'YearsPro') >= 1)) continue;
+      const h = safeGet(r, 'GenericHeadAssetName') || '';
+      const m = h.match(/^gen_(\d+)_.+/);
+      if (!m) continue;
+      const n = Number(m[1]);
+      if (n < 1 || n > 7) continue;
+      if (!perFamily.has(n)) perFamily.set(n, new Set());
+      perFamily.get(n).add(h);
+      if (!flatSeen.has(h)) { flatSeen.add(h); headPoolFlat.push(h); }
+    }
+    for (const [n, set] of perFamily) headPool.set(n, [...set].sort());
+    headPoolFlat.sort();
+  }
+  console.log(`  Head pool    : ${headPoolFlat.length} distinct vet heads across ${headPool.size} families`);
+
   // Stats
   const stats = {
     rookieRows: 0, matched: 0, notFound: 0,
     appliedSkin: 0, appliedHead: 0,
     skippedLowConfidence: 0, skippedHardFloor: 0,
-    cvDecodeFail: 0, cvNullRef: 0, cvRecordEmpty: 0, jsonParseFail: 0,
+    cvDecodeFail: 0, cvRecordEmpty: 0, jsonParseFail: 0,
+    cvAllocated: 0, cvAllocFail: 0, cvAllocWouldBeNeeded: 0,
     portraitsCleared: 0, assetNamesStubbed: 0,
     portraitsAlreadyZero: 0, assetNamesAlreadyClean: 0,
+    fillerDiversified: 0, distinctHeadsUsed: new Set(),
     headBefore: new Map(), headAfter: new Map(),
     toneBefore: new Map(), toneAfter: new Map(),
   };
@@ -170,52 +251,84 @@ async function main() {
     if (!fn || !ln) continue;
     const key = norm(fn + ln);
     const entry = byName.get(key);
-    if (!entry) {
-      stats.notFound++;
-      continue;
-    }
-    stats.matched++;
-
-    const target = Number(entry.skinTone);
-    if (!Number.isInteger(target) || target < 1 || target > 8) continue;
-    const conf = Number(entry.confidence || 0);
-    if (conf < CONFIDENCE_MIN) {
-      stats.skippedHardFloor++;
-      continue;
-    }
-    if (skipLowConfidence && entry.manualReview) {
-      stats.skippedLowConfidence++;
-      continue;
-    }
-
-    // Decode CharacterVisuals reference. NULL/zero refs (32-bit all-zeros
-    // or row=0) point at a default/shared CV row. The 9g fresh-inject path
-    // creates records without allocating unique CV rows. We can still update
-    // the Player.GenericHeadAssetName for these records — Madden renders the
-    // head primarily from that asset name, so skin family will change. We
-    // just skip the CV blob write (which would collide on row 0).
-    const cvRef = safeGet(r, 'CharacterVisuals');
-    let cvWriteable = true;
-    if (!cvRef || cvRef.length !== 32) {
-      stats.cvDecodeFail++; cvWriteable = false;
-    } else if (cvRef === '0'.repeat(32)) {
-      stats.cvNullRef++; cvWriteable = false;
+    let target;              // skin tone to write (1-8)
+    let isFiller = false;    // true = no measured tone; diversify from pool
+    let fillerHead = null;   // head chosen from the full pool for filler
+    if (entry) {
+      stats.matched++;
+      target = Number(entry.skinTone);
+      if (!Number.isInteger(target) || target < 1 || target > 8) continue;
+      const conf = Number(entry.confidence || 0);
+      if (conf < CONFIDENCE_MIN) {
+        stats.skippedHardFloor++;
+        continue;
+      }
+      if (skipLowConfidence && entry.manualReview) {
+        stats.skippedLowConfidence++;
+        continue;
+      }
     } else {
-      const cvRow = parseInt(cvRef.slice(15), 2);
-      if (cvRow === 0) { stats.cvNullRef++; cvWriteable = false; }
+      // Unmatched filler prospect — a Madden-generated rookie with no
+      // measured skin tone (not one of the real 2026 names). Without this
+      // branch these ~269 rows stay cloned as gen_7_B_G_005. Give each a
+      // distinct face drawn deterministically from the full vet head pool;
+      // the picked head's gen_<N> family also sets a plausible skin tone, so
+      // the whole draft board varies instead of all teams sharing one look.
+      stats.notFound++;
+      if (!headPoolFlat.length) continue;   // nothing to diversify with
+      isFiller = true;
+      fillerHead = headPoolFlat[hashName(key) % headPoolFlat.length];
+      const fm = fillerHead.match(/^gen_(\d+)_/);
+      target = fm ? Number(fm[1]) : 7;
+      stats.fillerDiversified++;
     }
 
-    if (cvWriteable) {
-      const cvRow = parseInt(cvRef.slice(15), 2);
+    // Resolve a writeable CharacterVisuals row. The 9g fresh-inject path
+    // leaves Player.CharacterVisuals = all-zeros (points at row 0, which is
+    // coach data and shared across records, so we can't write skinTone there
+    // safely). For these records we allocate a fresh CV row, seed it from
+    // the template, and rebind Player.CharacterVisuals to the new row.
+    // Without this, Madden has no per-rookie skin/loadout data to read and
+    // renders a fully-generic default model regardless of
+    // Player.GenericHeadAssetName.
+    const cvRef = safeGet(r, 'CharacterVisuals');
+    let cvRow = -1;
+    if (cvRef && cvRef.length === 32 && cvRef !== '0'.repeat(32)) {
+      const decodedRow = parseInt(cvRef.slice(15), 2);
+      if (decodedRow > 0) cvRow = decodedRow;
+    } else if (cvRef === undefined || cvRef === null) {
+      stats.cvDecodeFail++;
+    }
+
+    if (cvRow < 0) {
+      // Allocate a fresh CV row. In dry-run, count it but don't write.
+      if (apply) {
+        const blob = JSON.parse(JSON.stringify(templateBlob));
+        blob.skinTone = target;
+        const newIdx = allocateCVRow(cvT, JSON.stringify(blob));
+        if (newIdx >= 0) {
+          trySet(r, 'CharacterVisuals', encodeCVRef(CV_TABLE_ID, newIdx));
+          cvRow = newIdx;
+          stats.cvAllocated++;
+          stats.appliedSkin++;
+          bumpMap(stats.toneAfter, target);
+        } else {
+          stats.cvAllocFail++;
+        }
+      } else {
+        stats.cvAllocWouldBeNeeded++;
+        bumpMap(stats.toneAfter, target);
+      }
+    } else {
+      // PATH A: existing CV row — update skinTone in place.
       const cvRec = cvT.records[cvRow];
       if (!cvRec || cvRec.isEmpty) {
         stats.cvRecordEmpty++;
-        cvWriteable = false;
       } else {
         const raw = safeGet(cvRec, 'RawData');
         let parsed;
         try { parsed = JSON.parse(raw); }
-        catch (_) { stats.jsonParseFail++; cvWriteable = false; parsed = null; }
+        catch (_) { stats.jsonParseFail++; parsed = null; }
         if (parsed !== null) {
           const beforeTone = parsed.skinTone;
           bumpMap(stats.toneBefore, beforeTone);
@@ -229,20 +342,31 @@ async function main() {
       }
     }
 
-    // Update GenericHeadAssetName — keep the (X, Y, NNN) suffix, swap the
-    // leading gen_<N>. Cap N at 7 since the cross-tab shows tone 8 vets
-    // overwhelmingly use head_7.
+    // Assign the head MODEL (the face, encoded in the full
+    // gen_<N>_<X>_<Y>_<NNN> asset name — not just the leading skin family).
+    // The old behaviour kept a fixed _B_G_005 suffix, so every rookie in a
+    // skin family shared one identical face. Instead pick a distinct face
+    // from the veteran pool within the rookie's skin family (gen_<headN>),
+    // deterministically by name so re-runs are stable. Filler prospects were
+    // already assigned a head from the full pool above. Fall back to the old
+    // suffix-swap only if the family bucket is empty.
     const headN  = Math.min(7, target);
     const before = safeGet(r, 'GenericHeadAssetName') || '';
     bumpMap(stats.headBefore, before.replace(/^gen_(\d+)_.*/, 'gen_$1'));
-    let after = before;
-    const m = before.match(/^gen_\d+_(.*)$/);
-    if (m) {
-      after = `gen_${headN}_${m[1]}`;
+    let after;
+    if (isFiller && fillerHead) {
+      after = fillerHead;
     } else {
-      after = `gen_${headN}_B_G_005`;
+      const bucket = headPool.get(headN);
+      if (bucket && bucket.length) {
+        after = bucket[hashName(key) % bucket.length];
+      } else {
+        const m = before.match(/^gen_\d+_(.*)$/);
+        after = m ? `gen_${headN}_${m[1]}` : `gen_${headN}_B_G_005`;
+      }
     }
     bumpMap(stats.headAfter, after.replace(/^gen_(\d+)_.*/, 'gen_$1'));
+    stats.distinctHeadsUsed.add(after);
 
     if (apply) {
       trySet(r, 'GenericHeadAssetName', after);
@@ -292,19 +416,25 @@ async function main() {
 
   // ── Report ──
   console.log('\n  ' + '─'.repeat(50));
-  console.log(`  Rookie rows scanned       : ${stats.rookieRows}`);
-  console.log(`  Matched to appearances    : ${stats.matched}`);
-  console.log(`  No appearance entry       : ${stats.notFound}`);
-  console.log(`  Skipped (conf < ${CONFIDENCE_MIN}) : ${stats.skippedHardFloor}`);
-  console.log(`  Skipped (manualReview)    : ${stats.skippedLowConfidence}`);
-  console.log(`  CV decode fail            : ${stats.cvDecodeFail}`);
-  console.log(`  CV null/zero ref (skipped): ${stats.cvNullRef}`);
-  console.log(`  CV record empty           : ${stats.cvRecordEmpty}`);
-  console.log(`  RawData parse fail        : ${stats.jsonParseFail}`);
-  console.log(`  Writes (skinTone)         : ${stats.appliedSkin}`);
-  console.log(`  Writes (head asset)       : ${stats.appliedHead}`);
-  console.log(`  Portraits cleared (→0)    : ${stats.portraitsCleared}  (already 0: ${stats.portraitsAlreadyZero})`);
-  console.log(`  Asset names stubbed       : ${stats.assetNamesStubbed}  (already stub: ${stats.assetNamesAlreadyClean})`);
+  console.log(`  Rookie rows scanned        : ${stats.rookieRows}`);
+  console.log(`  Matched to appearances     : ${stats.matched}`);
+  console.log(`  No appearance entry        : ${stats.notFound}`);
+  console.log(`  Skipped (conf < ${CONFIDENCE_MIN})  : ${stats.skippedHardFloor}`);
+  console.log(`  Skipped (manualReview)     : ${stats.skippedLowConfidence}`);
+  console.log(`  CV decode fail             : ${stats.cvDecodeFail}`);
+  console.log(`  CV record empty            : ${stats.cvRecordEmpty}`);
+  console.log(`  RawData parse fail         : ${stats.jsonParseFail}`);
+  console.log(`  CV rows allocated (new)    : ${stats.cvAllocated}`);
+  if (!apply) {
+    console.log(`  CV rows that WOULD alloc   : ${stats.cvAllocWouldBeNeeded}  (dry-run)`);
+  }
+  console.log(`  CV allocation failures     : ${stats.cvAllocFail}`);
+  console.log(`  Writes (skinTone)          : ${stats.appliedSkin}`);
+  console.log(`  Writes (head asset)        : ${stats.appliedHead}`);
+  console.log(`  Filler prospects varied    : ${stats.fillerDiversified}`);
+  console.log(`  Distinct head models used  : ${stats.distinctHeadsUsed.size}`);
+  console.log(`  Portraits cleared (→0)     : ${stats.portraitsCleared}  (already 0: ${stats.portraitsAlreadyZero})`);
+  console.log(`  Asset names stubbed        : ${stats.assetNamesStubbed}  (already stub: ${stats.assetNamesAlreadyClean})`);
 
   console.log('\n  Tone before → after distribution:');
   for (let t = 1; t <= 8; t++) {
