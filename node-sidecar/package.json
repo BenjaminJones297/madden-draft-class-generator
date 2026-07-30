@@ -1,0 +1,16 @@
+{
+  "name": "madden-node-sidecar",
+  "version": "1.0.0",
+  "description": "Node.js sidecar for Madden file I/O (madden-franchise + madden-draft-class-tools)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "madden-draft-class-tools": "^1.2.0",
+    "madden-franchise": "^3.8.0"
+  }
+}
